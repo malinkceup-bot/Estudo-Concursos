@@ -509,13 +509,13 @@ const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsI
 
 const supa = {
   async get(tabela) {
-    const r = await fetch(`${SUPA_URL}/rest/v1/${tabela}?order=created_at`, {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?order=created_at`, {
       headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }
     })
     return r.ok ? r.json() : []
   },
   async insert(tabela, dados) {
-    const r = await fetch(`${SUPA_URL}/rest/v1/${tabela}`, {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}`, {
       method: 'POST',
       headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
       body: JSON.stringify(dados)
@@ -523,7 +523,7 @@ const supa = {
     return r.ok ? r.json() : null
   },
   async update(tabela, id, dados) {
-    const r = await fetch(`${SUPA_URL}/rest/v1/${tabela}?id=eq.${id}`, {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=eq.${id}`, {
       method: 'PATCH',
       headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
       body: JSON.stringify(dados)
@@ -531,13 +531,17 @@ const supa = {
     return r.ok ? r.json() : null
   },
   async delete(tabela, id) {
-    const r = await fetch(`${SUPA_URL}/rest/v1/${tabela}?id=eq.${id}`, {
+    const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=eq.${id}`, {
       method: 'DELETE',
       headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }
     })
     return r.ok
   }
 }
+
+const TABELA_QUESTOES = 'Questões'
+const TABELA_MAPAS = 'Mapas'
+const TABELA_MATERIAS = 'Matérias'
 
 // ===== ESTADO LOCAL =====
 const MATERIAS_PADRAO = [
@@ -700,7 +704,7 @@ async function salvarQuestao() {
   if (!materia || !gabarito) { notif('Selecione a matéria e o gabarito!', 'error'); return }
 
   mostrarLoading('Salvando questão...')
-  const resultado = await supa.insert('questoes', {
+  const resultado = await supa.insert(TABELA_QUESTOES, {
     materia, enunciado,
     alternativas: JSON.stringify({ A: altA, B: altB, C: altC, D: altD, E: altE }),
     gabarito, anotacao, video, dominada: false,
@@ -793,7 +797,7 @@ async function toggleDominada(id) {
   if (!q) return
   const novo = !q.dominada
   mostrarLoading('Atualizando...')
-  await supa.update('questoes', id, { dominada: novo })
+  await supa.update(TABELA_QUESTOES, id, { dominada: novo })
   esconderLoading()
   q.dominada = novo
   notif(novo ? '✅ Marcada como dominada!' : '🔄 Reativada!')
@@ -807,7 +811,7 @@ function deletarQuestao(id) {
   document.getElementById('modal-confirmar').classList.add('open')
   document.getElementById('confirmar-sim').onclick = async () => {
     mostrarLoading('Deletando...')
-    await supa.delete('questoes', _deletarId)
+    await supa.delete(TABELA_QUESTOES, _deletarId)
     esconderLoading()
     questoes = questoes.filter(q => String(q.id) !== String(_deletarId))
     document.getElementById('modal-confirmar').classList.remove('open')
@@ -841,7 +845,7 @@ async function salvarEdicao() {
     video: document.getElementById('edit-video').value.trim(),
   }
   mostrarLoading('Salvando edição...')
-  await supa.update('questoes', id, dados)
+  await supa.update(TABELA_QUESTOES, id, dados)
   esconderLoading()
   questoes = questoes.map(q => String(q.id) === String(id) ? { ...q, ...dados } : q)
   fecharEditar()
@@ -896,7 +900,7 @@ function renderSimuladoQuestao() {
 function verGabarito() { document.getElementById('gabarito-reveal').classList.add('visible') }
 async function marcarDominada() {
   const q = simuladoLista[simuladoIdx]
-  await supa.update('questoes', q.id, { dominada: true })
+  await supa.update(TABELA_QUESTOES, q.id, { dominada: true })
   questoes = questoes.map(i => String(i.id)===String(q.id) ? {...i, dominada:true} : i)
   simuladoDom++; proximaSimulado()
 }
@@ -967,7 +971,7 @@ async function salvarMapa() {
   const materia = document.getElementById('mapa-materia').value
   if(!titulo || !mapaImgBase64) { notif('Preencha o título e selecione uma imagem!','error'); return }
   mostrarLoading('Salvando mapa...')
-  const resultado = await supa.insert('mapas', { titulo, materia, img: mapaImgBase64, data: new Date().toLocaleDateString('pt-BR') })
+  const resultado = await supa.insert(TABELA_MAPAS, { titulo, materia, img: mapaImgBase64, data: new Date().toLocaleDateString('pt-BR') })
   esconderLoading()
   if (!resultado) { notif('Erro ao salvar mapa!','error'); return }
   mapas.push(resultado[0])
@@ -1033,7 +1037,7 @@ function setMapaTab(tab) { mapaTabAtiva = tab; renderMapas() }
 async function deletarMapa(id) {
   if(!confirm('Deletar este mapa?')) return
   mostrarLoading('Deletando...')
-  await supa.delete('mapas', id)
+  await supa.delete(TABELA_MAPAS, id)
   esconderLoading()
   mapas = mapas.filter(m => String(m.id) !== String(id))
   notif('🗑️ Mapa deletado!'); renderMapas()
@@ -1062,7 +1066,7 @@ async function adicionarMateria() {
   if (!nome) { notif('Digite o nome da matéria!','error'); return }
   if (materias.find(m => m.nome === nome)) { notif('Essa matéria já existe!','error'); return }
   mostrarLoading('Salvando matéria...')
-  const resultado = await supa.insert('materias', { nome })
+  const resultado = await supa.insert(TABELA_MATERIAS, { nome })
   esconderLoading()
   if (!resultado) { notif('Erro ao salvar matéria!','error'); return }
   materias.push(resultado[0])
@@ -1077,7 +1081,7 @@ async function removerMateria(id) {
   const emUso = questoes.some(q => q.materia === m.nome) || mapas.some(mp => mp.materia === m.nome)
   if (emUso && !confirm(`A matéria "${m.nome}" está em uso. Remover mesmo assim?`)) return
   mostrarLoading('Removendo...')
-  await supa.delete('materias', id)
+  await supa.delete(TABELA_MATERIAS, id)
   esconderLoading()
   materias = materias.filter(m => String(m.id) !== String(id))
   notif('🗑️ Matéria removida!')
@@ -1112,9 +1116,9 @@ async function init() {
   mostrarLoading('Conectando ao banco de dados...')
   try {
     const [q, m, mt] = await Promise.all([
-      supa.get('questoes'),
-      supa.get('mapas'),
-      supa.get('materias'),
+      supa.get(TABELA_QUESTOES),
+      supa.get(TABELA_MAPAS),
+      supa.get(TABELA_MATERIAS),
     ])
     questoes = q || []
     mapas = m || []
@@ -1124,7 +1128,7 @@ async function init() {
     if (!materias.length) {
       mostrarLoading('Configurando matérias padrão...')
       for (const nome of MATERIAS_PADRAO) {
-        const r = await supa.insert('materias', { nome })
+        const r = await supa.insert(TABELA_MATERIAS, { nome })
         if (r) materias.push(r[0])
       }
     }
@@ -1137,529 +1141,6 @@ async function init() {
 }
 
 init()
-
-// ===== NAVEGAÇÃO =====
-const PAGES = ['dashboard','cadastro','questoes','simulado','mapas','config']
-function goPage(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'))
-  document.getElementById('page-' + id).classList.add('active')
-  document.querySelectorAll('.nav-tab')[PAGES.indexOf(id)].classList.add('active')
-  if (id === 'dashboard') renderDashboard()
-  if (id === 'questoes') renderQuestoes()
-  if (id === 'mapas') renderMapas()
-  if (id === 'config') renderConfig()
-  if (id === 'cadastro' || id === 'simulado' || id === 'mapas') popularSelects()
-}
-
-// ===== POPULAR SELECTS COM MATÉRIAS =====
-function popularSelects() {
-  const opts = `<option value="">Selecione a matéria</option>` + materias.map(m => `<option value="${m}">${m}</option>`).join('')
-  const optsSimulado = `<option value="">Todas as matérias</option>` + materias.map(m => `<option value="${m}">${m}</option>`).join('')
-  const ids = ['materia-questao','mapa-materia','edit-materia']
-  ids.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = opts })
-  const sim = document.getElementById('simulado-materia')
-  if(sim) sim.innerHTML = optsSimulado
-}
-
-// ===== NOTIF =====
-function notif(msg, tipo = 'ok') {
-  const el = document.getElementById('notif')
-  el.textContent = msg
-  el.className = 'notif show' + (tipo === 'error' ? ' error' : '')
-  setTimeout(() => el.classList.remove('show'), 2500)
-}
-
-// ===== TAG =====
-function tagMateria(m) {
-  return `<span class="tag">${m || ''}</span>`
-}
-
-// ===== DASHBOARD =====
-function renderDashboard() {
-  const total = questoes.length
-  const dom = questoes.filter(q => q.dominada).length
-  const pend = total - dom
-  const pct = total ? Math.round((dom / total) * 100) : 0
-
-  // Stats gerais
-  document.getElementById('stat-total').textContent = total
-  document.getElementById('stat-erros').textContent = pend
-  document.getElementById('stat-dom').textContent = dom
-  document.getElementById('stat-pct').textContent = pct + '%'
-
-  // Saudação por horário
-  const h = new Date().getHours()
-  const saud = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
-  document.getElementById('dash-saudacao').textContent = `${saud}, Moisés! 👋`
-  document.getElementById('dash-subtitulo').textContent = total
-    ? `Você tem ${pend} questão${pend !== 1 ? 'ões' : ''} pendente${pend !== 1 ? 's' : ''} para revisar.`
-    : 'Comece cadastrando suas primeiras questões!'
-
-  // Desempenho por matéria
-  const elMat = document.getElementById('desempenho-materias')
-  if (!total) {
-    elMat.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;text-align:center;padding:20px">Nenhuma questão cadastrada ainda.</div>'
-    document.getElementById('dash-situacao').innerHTML = ''
-    return
-  }
-
-  // Agrupar por matéria
-  const porMateria = {}
-  questoes.forEach(q => {
-    const m = q.materia || 'Sem matéria'
-    if (!porMateria[m]) porMateria[m] = { total: 0, dominadas: 0 }
-    porMateria[m].total++
-    if (q.dominada) porMateria[m].dominadas++
-  })
-
-  const sorted = Object.entries(porMateria).sort((a, b) => {
-    const pctA = a[1].dominadas / a[1].total
-    const pctB = b[1].dominadas / b[1].total
-    return pctA - pctB // pior primeiro
-  })
-
-  elMat.innerHTML = sorted.map(([m, dados]) => {
-    const p = Math.round((dados.dominadas / dados.total) * 100)
-    const pend = dados.total - dados.dominadas
-    const cor = p >= 70 ? 'var(--green)' : p >= 40 ? 'var(--yellow)' : 'var(--red)'
-    const emoji = p >= 70 ? '✅' : p >= 40 ? '⚠️' : '❌'
-    const status = p >= 70 ? 'Bom domínio' : p >= 40 ? 'Em progresso' : 'Precisa de atenção'
-    return `
-      <div style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:0.9rem;font-weight:600">${m}</span>
-            <span style="font-size:0.7rem;background:var(--surface2);padding:2px 8px;border-radius:20px;color:var(--text2)">${emoji} ${status}</span>
-          </div>
-          <div style="display:flex;gap:12px;font-size:0.8rem">
-            <span style="color:var(--red)">❌ ${pend} pendente${pend!==1?'s':''}</span>
-            <span style="color:var(--green)">✅ ${dados.dominadas} dominada${dados.dominadas!==1?'s':''}</span>
-            <span style="color:${cor};font-weight:700">${p}%</span>
-          </div>
-        </div>
-        <div style="background:var(--surface2);border-radius:6px;height:10px;overflow:hidden">
-          <div style="background:${cor};height:10px;border-radius:6px;width:${p}%;transition:width 0.6s"></div>
-        </div>
-        <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">${dados.total} questão${dados.total!==1?'ões':''} cadastrada${dados.total!==1?'s':''}</div>
-      </div>`
-  }).join('')
-
-  // Situação geral com frases dinâmicas
-  const frases = sorted.map(([m, dados]) => {
-    const p = Math.round((dados.dominadas / dados.total) * 100)
-    const pend = dados.total - dados.dominadas
-    if (p >= 70) return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px"><span>✅</span><span style="font-size:0.85rem">Você está indo bem em <strong>${m}</strong> — ${p}% de aproveitamento.</span></div>`
-    if (p >= 40) return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px"><span>⚠️</span><span style="font-size:0.85rem">Em <strong>${m}</strong> você acerta cerca de metade — ainda tem ${pend} questão${pend!==1?'ões':''} pendente${pend!==1?'s':''}.</span></div>`
-    return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px"><span>❌</span><span style="font-size:0.85rem">Você erra bastante em <strong>${m}</strong> — ${pend} questão${pend!==1?'ões':''} ainda pendente${pend!==1?'s':''}. Foque aqui!</span></div>`
-  })
-
-  const melhor = sorted[sorted.length - 1]
-  const pior = sorted[0]
-  let dica = ''
-  if (sorted.length > 1) {
-    const pPior = Math.round((pior[1].dominadas / pior[1].total) * 100)
-    dica = `<div style="margin-top:14px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);font-size:0.85rem;color:var(--text2)">
-      💡 <strong>Dica:</strong> Priorize estudar <strong>${pior[0]}</strong> — é onde você tem mais dificuldade (${pPior}% de aproveitamento).
-    </div>`
-  }
-
-  document.getElementById('dash-situacao').innerHTML = frases.join('') + dica
-}
-
-// ===== GABARITO SELECTOR =====
-function selecionarGabarito(val) {
-  document.querySelectorAll('.gabarito-opt').forEach(b => b.classList.remove('selected'))
-  event.target.classList.add('selected')
-  document.getElementById('gabarito-questao').value = val
-  document.getElementById('gabarito-label').textContent = val
-  document.getElementById('gabarito-selecionado').style.display = 'block'
-}
-
-// ===== CADASTRAR =====
-function salvarQuestao() {
-  const materia = document.getElementById('materia-questao').value
-  const enunciado = document.getElementById('enunciado-questao').value.trim()
-  const altA = document.getElementById('alt-a').value.trim()
-  const altB = document.getElementById('alt-b').value.trim()
-  const altC = document.getElementById('alt-c').value.trim()
-  const altD = document.getElementById('alt-d').value.trim()
-  const altE = document.getElementById('alt-e').value.trim()
-  const gabarito = document.getElementById('gabarito-questao').value
-  const anotacao = document.getElementById('anotacao-questao').value.trim()
-  const video = document.getElementById('video-questao').value.trim()
-
-  if (!materia || !gabarito) { notif('Selecione a matéria e o gabarito!', 'error'); return }
-
-  const alternativas = { A: altA, B: altB, C: altC, D: altD, E: altE }
-
-  questoes.push({
-    id: Date.now(),
-    num: questoes.length + 1,
-    materia, enunciado, alternativas, gabarito, anotacao, video,
-    dominada: false,
-    data: new Date().toLocaleDateString('pt-BR')
-  })
-  DB.set('questoes', questoes)
-
-  // Limpar form
-  document.getElementById('materia-questao').value = ''
-  document.getElementById('enunciado-questao').value = ''
-  document.getElementById('alt-a').value = ''
-  document.getElementById('alt-b').value = ''
-  document.getElementById('alt-c').value = ''
-  document.getElementById('alt-d').value = ''
-  document.getElementById('alt-e').value = ''
-  document.getElementById('gabarito-questao').value = ''
-  document.getElementById('anotacao-questao').value = ''
-  document.getElementById('video-questao').value = ''
-  document.getElementById('gabarito-selecionado').style.display = 'none'
-  document.querySelectorAll('.gabarito-opt').forEach(b => b.classList.remove('selected'))
-
-  notif('✅ Questão salva!')
-  goPage('questoes')
-}
-
-// ===== QUESTÕES =====
-let filtroMateria = 'todas-materias'
-let filtroStatus = 'todas'
-
-function renderQuestoes() {
-  const materiasList = [...new Set(questoes.map(q => q.materia))].filter(Boolean)
-  document.getElementById('filtros-materias').innerHTML =
-    `<button class="filtro-btn ${filtroMateria==='todas-materias'?'active':''}" onclick="filtrarMateria('todas-materias')">Todas</button>` +
-    materiasList.map(m => `<button class="filtro-btn ${filtroMateria===m?'active':''}" onclick="filtrarMateria('${m.replace(/'/g,"\\'")}'">${m}</button>`).join('')
-
-  let lista = questoes
-  if (filtroMateria !== 'todas-materias') lista = lista.filter(q => q.materia === filtroMateria)
-  if (filtroStatus === 'pendentes') lista = lista.filter(q => !q.dominada)
-  if (filtroStatus === 'dominadas') lista = lista.filter(q => q.dominada)
-
-  const el = document.getElementById('lista-questoes')
-  if (!lista.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Nenhuma questão encontrada.</div></div>'; return }
-  el.innerHTML = lista.slice().reverse().map(q => {
-    const alts = q.alternativas || {}
-    const temAlts = Object.values(alts).some(v => v)
-    return `
-    <div class="questao-card ${q.dominada?'dominada':''}">
-      <div class="questao-header">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="questao-num">Q${q.num}</span>
-          ${tagMateria(q.materia)}
-        </div>
-        <span class="questao-gabarito">Gabarito: ${q.gabarito}</span>
-      </div>
-      ${q.enunciado?`<div style="font-size:0.85rem;color:var(--text);margin:8px 0;line-height:1.5;padding:10px;background:var(--surface2);border-radius:8px">${q.enunciado}</div>`:''}
-      ${temAlts?`<div style="margin:8px 0;display:flex;flex-direction:column;gap:4px">
-        ${['A','B','C','D','E'].filter(l=>alts[l]).map(l=>`
-          <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 10px;border-radius:6px;${q.gabarito===l?'background:rgba(34,197,94,0.15);border:1px solid var(--green)':'background:var(--surface2)'}">
-            <span style="font-weight:700;color:${q.gabarito===l?'var(--green)':'var(--accent)'};min-width:18px">${l})</span>
-            <span style="font-size:0.85rem;color:var(--text)">${alts[l]}</span>
-          </div>`).join('')}
-      </div>`:''}
-      ${q.anotacao?`<div class="questao-anotacao"><i class="fas fa-comment-dots" style="color:var(--yellow);margin-right:5px"></i>${q.anotacao}</div>`:''}
-      <div class="questao-actions">
-        ${q.video?`<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-play"></i> Vídeo</a>`:''}
-        <button class="btn btn-ghost btn-sm" onclick="abrirEditar(${q.id})"><i class="fas fa-edit"></i> Editar</button>
-        ${q.dominada
-          ?`<button class="btn btn-ghost btn-sm" onclick="toggleDominada(${q.id})"><i class="fas fa-undo"></i> Reativar</button>`
-          :`<button class="btn btn-success btn-sm" onclick="toggleDominada(${q.id})"><i class="fas fa-check"></i> Dominei!</button>`}
-        <button class="btn btn-danger btn-sm" onclick="deletarQuestao(${q.id})"><i class="fas fa-trash"></i></button>
-      </div>
-      <div style="font-size:0.7rem;color:var(--text2);margin-top:6px">${q.data||''}</div>
-    </div>`
-  }).join('')
-}
-
-function filtrarMateria(m) { filtroMateria = m; renderQuestoes() }
-function filtrarStatus(s) {
-  filtroStatus = s
-  document.querySelectorAll('#filtro-todas,#filtro-pendentes,#filtro-dominadas').forEach(b => b.classList.remove('active'))
-  document.getElementById('filtro-'+s).classList.add('active')
-  renderQuestoes()
-}
-function toggleDominada(id) {
-  questoes = questoes.map(q => q.id===id?{...q,dominada:!q.dominada}:q)
-  DB.set('questoes',questoes)
-  notif(questoes.find(q=>q.id===id).dominada?'✅ Marcada como dominada!':'🔄 Reativada!')
-  renderQuestoes()
-}
-let _deletarId = null
-function deletarQuestao(id) {
-  _deletarId = Number(id)
-  document.getElementById('modal-confirmar').classList.add('open')
-  document.getElementById('confirmar-sim').onclick = () => {
-    questoes = questoes.filter(q => q.id !== _deletarId)
-    DB.set('questoes', questoes)
-    document.getElementById('modal-confirmar').classList.remove('open')
-    notif('🗑️ Questão deletada!')
-    renderQuestoes()
-  }
-}
-
-// ===== EDITAR =====
-function abrirEditar(id) {
-  const q = questoes.find(q=>q.id===id)
-  popularSelects()
-  document.getElementById('edit-id').value = id
-  document.getElementById('edit-num').value = q.num
-  document.getElementById('edit-materia').value = q.materia
-  document.getElementById('edit-tema').value = q.tema||''
-  document.getElementById('edit-gabarito').value = q.gabarito
-  document.getElementById('edit-anotacao').value = q.anotacao||''
-  document.getElementById('edit-video').value = q.video||''
-  document.getElementById('modal-editar').classList.add('open')
-}
-function fecharEditar() { document.getElementById('modal-editar').classList.remove('open') }
-function salvarEdicao() {
-  const id = parseInt(document.getElementById('edit-id').value)
-  questoes = questoes.map(q=>q.id===id?{...q,
-    num:document.getElementById('edit-num').value.trim(),
-    materia:document.getElementById('edit-materia').value,
-    tema:document.getElementById('edit-tema').value.trim(),
-    gabarito:document.getElementById('edit-gabarito').value.trim(),
-    anotacao:document.getElementById('edit-anotacao').value.trim(),
-    video:document.getElementById('edit-video').value.trim(),
-  }:q)
-  DB.set('questoes',questoes)
-  fecharEditar()
-  notif('✅ Questão editada!')
-  renderQuestoes()
-}
-
-// ===== SIMULADO =====
-let simuladoLista=[], simuladoIdx=0, simuladoDom=0
-function iniciarSimulado() {
-  goPage('simulado')
-  popularSelects()
-  const materia = document.getElementById('simulado-materia').value
-  const inclDom = document.getElementById('simulado-incluir-dom').value==='sim'
-  let lista = questoes
-  if(materia) lista = lista.filter(q=>q.materia===materia)
-  if(!inclDom) lista = lista.filter(q=>!q.dominada)
-  if(!lista.length) { notif('Nenhuma questão encontrada!','error'); return }
-  simuladoLista = lista.sort(()=>Math.random()-0.5)
-  simuladoIdx=0; simuladoDom=0
-  document.getElementById('simulado-config').style.display='none'
-  document.getElementById('simulado-ativo').style.display='block'
-  document.getElementById('simulado-fim').style.display='none'
-  renderSimuladoQuestao()
-}
-function renderSimuladoQuestao() {
-  const q = simuladoLista[simuladoIdx]
-  const alts = q.alternativas || {}
-  const temAlts = Object.values(alts).some(v => v)
-  document.getElementById('simulado-progress').textContent=`Questão ${simuladoIdx+1} de ${simuladoLista.length}`
-  document.getElementById('simulado-questao-atual').innerHTML=`
-    <div class="simulado-card">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-        ${tagMateria(q.materia)}
-        <span style="font-size:0.75rem;color:var(--text2)">${q.data||''}</span>
-      </div>
-      ${q.enunciado?`<div style="font-size:0.95rem;color:var(--text);line-height:1.6;margin-bottom:14px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent)">${q.enunciado}</div>`:''}
-      ${temAlts?`<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
-        ${['A','B','C','D','E'].filter(l=>alts[l]).map(l=>`
-          <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border)">
-            <span style="font-weight:700;color:var(--accent);min-width:20px">${l})</span>
-            <span style="font-size:0.9rem;color:var(--text)">${alts[l]}</span>
-          </div>`).join('')}
-      </div>`:''}
-      <div class="simulado-gabarito" id="gabarito-reveal">
-        <div style="margin-bottom:6px"><strong style="color:var(--green)">✅ Gabarito: ${q.gabarito}</strong></div>
-        ${q.anotacao?`<div style="font-size:0.85rem;color:var(--text2);margin-top:8px;line-height:1.6">${q.anotacao}</div>`:''}
-      </div>
-      ${q.video?`<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm" style="margin-top:8px"><i class="fas fa-play"></i> Ver Vídeo</a>`:''}
-    </div>`
-}
-function verGabarito() { document.getElementById('gabarito-reveal').classList.add('visible') }
-function marcarDominada() {
-  const q=simuladoLista[simuladoIdx]
-  questoes=questoes.map(i=>i.id===q.id?{...i,dominada:true}:i)
-  DB.set('questoes',questoes); simuladoDom++; proximaSimulado()
-}
-function proximaSimulado() {
-  simuladoIdx++
-  if(simuladoIdx>=simuladoLista.length) {
-    document.getElementById('simulado-ativo').style.display='none'
-    document.getElementById('simulado-fim').style.display='block'
-    document.getElementById('simulado-resultado').textContent=`Você dominou ${simuladoDom} de ${simuladoLista.length} questões!`
-    return
-  }
-  renderSimuladoQuestao()
-}
-function resetSimulado() {
-  document.getElementById('simulado-config').style.display='block'
-  document.getElementById('simulado-ativo').style.display='none'
-  document.getElementById('simulado-fim').style.display='none'
-}
-
-// ===== DRAG AND DROP =====
-function dragOver(e) {
-  e.preventDefault()
-  e.stopPropagation()
-  document.getElementById('upload-drop-area').classList.add('drag-over')
-}
-
-function dragLeave(e) {
-  e.preventDefault()
-  document.getElementById('upload-drop-area').classList.remove('drag-over')
-}
-
-function dropImagem(e) {
-  e.preventDefault()
-  e.stopPropagation()
-  document.getElementById('upload-drop-area').classList.remove('drag-over')
-  const file = e.dataTransfer.files[0]
-  if (!file || !file.type.startsWith('image/')) {
-    notif('Arquivo inválido! Solte apenas imagens.', 'error')
-    return
-  }
-  lerImagemComoBase64(file)
-}
-
-function lerImagemComoBase64(file) {
-  const reader = new FileReader()
-  reader.onload = (ev) => {
-    mapaImgBase64 = ev.target.result
-    const p = document.getElementById('mapa-preview')
-    p.src = mapaImgBase64
-    p.style.display = 'block'
-    notif('✅ Imagem carregada!')
-  }
-  reader.readAsDataURL(file)
-}
-
-// ===== MAPAS =====
-let mapaImgBase64 = null
-let mapaTabAtiva = 'todas'
-
-function abrirModalAddMapa() {
-  popularSelects()
-  document.getElementById('mapa-titulo').value = ''
-  document.getElementById('mapa-materia').value = ''
-  document.getElementById('mapa-preview').style.display = 'none'
-  mapaImgBase64 = null
-  document.getElementById('modal-add-mapa').classList.add('open')
-}
-function fecharModalAddMapa() { document.getElementById('modal-add-mapa').classList.remove('open') }
-
-function previewMapa(e) {
-  const file = e.target.files[0]
-  if (!file) return
-  lerImagemComoBase64(file)
-}
-
-function salvarMapa() {
-  const titulo = document.getElementById('mapa-titulo').value.trim()
-  const materia = document.getElementById('mapa-materia').value
-  if(!titulo || !mapaImgBase64) { notif('Preencha o título e selecione uma imagem!','error'); return }
-  mapas.push({ id: Date.now(), titulo, materia, img: mapaImgBase64, data: new Date().toLocaleDateString('pt-BR') })
-  DB.set('mapas', mapas)
-  fecharModalAddMapa()
-  notif('✅ Mapa mental salvo!')
-  mapaTabAtiva = materia || 'todas'
-  renderMapas()
-}
-
-function renderMapas() {
-  // Montar abas
-  const materiasCom = [...new Set(mapas.map(m => m.materia).filter(Boolean))]
-  const tabsEl = document.getElementById('mapas-tabs')
-
-  if (!mapas.length) {
-    tabsEl.innerHTML = ''
-    document.getElementById('mapas-conteudo').innerHTML = `
-      <div class="empty"><div class="empty-icon">🗺️</div><div class="empty-text">Nenhum mapa mental ainda.<br>Clique em "Adicionar" para começar!</div></div>`
-    return
-  }
-
-  const totalSemMateria = mapas.filter(m => !m.materia).length
-  tabsEl.innerHTML =
-    `<button class="mapa-tab-btn ${mapaTabAtiva==='todas'?'active':''}" onclick="setMapaTab('todas')">
-      Todas <span class="count">${mapas.length}</span>
-    </button>` +
-    materiasCom.map(m => {
-      const count = mapas.filter(mp => mp.materia === m).length
-      return `<button class="mapa-tab-btn ${mapaTabAtiva===m?'active':''}" onclick="setMapaTab('${m.replace(/'/g,"\\'")}')">
-        ${m} <span class="count">${count}</span>
-      </button>`
-    }).join('') +
-    (totalSemMateria ? `<button class="mapa-tab-btn ${mapaTabAtiva==='sem-materia'?'active':''}" onclick="setMapaTab('sem-materia')">
-      Sem matéria <span class="count">${totalSemMateria}</span>
-    </button>` : '')
-
-  // Filtrar mapas pela aba ativa
-  let lista = mapas
-  if (mapaTabAtiva === 'sem-materia') lista = mapas.filter(m => !m.materia)
-  else if (mapaTabAtiva !== 'todas') lista = mapas.filter(m => m.materia === mapaTabAtiva)
-
-  // Agrupar por matéria se estiver em "todas"
-  const conteudo = document.getElementById('mapas-conteudo')
-  if (mapaTabAtiva === 'todas' && materiasCom.length > 1) {
-    // Mostrar seções por matéria
-    let html = ''
-    // Mapas com matéria agrupados
-    materiasCom.forEach(mat => {
-      const grupo = mapas.filter(m => m.materia === mat).slice().reverse()
-      html += `
-        <div style="margin-bottom:28px">
-          <div class="mapas-secao-titulo">
-            <i class="fas fa-folder"></i> ${mat}
-            <span style="color:var(--text2);font-weight:400">${grupo.length} mapa${grupo.length>1?'s':''}</span>
-          </div>
-          <div class="mapas-grid">
-            ${grupo.map(m => mapaCardHTML(m)).join('')}
-          </div>
-        </div>`
-    })
-    if (totalSemMateria) {
-      const semMat = mapas.filter(m => !m.materia).slice().reverse()
-      html += `<div style="margin-bottom:28px">
-        <div class="mapas-secao-titulo"><i class="fas fa-folder-open"></i> Sem matéria</div>
-        <div class="mapas-grid">${semMat.map(m => mapaCardHTML(m)).join('')}</div>
-      </div>`
-    }
-    conteudo.innerHTML = html
-  } else {
-    // Mostrar grid simples
-    conteudo.innerHTML = `<div class="mapas-grid">${lista.slice().reverse().map(m => mapaCardHTML(m)).join('')}</div>`
-  }
-}
-
-function mapaCardHTML(m) {
-  return `
-    <div class="mapa-grid-card">
-      <img class="mapa-grid-img" src="${m.img}" onclick="abrirImagem(${m.id})" title="${m.titulo}">
-      <div class="mapa-grid-info">
-        <div>
-          <div class="mapa-grid-titulo">${m.titulo}</div>
-          <div class="mapa-grid-data">${m.data||''}</div>
-        </div>
-        <button class="btn btn-danger btn-sm" onclick="deletarMapa(${m.id})" title="Deletar">
-          <i class="fas fa-trash"></i>
-        </button>
-      </div>
-    </div>`
-}
-
-function setMapaTab(tab) {
-  mapaTabAtiva = tab
-  renderMapas()
-}
-
-function deletarMapa(id) {
-  if(!confirm('Deletar este mapa?')) return
-  mapas = mapas.filter(m => m.id !== id)
-  DB.set('mapas', mapas)
-  notif('🗑️ Mapa deletado!')
-  renderMapas()
-}
-
-function abrirImagem(id) {
-  const m = mapas.find(m => m.id === id); if(!m) return
-  document.getElementById('modal-img-src').src = m.img
-  document.getElementById('modal-img').classList.add('open')
-}
 
 </script>
 </body>
