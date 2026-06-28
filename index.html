@@ -247,6 +247,69 @@
 </head>
 <body>
 
+<!-- TELA DE CONFIGURAÇÃO (primeira vez) -->
+<div id="tela-config-supa" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9997;align-items:center;justify-content:center;padding:20px;overflow-y:auto">
+  <div style="width:100%;max-width:420px;padding:20px 0">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:2.5rem;margin-bottom:8px">⚙️</div>
+      <div style="font-size:1.3rem;font-weight:700">Configurar meu Supabase</div>
+      <div style="font-size:0.85rem;color:var(--text2);margin-top:6px;line-height:1.5">Configure seu próprio banco de dados.<br>Seus dados serão 100% seus e independentes!</div>
+    </div>
+
+    <!-- PASSO 1 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:12px">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Passo 1 — URL do projeto</div>
+      <div style="font-size:0.82rem;color:var(--text2);margin-bottom:10px;line-height:1.5">
+        No Supabase vá em <strong style="color:var(--text)">Settings → API</strong> e copie o <strong style="color:var(--text)">Project URL</strong>
+      </div>
+      <input type="url" id="setup-url" placeholder="https://xxxxxxxxxxx.supabase.co">
+    </div>
+
+    <!-- PASSO 2 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:12px">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Passo 2 — Chave anon public</div>
+      <div style="font-size:0.82rem;color:var(--text2);margin-bottom:10px;line-height:1.5">
+        Na mesma página copie a chave <strong style="color:var(--text)">anon public</strong> (começa com eyJ...)
+      </div>
+      <textarea id="setup-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="min-height:70px;font-size:0.75rem"></textarea>
+    </div>
+
+    <!-- PASSO 3 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px">
+      <div style="font-size:0.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Passo 3 — Criar seu login</div>
+      <div style="font-size:0.82rem;color:var(--text2);margin-bottom:10px;line-height:1.5">
+        Defina o e-mail e senha que usará para entrar no app
+      </div>
+      <div class="form-group">
+        <label>E-mail</label>
+        <input type="email" id="setup-email" placeholder="seu@email.com">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Senha</label>
+        <input type="password" id="setup-senha" placeholder="Mínimo 6 caracteres">
+      </div>
+    </div>
+
+    <div id="setup-erro" style="display:none;background:rgba(239,68,68,0.1);border:1px solid var(--red);border-radius:8px;padding:10px;font-size:0.85rem;color:var(--red);margin-bottom:12px">
+      <i class="fas fa-exclamation-circle"></i> <span id="setup-erro-msg"></span>
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="finalizarSetup()" id="btn-setup">
+      <i class="fas fa-rocket"></i> Configurar e Entrar
+    </button>
+
+    <div style="text-align:center;margin-top:14px">
+      <button onclick="mostrarTelaLogin()" style="background:none;border:none;color:var(--text2);font-size:0.8rem;cursor:pointer;text-decoration:underline">
+        Já tenho configuração — fazer login
+      </button>
+    </div>
+
+    <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-top:16px;font-size:0.78rem;color:var(--text2);line-height:1.6">
+      📋 <strong>Lembrete:</strong> Antes de continuar você precisa ter criado as tabelas no Supabase rodando o SQL fornecido.
+    </div>
+  </div>
+</div>
+
 <!-- TELA DE LOGIN -->
 <div id="tela-login" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9998;align-items:center;justify-content:center;padding:20px">
   <div style="width:100%;max-width:380px">
@@ -540,8 +603,14 @@
 
     <div class="card">
       <div class="card-title">🔐 Conta</div>
-      <div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px">Logado como: <strong id="usuario-email" style="color:var(--text)"></strong></div>
-      <button class="btn btn-danger" onclick="fazerLogout()"><i class="fas fa-sign-out-alt"></i> Sair da conta</button>
+      <div style="font-size:0.85rem;color:var(--text2);margin-bottom:4px">Logado como:</div>
+      <div style="font-weight:600;color:var(--text);margin-bottom:12px" id="usuario-email"></div>
+      <div style="font-size:0.85rem;color:var(--text2);margin-bottom:4px">Supabase:</div>
+      <div style="font-size:0.75rem;color:var(--text2);margin-bottom:16px;word-break:break-all" id="usuario-supa-url"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-danger" onclick="fazerLogout()"><i class="fas fa-sign-out-alt"></i> Sair da conta</button>
+        <button class="btn btn-ghost" onclick="resetarConfig()" style="font-size:0.8rem"><i class="fas fa-redo"></i> Trocar Supabase</button>
+      </div>
     </div>
   </div>
 
@@ -619,9 +688,9 @@
 <div class="notif" id="notif"></div>
 
 <script>
-// ===== SUPABASE CONFIG =====
-const SUPA_URL = 'https://avqzbqvsqyoxueqexara.supabase.co'
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2cXpicXZzcXlveHVlcWV4YXJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1Nzk0ODcsImV4cCI6MjA5ODE1NTQ4N30.UvNr37PgF3EGpwKmBwE4qkpf9NSxKBzZBay0iUyLvbs'
+// ===== SUPABASE CONFIG DINÂMICA =====
+let SUPA_URL = localStorage.getItem('supa_url') || ''
+let SUPA_KEY = localStorage.getItem('supa_key') || ''
 
 let authToken = null
 let usuarioAtual = null
@@ -637,31 +706,24 @@ function getHeaders(extra = {}) {
 
 const supa = {
   async get(tabela) {
-    const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?order=created_at`, {
-      headers: getHeaders()
-    })
+    const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?order=created_at`, { headers: getHeaders() })
     return r.ok ? r.json() : []
   },
   async insert(tabela, dados) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}`, {
-      method: 'POST',
-      headers: getHeaders({ Prefer: 'return=representation' }),
-      body: JSON.stringify(dados)
+      method: 'POST', headers: getHeaders({ Prefer: 'return=representation' }), body: JSON.stringify(dados)
     })
     return r.ok ? r.json() : null
   },
   async update(tabela, id, dados) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=eq.${id}`, {
-      method: 'PATCH',
-      headers: getHeaders({ Prefer: 'return=representation' }),
-      body: JSON.stringify(dados)
+      method: 'PATCH', headers: getHeaders({ Prefer: 'return=representation' }), body: JSON.stringify(dados)
     })
     return r.ok ? r.json() : null
   },
   async delete(tabela, id) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=eq.${id}`, {
-      method: 'DELETE',
-      headers: getHeaders()
+      method: 'DELETE', headers: getHeaders()
     })
     return r.ok
   }
@@ -671,15 +733,113 @@ const TABELA_QUESTOES = 'Questões'
 const TABELA_MAPAS = 'Mapas'
 const TABELA_MATERIAS = 'Matérias'
 
+// ===== TELA DE SETUP =====
+
+async function finalizarSetup() {
+  const url = document.getElementById('setup-url').value.trim().replace(/\/$/, '')
+  const key = document.getElementById('setup-key').value.trim()
+  const email = document.getElementById('setup-email').value.trim()
+  const senha = document.getElementById('setup-senha').value
+
+  const erroEl = document.getElementById('setup-erro')
+  const btnSetup = document.getElementById('btn-setup')
+
+  erroEl.style.display = 'none'
+
+  if (!url || !key || !email || !senha) {
+    erroEl.style.display = 'block'
+    document.getElementById('setup-erro-msg').textContent = 'Preencha todos os campos!'
+    return
+  }
+  if (!url.includes('supabase.co')) {
+    erroEl.style.display = 'block'
+    document.getElementById('setup-erro-msg').textContent = 'URL inválida! Deve conter supabase.co'
+    return
+  }
+  if (senha.length < 6) {
+    erroEl.style.display = 'block'
+    document.getElementById('setup-erro-msg').textContent = 'A senha deve ter pelo menos 6 caracteres!'
+    return
+  }
+
+  btnSetup.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Configurando...'
+  btnSetup.disabled = true
+
+  // Testar conexão
+  try {
+    const teste = await fetch(`${url}/rest/v1/`, { headers: { apikey: key, Authorization: `Bearer ${key}` } })
+    if (!teste.ok) throw new Error('Conexão falhou')
+  } catch(e) {
+    erroEl.style.display = 'block'
+    document.getElementById('setup-erro-msg').textContent = 'URL ou chave inválida! Verifique e tente novamente.'
+    btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Configurar e Entrar'
+    btnSetup.disabled = false
+    return
+  }
+
+  // Salvar config
+  SUPA_URL = url
+  SUPA_KEY = key
+  localStorage.setItem('supa_url', url)
+  localStorage.setItem('supa_key', key)
+
+  // Criar usuário no Supabase
+  btnSetup.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando conta...'
+  const signUp = await fetch(`${SUPA_URL}/auth/v1/signup`, {
+    method: 'POST',
+    headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: senha })
+  })
+  const signUpData = await signUp.json()
+
+  if (!signUp.ok && !signUpData.access_token) {
+    // Talvez já exista — tentar login direto
+  }
+
+  // Fazer login
+  btnSetup.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...'
+  const login = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: senha })
+  })
+  const loginData = await login.json()
+
+  if (!login.ok) {
+    erroEl.style.display = 'block'
+    document.getElementById('setup-erro-msg').textContent = 'Erro ao criar login. Verifique se o usuário já foi criado no Supabase.'
+    btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Configurar e Entrar'
+    btnSetup.disabled = false
+    return
+  }
+
+  authToken = loginData.access_token
+  usuarioAtual = loginData.user
+  localStorage.setItem('supa_token', authToken)
+  localStorage.setItem('supa_user', JSON.stringify(usuarioAtual))
+
+  document.getElementById('tela-config-supa').style.display = 'none'
+  await carregarDados()
+}
+
 // ===== AUTH =====
+function mostrarTelaSetup() {
+  document.getElementById('tela-config-supa').style.display = 'flex'
+  document.getElementById('tela-login').style.display = 'none'
+  document.querySelector('nav').style.display = 'none'
+  document.querySelector('main').style.display = 'none'
+}
+
 function mostrarTelaLogin() {
   document.getElementById('tela-login').style.display = 'flex'
+  document.getElementById('tela-config-supa').style.display = 'none'
   document.querySelector('nav').style.display = 'none'
   document.querySelector('main').style.display = 'none'
 }
 
 function esconderTelaLogin() {
   document.getElementById('tela-login').style.display = 'none'
+  document.getElementById('tela-config-supa').style.display = 'none'
   document.querySelector('nav').style.display = 'flex'
   document.querySelector('main').style.display = 'block'
 }
@@ -1468,6 +1628,16 @@ function abrirImagem(id) {
 function fecharModal() { document.getElementById('modal-img').classList.remove('open') }
 
 // ===== GERENCIAR MATÉRIAS =====
+function resetarConfig() {
+  if (!confirm('Isso vai desconectar do Supabase atual e permitir configurar um novo.\nSeus dados no Supabase atual continuam salvos lá.\n\nContinuar?')) return
+  localStorage.removeItem('supa_url')
+  localStorage.removeItem('supa_key')
+  localStorage.removeItem('supa_token')
+  localStorage.removeItem('supa_user')
+  questoes = []; mapas = []; materias = []
+  mostrarTelaSetup()
+}
+
 function renderConfig() {
   const el = document.getElementById('lista-materias-config')
   if (!materias.length) { el.innerHTML='<div style="color:var(--text2);font-size:0.85rem">Nenhuma matéria cadastrada.</div>'; return }
@@ -1478,6 +1648,8 @@ function renderConfig() {
     </div>`).join('')
   const emailEl = document.getElementById('usuario-email')
   if (emailEl && usuarioAtual) emailEl.textContent = usuarioAtual.email
+  const supaEl = document.getElementById('usuario-supa-url')
+  if (supaEl) supaEl.textContent = SUPA_URL
   calcularConsumo()
 }
 
@@ -1622,6 +1794,20 @@ async function init() {
   document.querySelector('nav').style.display = 'none'
   document.querySelector('main').style.display = 'none'
 
+  // Verificar se tem configuração do Supabase salva
+  const urlSalva = localStorage.getItem('supa_url')
+  const keySalva = localStorage.getItem('supa_key')
+
+  if (!urlSalva || !keySalva) {
+    // Primeira vez — mostrar tela de setup
+    mostrarTelaSetup()
+    return
+  }
+
+  SUPA_URL = urlSalva
+  SUPA_KEY = keySalva
+
+  // Verificar se tem sessão salva
   const tokenSalvo = localStorage.getItem('supa_token')
   const userSalvo = localStorage.getItem('supa_user')
 
@@ -1641,6 +1827,7 @@ async function init() {
     localStorage.removeItem('supa_token')
     localStorage.removeItem('supa_user')
   }
+
   mostrarTelaLogin()
 }
 
