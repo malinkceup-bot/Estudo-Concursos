@@ -87,6 +87,47 @@
   .questao-anotacao { font-size: 0.85rem; color: var(--text2); line-height: 1.5; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
   .questao-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 
+  /* ALTERNATIVAS INTERATIVAS NO SIMULADO */
+  .alt-btn {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 12px 14px; border-radius: 8px;
+    background: var(--surface2); border: 2px solid var(--border);
+    cursor: pointer; width: 100%; text-align: left;
+    transition: all 0.2s; margin-bottom: 8px;
+    color: var(--text); font-family: inherit; font-size: 0.9rem;
+  }
+  .alt-btn:hover:not(:disabled) { border-color: var(--accent); background: rgba(79,142,247,0.08); }
+  .alt-btn.correta { border-color: var(--green) !important; background: rgba(34,197,94,0.12) !important; }
+  .alt-btn.errada { border-color: var(--red) !important; background: rgba(239,68,68,0.12) !important; }
+  .alt-btn:disabled { cursor: default; }
+  .alt-letra { font-weight: 700; color: var(--accent); min-width: 22px; padding-top: 1px; }
+  .alt-btn.correta .alt-letra { color: var(--green); }
+  .alt-btn.errada .alt-letra { color: var(--red); }
+
+  .simulado-feedback-box {
+    padding: 14px 16px; border-radius: 10px; font-size: 0.9rem;
+    font-weight: 600; display: flex; align-items: center; gap: 10px;
+  }
+  .simulado-feedback-box.acerto { background: rgba(34,197,94,0.12); border: 1px solid var(--green); color: var(--green); }
+  .simulado-feedback-box.erro { background: rgba(239,68,68,0.12); border: 1px solid var(--red); color: var(--red); }
+
+  .gabarito-info {
+    background: var(--surface2); border-radius: 8px; padding: 12px 14px;
+    font-size: 0.85rem; color: var(--text2); line-height: 1.6;
+    margin-top: 10px; border-left: 3px solid var(--yellow);
+  }
+
+  /* QUESTÃO CERTO/ERRADO NO SIMULADO */
+  .cert-errad-btns { display: flex; gap: 10px; margin-top: 8px; }
+  .cert-btn {
+    flex: 1; padding: 14px; border-radius: 8px; border: 2px solid var(--border);
+    background: var(--surface2); color: var(--text); font-size: 0.95rem;
+    font-weight: 700; cursor: pointer; transition: all 0.2s; font-family: inherit;
+  }
+  .cert-btn:hover:not(:disabled) { border-color: var(--accent); }
+  .cert-btn.correta { border-color: var(--green) !important; background: rgba(34,197,94,0.12) !important; color: var(--green) !important; }
+  .cert-btn.errada { border-color: var(--red) !important; background: rgba(239,68,68,0.12) !important; color: var(--red) !important; }
+
   .simulado-card { background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
   .simulado-num { font-size: 0.75rem; color: var(--text2); margin-bottom: 4px; }
   .simulado-tema { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: var(--text); }
@@ -418,10 +459,13 @@
     <div id="simulado-ativo" style="display:none">
       <div class="simulado-progress" id="simulado-progress"></div>
       <div id="simulado-questao-atual"></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="verGabarito()"><i class="fas fa-eye"></i> Ver Gabarito</button>
-        <button class="btn btn-success" onclick="marcarDominada()"><i class="fas fa-check"></i> Dominei!</button>
-        <button class="btn btn-danger" onclick="proximaSimulado()"><i class="fas fa-times"></i> Ainda erro</button>
+
+      <!-- Botões aparecem só após responder -->
+      <div id="simulado-acoes" style="display:none;margin-top:12px">
+        <div id="simulado-feedback" style="margin-bottom:12px"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="proximaSimulado()"><i class="fas fa-arrow-right"></i> Próxima</button>
+        </div>
       </div>
     </div>
     <div id="simulado-fim" style="display:none">
@@ -1005,70 +1049,158 @@ async function salvarEdicao() {
 }
 
 // ===== SIMULADO =====
-let simuladoLista=[], simuladoIdx=0, simuladoDom=0
+let simuladoLista = [], simuladoIdx = 0, simuladoAcertos = 0, simuladoErros = 0, simuladoRespondida = false
+
 function iniciarSimulado() {
   goPage('simulado')
   popularSelects()
   const materia = document.getElementById('simulado-materia').value
-  const inclDom = document.getElementById('simulado-incluir-dom').value==='sim'
+  const inclDom = document.getElementById('simulado-incluir-dom').value === 'sim'
   let lista = questoes
-  if(materia) lista = lista.filter(q=>q.materia===materia)
-  if(!inclDom) lista = lista.filter(q=>!q.dominada)
-  if(!lista.length) { notif('Nenhuma questão encontrada!','error'); return }
-  simuladoLista = lista.sort(()=>Math.random()-0.5)
-  simuladoIdx=0; simuladoDom=0
-  document.getElementById('simulado-config').style.display='none'
-  document.getElementById('simulado-ativo').style.display='block'
-  document.getElementById('simulado-fim').style.display='none'
+  if (materia) lista = lista.filter(q => q.materia === materia)
+  if (!inclDom) lista = lista.filter(q => !q.dominada)
+  if (!lista.length) { notif('Nenhuma questão encontrada!', 'error'); return }
+  simuladoLista = lista.sort(() => Math.random() - 0.5)
+  simuladoIdx = 0; simuladoAcertos = 0; simuladoErros = 0; simuladoRespondida = false
+  document.getElementById('simulado-config').style.display = 'none'
+  document.getElementById('simulado-ativo').style.display = 'block'
+  document.getElementById('simulado-fim').style.display = 'none'
   renderSimuladoQuestao()
 }
 function renderSimuladoQuestao() {
+  simuladoRespondida = false
+  document.getElementById('simulado-acoes').style.display = 'none'
+  document.getElementById('simulado-feedback').innerHTML = ''
+
   const q = simuladoLista[simuladoIdx]
   const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
   const temAlts = Object.values(alts).some(v => v)
-  document.getElementById('simulado-progress').textContent=`Questão ${simuladoIdx+1} de ${simuladoLista.length}`
-  document.getElementById('simulado-questao-atual').innerHTML=`
+  const ehCertoErrado = q.gabarito === 'Certo' || q.gabarito === 'Errado'
+
+  document.getElementById('simulado-progress').textContent = `Questão ${simuladoIdx + 1} de ${simuladoLista.length} — ✅ ${simuladoAcertos} acertos · ❌ ${simuladoErros} erros`
+
+  let alternativasHTML = ''
+  if (temAlts) {
+    alternativasHTML = `<div id="alts-container" style="display:flex;flex-direction:column;margin-bottom:8px">
+      ${['A','B','C','D','E'].filter(l => alts[l]).map(l => `
+        <button class="alt-btn" id="alt-btn-${l}" onclick="responderAlternativa('${l}')">
+          <span class="alt-letra">${l})</span>
+          <span>${alts[l]}</span>
+        </button>`).join('')}
+    </div>`
+  } else if (ehCertoErrado) {
+    alternativasHTML = `<div class="cert-errad-btns" id="alts-container">
+      <button class="cert-btn" id="alt-btn-Certo" onclick="responderAlternativa('Certo')">✅ Certo</button>
+      <button class="cert-btn" id="alt-btn-Errado" onclick="responderAlternativa('Errado')">❌ Errado</button>
+    </div>`
+  } else {
+    alternativasHTML = `<button class="btn btn-ghost btn-full" onclick="responderSemAlternativa()" style="margin-bottom:8px">
+      <i class="fas fa-eye"></i> Ver Gabarito
+    </button>`
+  }
+
+  document.getElementById('simulado-questao-atual').innerHTML = `
     <div class="simulado-card">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
         ${tagMateria(q.materia)}
-        <span style="font-size:0.75rem;color:var(--text2)">${q.data||''}</span>
+        <span style="font-size:0.75rem;color:var(--text2)">${q.data || ''}</span>
       </div>
-      ${q.enunciado?`<div style="font-size:0.95rem;color:var(--text);line-height:1.6;margin-bottom:14px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent)">${q.enunciado}</div>`:''}
-      ${temAlts?`<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">
-        ${['A','B','C','D','E'].filter(l=>alts[l]).map(l=>`
-          <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border)">
-            <span style="font-weight:700;color:var(--accent);min-width:20px">${l})</span>
-            <span style="font-size:0.9rem;color:var(--text)">${alts[l]}</span>
-          </div>`).join('')}
-      </div>`:''}
-      <div class="simulado-gabarito" id="gabarito-reveal">
-        <div style="margin-bottom:6px"><strong style="color:var(--green)">✅ Gabarito: ${q.gabarito}</strong></div>
-        ${q.anotacao?`<div style="font-size:0.85rem;color:var(--text2);margin-top:8px;line-height:1.6">${q.anotacao}</div>`:''}
-      </div>
-      ${q.video?`<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm" style="margin-top:8px"><i class="fas fa-play"></i> Ver Vídeo</a>`:''}
+      ${q.enunciado ? `<div style="font-size:0.95rem;color:var(--text);line-height:1.6;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent)">${q.enunciado}</div>` : '<div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px;font-style:italic">Selecione sua resposta:</div>'}
+      ${alternativasHTML}
     </div>`
 }
-function verGabarito() { document.getElementById('gabarito-reveal').classList.add('visible') }
-async function marcarDominada() {
+
+function responderAlternativa(escolha) {
+  if (simuladoRespondida) return
+  simuladoRespondida = true
+
   const q = simuladoLista[simuladoIdx]
-  await supa.update(TABELA_QUESTOES, q.id, { dominada: true })
-  questoes = questoes.map(i => String(i.id)===String(q.id) ? {...i, dominada:true} : i)
-  simuladoDom++; proximaSimulado()
+  const acertou = escolha === q.gabarito
+
+  document.querySelectorAll('.alt-btn, .cert-btn').forEach(b => b.disabled = true)
+
+  const btnEscolhido = document.getElementById(`alt-btn-${escolha}`)
+  const btnCorreto = document.getElementById(`alt-btn-${q.gabarito}`)
+
+  if (acertou) {
+    btnEscolhido?.classList.add('correta')
+  } else {
+    btnEscolhido?.classList.add('errada')
+    btnCorreto?.classList.add('correta')
+  }
+
+  const feedbackEl = document.getElementById('simulado-feedback')
+  feedbackEl.innerHTML = `
+    <div class="simulado-feedback-box ${acertou ? 'acerto' : 'erro'}">
+      ${acertou ? '✅ Resposta correta!' : `❌ Resposta errada! O gabarito é: <strong>${q.gabarito}</strong>`}
+    </div>
+    ${q.anotacao ? `<div class="gabarito-info"><i class="fas fa-comment-dots" style="color:var(--yellow);margin-right:6px"></i>${q.anotacao}</div>` : ''}
+    ${q.video ? `<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm" style="margin-top:8px"><i class="fas fa-play"></i> Ver Vídeo</a>` : ''}`
+
+  document.getElementById('simulado-acoes').style.display = 'block'
+
+  if (acertou) { simuladoAcertos++; atualizarDominada(q.id, true) }
+  else { simuladoErros++; atualizarDominada(q.id, false) }
 }
+
+function responderSemAlternativa() {
+  if (simuladoRespondida) return
+  simuladoRespondida = true
+  const q = simuladoLista[simuladoIdx]
+  const card = document.getElementById('simulado-questao-atual').querySelector('.simulado-card')
+  card.innerHTML += `<div style="background:rgba(79,142,247,0.1);border:1px solid var(--accent);border-radius:8px;padding:12px;margin-top:8px">
+    <strong style="color:var(--accent)">Gabarito: ${q.gabarito}</strong>
+    ${q.anotacao ? `<div style="font-size:0.85rem;color:var(--text2);margin-top:6px;line-height:1.6">${q.anotacao}</div>` : ''}
+  </div>`
+  document.getElementById('simulado-feedback').innerHTML = `
+    <div style="font-size:0.9rem;font-weight:600;margin-bottom:8px;color:var(--text2)">Você acertou?</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-success" onclick="confirmarSemAlternativa(true)"><i class="fas fa-check"></i> Sim!</button>
+      <button class="btn btn-danger" onclick="confirmarSemAlternativa(false)"><i class="fas fa-times"></i> Não</button>
+    </div>`
+  document.getElementById('simulado-acoes').style.display = 'block'
+  document.querySelector('#simulado-acoes .btn-primary').style.display = 'none'
+}
+
+function confirmarSemAlternativa(acertou) {
+  const q = simuladoLista[simuladoIdx]
+  if (acertou) {
+    simuladoAcertos++
+    atualizarDominada(q.id, true)
+    document.getElementById('simulado-feedback').innerHTML = `<div class="simulado-feedback-box acerto">✅ Ótimo! Marcada como dominada!</div>`
+  } else {
+    simuladoErros++
+    atualizarDominada(q.id, false)
+    document.getElementById('simulado-feedback').innerHTML = `<div class="simulado-feedback-box erro">❌ Voltou para pendente. Continue praticando!</div>`
+  }
+  document.querySelector('#simulado-acoes .btn-primary').style.display = 'inline-flex'
+}
+
+async function atualizarDominada(id, dominada) {
+  await supa.update(TABELA_QUESTOES, id, { dominada })
+  questoes = questoes.map(q => String(q.id) === String(id) ? { ...q, dominada } : q)
+}
+
 function proximaSimulado() {
   simuladoIdx++
-  if(simuladoIdx>=simuladoLista.length) {
-    document.getElementById('simulado-ativo').style.display='none'
-    document.getElementById('simulado-fim').style.display='block'
-    document.getElementById('simulado-resultado').textContent=`Você dominou ${simuladoDom} de ${simuladoLista.length} questões!`
+  if (simuladoIdx >= simuladoLista.length) {
+    document.getElementById('simulado-ativo').style.display = 'none'
+    document.getElementById('simulado-fim').style.display = 'block'
+    const pct = Math.round((simuladoAcertos / simuladoLista.length) * 100)
+    document.getElementById('simulado-resultado').innerHTML = `
+      <div style="font-size:2rem;font-weight:700;color:${pct>=70?'var(--green)':pct>=40?'var(--yellow)':'var(--red)'}">${pct}%</div>
+      <div style="margin-top:6px">✅ ${simuladoAcertos} acertos · ❌ ${simuladoErros} erros de ${simuladoLista.length} questões</div>
+      <div style="font-size:0.85rem;margin-top:8px;color:var(--text2)">${pct>=70?'Excelente! 🎉':pct>=40?'Bom progresso! 💪':'Foque nas matérias difíceis! 📚'}</div>`
+    renderDashboard()
     return
   }
   renderSimuladoQuestao()
 }
+
 function resetSimulado() {
-  document.getElementById('simulado-config').style.display='block'
-  document.getElementById('simulado-ativo').style.display='none'
-  document.getElementById('simulado-fim').style.display='none'
+  document.getElementById('simulado-config').style.display = 'block'
+  document.getElementById('simulado-ativo').style.display = 'none'
+  document.getElementById('simulado-fim').style.display = 'none'
 }
 
 // ===== DRAG AND DROP =====
