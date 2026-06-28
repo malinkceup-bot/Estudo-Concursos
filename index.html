@@ -278,7 +278,11 @@
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px">
       <div style="font-size:0.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Passo 3 — Criar seu login</div>
       <div style="font-size:0.82rem;color:var(--text2);margin-bottom:10px;line-height:1.5">
-        Defina o e-mail e senha que usará para entrar no app
+        Defina como o app vai te chamar e suas credenciais de acesso
+      </div>
+      <div class="form-group">
+        <label>Seu Nome</label>
+        <input type="text" id="setup-nome" placeholder="Ex: Moisés, João, Maria...">
       </div>
       <div class="form-group">
         <label>E-mail</label>
@@ -603,6 +607,13 @@
 
     <div class="card">
       <div class="card-title">🔐 Conta</div>
+      <div class="form-group">
+        <label>Seu Nome</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="config-nome" placeholder="Seu nome">
+          <button class="btn btn-primary btn-sm" onclick="salvarNome()"><i class="fas fa-save"></i></button>
+        </div>
+      </div>
       <div style="font-size:0.85rem;color:var(--text2);margin-bottom:4px">Logado como:</div>
       <div style="font-weight:600;color:var(--text);margin-bottom:12px" id="usuario-email"></div>
       <div style="font-size:0.85rem;color:var(--text2);margin-bottom:4px">Supabase:</div>
@@ -738,6 +749,7 @@ const TABELA_MATERIAS = 'Matérias'
 async function finalizarSetup() {
   const url = document.getElementById('setup-url').value.trim().replace(/\/$/, '')
   const key = document.getElementById('setup-key').value.trim()
+  const nome = document.getElementById('setup-nome').value.trim()
   const email = document.getElementById('setup-email').value.trim()
   const senha = document.getElementById('setup-senha').value
 
@@ -746,9 +758,9 @@ async function finalizarSetup() {
 
   erroEl.style.display = 'none'
 
-  if (!url || !key || !email || !senha) {
+  if (!url || !key || !nome || !email || !senha) {
     erroEl.style.display = 'block'
-    document.getElementById('setup-erro-msg').textContent = 'Preencha todos os campos!'
+    document.getElementById('setup-erro-msg').textContent = 'Preencha todos os campos incluindo seu nome!'
     return
   }
   if (!url.includes('supabase.co')) {
@@ -770,6 +782,7 @@ async function finalizarSetup() {
   SUPA_KEY = key
   localStorage.setItem('supa_url', url)
   localStorage.setItem('supa_key', key)
+  localStorage.setItem('usuario_nome', nome)
 
   // Testar conexão
   try {
@@ -794,34 +807,28 @@ async function finalizarSetup() {
   })
   const signUpData = await signUp.json()
 
-  if (!signUp.ok && !signUpData.access_token) {
-    // Talvez já exista — tentar login direto
-  }
-
-  // Fazer login
-  btnSetup.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...'
-  const login = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
-    method: 'POST',
-    headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password: senha })
-  })
-  const loginData = await login.json()
-
-  if (!login.ok) {
+  // Verificar se criou com sucesso ou já existe
+  if (!signUp.ok && signUpData.msg && signUpData.msg.includes('already registered')) {
     erroEl.style.display = 'block'
-    document.getElementById('setup-erro-msg').textContent = 'Erro ao criar login. Verifique se o usuário já foi criado no Supabase.'
+    document.getElementById('setup-erro-msg').textContent = 'Este e-mail já está cadastrado. Clique em "Já tenho configuração" para fazer login.'
     btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Configurar e Entrar'
     btnSetup.disabled = false
     return
   }
 
-  authToken = loginData.access_token
-  usuarioAtual = loginData.user
-  localStorage.setItem('supa_token', authToken)
-  localStorage.setItem('supa_user', JSON.stringify(usuarioAtual))
+  // Mostrar sucesso e ir para login
+  btnSetup.innerHTML = '<i class="fas fa-check"></i> Conta criada com sucesso!'
+  btnSetup.style.background = 'var(--green)'
 
-  document.getElementById('tela-config-supa').style.display = 'none'
-  await carregarDados()
+  setTimeout(() => {
+    // Preencher e-mail na tela de login automaticamente
+    mostrarTelaLogin()
+    document.getElementById('login-email').value = email
+    notif(`✅ Conta criada! Faça login para entrar, ${nome}!`)
+    btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Configurar e Entrar'
+    btnSetup.style.background = ''
+    btnSetup.disabled = false
+  }, 1500)
 }
 
 // ===== AUTH =====
@@ -992,7 +999,8 @@ function renderDashboard() {
 
   const h = new Date().getHours()
   const saud = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
-  document.getElementById('dash-saudacao').textContent = `${saud}, Moisés! 👋`
+  const nome = localStorage.getItem('usuario_nome') || 'estudante'
+  document.getElementById('dash-saudacao').textContent = `${saud}, ${nome}! 👋`
   document.getElementById('dash-subtitulo').textContent = total
     ? `Você tem ${pend} questão${pend !== 1 ? 'ões' : ''} pendente${pend !== 1 ? 's' : ''} para revisar.`
     : 'Comece cadastrando suas primeiras questões!'
@@ -1630,6 +1638,14 @@ function abrirImagem(id) {
 function fecharModal() { document.getElementById('modal-img').classList.remove('open') }
 
 // ===== GERENCIAR MATÉRIAS =====
+function salvarNome() {
+  const nome = document.getElementById('config-nome').value.trim()
+  if (!nome) { notif('Digite seu nome!', 'error'); return }
+  localStorage.setItem('usuario_nome', nome)
+  notif(`✅ Nome atualizado para ${nome}!`)
+  renderDashboard()
+}
+
 function resetarConfig() {
   if (!confirm('Isso vai desconectar do Supabase atual e permitir configurar um novo.\nSeus dados no Supabase atual continuam salvos lá.\n\nContinuar?')) return
   localStorage.removeItem('supa_url')
@@ -1652,6 +1668,8 @@ function renderConfig() {
   if (emailEl && usuarioAtual) emailEl.textContent = usuarioAtual.email
   const supaEl = document.getElementById('usuario-supa-url')
   if (supaEl) supaEl.textContent = SUPA_URL
+  const nomeEl = document.getElementById('config-nome')
+  if (nomeEl) nomeEl.value = localStorage.getItem('usuario_nome') || ''
   calcularConsumo()
 }
 
