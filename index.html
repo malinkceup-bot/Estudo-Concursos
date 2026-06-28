@@ -1117,6 +1117,16 @@ async function salvarQuestao() {
   document.getElementById('gabarito-selecionado').style.display = 'none'
   document.querySelectorAll('.gabarito-opt').forEach(b => b.classList.remove('selected'))
 
+  // Resetar OCR
+  document.getElementById('ocr-preview').style.display = 'none'
+  document.getElementById('ocr-preview').src = ''
+  document.getElementById('ocr-status').style.display = 'none'
+  document.getElementById('ocr-file').value = ''
+  const ocrMsg = document.getElementById('ocr-msg')
+  if (ocrMsg) { ocrMsg.textContent = 'Lendo o texto da imagem...'; ocrMsg.style.color = '' }
+  const ocrSpinner = document.getElementById('ocr-spinner')
+  if (ocrSpinner) ocrSpinner.style.display = 'block'
+
   notif('✅ Questão salva!')
   goPage('questoes')
 }
@@ -1127,9 +1137,13 @@ let filtroStatus = 'todas'
 
 function renderQuestoes() {
   const materiasList = [...new Set(questoes.map(q => q.materia))].filter(Boolean)
+  
+  // Guardar lista global para usar no filtro por índice
+  window._materiasListaFiltro = materiasList
+
   document.getElementById('filtros-materias').innerHTML =
     `<button class="filtro-btn ${filtroMateria==='todas-materias'?'active':''}" onclick="filtrarMateria('todas-materias')">Todas</button>` +
-    materiasList.map(m => `<button class="filtro-btn ${filtroMateria===m?'active':''}" onclick="filtrarMateria('${m.replace(/'/g,"\\'")}'">${m}</button>`).join('')
+    materiasList.map((m, i) => `<button class="filtro-btn ${filtroMateria===m?'active':''}" onclick="filtrarMateriaPorIndice(${i})">${m}</button>`).join('')
 
   let lista = questoes
   if (filtroMateria !== 'todas-materias') lista = lista.filter(q => q.materia === filtroMateria)
@@ -1170,6 +1184,11 @@ function renderQuestoes() {
       <div style="font-size:0.7rem;color:var(--text2);margin-top:6px">${q.data||''}</div>
     </div>`
   }).join('')
+}
+
+function filtrarMateriaPorIndice(i) {
+  const m = window._materiasListaFiltro[i]
+  if (m) filtrarMateria(m)
 }
 
 function filtrarMateria(m) { filtroMateria = m; renderQuestoes() }
