@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Estudo Concursos</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <style>
   :root {
     --bg: #0f1117;
@@ -350,6 +351,28 @@
   <div class="page" id="page-cadastro">
     <div class="card">
       <div class="card-title">📋 Cadastrar Questão Errada</div>
+
+      <!-- OCR - UPLOAD DE PRINT -->
+      <div class="form-group">
+        <label><i class="fas fa-camera" style="margin-right:5px;color:var(--accent)"></i>Ler questão do Print <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(arraste o print do ShareX aqui)</span></label>
+        <div class="upload-area" id="ocr-drop-area"
+          onclick="document.getElementById('ocr-file').click()"
+          ondragover="ocrDragOver(event)"
+          ondragleave="ocrDragLeave(event)"
+          ondrop="ocrDrop(event)">
+          <i class="fas fa-file-image" style="font-size:1.8rem;margin-bottom:10px;display:block;color:var(--accent)"></i>
+          <div style="font-weight:600;margin-bottom:4px">Arraste o print aqui</div>
+          <div style="font-size:0.78rem;color:var(--text2)">ou clique para selecionar — o app lê o texto automaticamente</div>
+        </div>
+        <input type="file" id="ocr-file" accept="image/*" style="display:none" onchange="ocrProcessar(event)">
+        <div id="ocr-status" style="display:none;margin-top:10px">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;font-size:0.85rem">
+            <div id="ocr-spinner" style="width:18px;height:18px;border:2px solid #2d3248;border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0"></div>
+            <span id="ocr-msg">Lendo o texto da imagem...</span>
+          </div>
+        </div>
+        <img id="ocr-preview" style="display:none;width:100%;border-radius:8px;margin-top:10px;max-height:200px;object-fit:cover">
+      </div>
 
       <!-- MATÉRIA -->
       <div class="form-group">
@@ -1201,6 +1224,118 @@ function resetSimulado() {
   document.getElementById('simulado-config').style.display = 'block'
   document.getElementById('simulado-ativo').style.display = 'none'
   document.getElementById('simulado-fim').style.display = 'none'
+}
+
+// ===== OCR — LEITURA DE PRINT =====
+function ocrDragOver(e) {
+  e.preventDefault(); e.stopPropagation()
+  document.getElementById('ocr-drop-area').classList.add('drag-over')
+}
+function ocrDragLeave(e) {
+  e.preventDefault()
+  document.getElementById('ocr-drop-area').classList.remove('drag-over')
+}
+function ocrDrop(e) {
+  e.preventDefault(); e.stopPropagation()
+  document.getElementById('ocr-drop-area').classList.remove('drag-over')
+  const file = e.dataTransfer.files[0]
+  if (!file || !file.type.startsWith('image/')) { notif('Arquivo inválido! Solte apenas imagens.', 'error'); return }
+  ocrLerImagem(file)
+}
+function ocrProcessar(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  ocrLerImagem(file)
+}
+
+async function ocrLerImagem(file) {
+  // Mostrar preview
+  const reader = new FileReader()
+  reader.onload = ev => {
+    const prev = document.getElementById('ocr-preview')
+    prev.src = ev.target.result
+    prev.style.display = 'block'
+  }
+  reader.readAsDataURL(file)
+
+  // Mostrar status
+  const status = document.getElementById('ocr-status')
+  const msg = document.getElementById('ocr-msg')
+  const spinner = document.getElementById('ocr-spinner')
+  status.style.display = 'block'
+  msg.textContent = 'Carregando leitor de texto...'
+
+  try {
+    const worker = await Tesseract.createWorker('por', 1, {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          msg.textContent = `Lendo texto... ${Math.round(m.progress * 100)}%`
+        }
+      }
+    })
+
+    msg.textContent = 'Processando imagem...'
+    const { data: { text } } = await worker.recognize(file)
+    await worker.terminate()
+
+    // Processar o texto extraído
+    ocrProcessarTexto(text)
+
+    spinner.style.display = 'none'
+    msg.innerHTML = '✅ Texto lido! Confira os campos abaixo e ajuste se necessário.'
+    msg.style.color = 'var(--green)'
+
+  } catch(e) {
+    spinner.style.display = 'none'
+    msg.innerHTML = '❌ Erro ao ler imagem. Tente uma imagem mais nítida.'
+    msg.style.color = 'var(--red)'
+    console.error(e)
+  }
+}
+
+function ocrProcessarTexto(texto) {
+  // Limpar texto
+  const linhas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 1)
+
+  // Detectar padrões de alternativas: A) B) C) D) E) ou a) b) c) d) e)
+  const regexAlt = /^([A-Ea-e])[)\.\-]\s*(.+)/
+  const alternativas = { A: '', B: '', C: '', D: '', E: '' }
+  const enunciadoLinhas = []
+  let dentroAlt = false
+  let ultimaLetra = null
+
+  linhas.forEach(linha => {
+    const match = linha.match(regexAlt)
+    if (match) {
+      dentroAlt = true
+      ultimaLetra = match[1].toUpperCase()
+      alternativas[ultimaLetra] = match[2].trim()
+    } else if (dentroAlt && ultimaLetra) {
+      // Continuação da alternativa anterior
+      alternativas[ultimaLetra] += ' ' + linha
+    } else {
+      enunciadoLinhas.push(linha)
+    }
+  })
+
+  // Preencher enunciado
+  const enunciado = enunciadoLinhas.join(' ').trim()
+  if (enunciado) document.getElementById('enunciado-questao').value = enunciado
+
+  // Preencher alternativas
+  if (alternativas.A) document.getElementById('alt-a').value = alternativas.A.trim()
+  if (alternativas.B) document.getElementById('alt-b').value = alternativas.B.trim()
+  if (alternativas.C) document.getElementById('alt-c').value = alternativas.C.trim()
+  if (alternativas.D) document.getElementById('alt-d').value = alternativas.D.trim()
+  if (alternativas.E) document.getElementById('alt-e').value = alternativas.E.trim()
+
+  // Verificar se é questão Certo/Errado
+  const textoBaixo = texto.toLowerCase()
+  if (!alternativas.A && (textoBaixo.includes('certo') || textoBaixo.includes('errado'))) {
+    notif('💡 Parece ser questão Certo/Errado! Selecione o gabarito abaixo.', 'ok')
+  }
+
+  notif('✅ Campos preenchidos! Confira e ajuste o que precisar.')
 }
 
 // ===== DRAG AND DROP =====
