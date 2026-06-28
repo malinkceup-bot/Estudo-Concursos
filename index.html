@@ -205,6 +205,41 @@
 </head>
 <body>
 
+<!-- TELA DE LOGIN -->
+<div id="tela-login" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9998;align-items:center;justify-content:center;padding:20px">
+  <div style="width:100%;max-width:380px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:2.5rem;margin-bottom:8px">📚</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--text)">Estudo Concursos</div>
+      <div style="font-size:0.85rem;color:var(--text2);margin-top:4px">Faça login para acessar seus estudos</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px">
+      <div class="form-group">
+        <label><i class="fas fa-envelope" style="margin-right:5px"></i>E-mail</label>
+        <input type="email" id="login-email" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')fazerLogin()">
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-lock" style="margin-right:5px"></i>Senha</label>
+        <div style="position:relative">
+          <input type="password" id="login-senha" placeholder="Sua senha" onkeydown="if(event.key==='Enter')fazerLogin()" style="padding-right:40px">
+          <button onclick="toggleSenha()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);cursor:pointer;font-size:0.9rem">
+            <i class="fas fa-eye" id="olho-senha"></i>
+          </button>
+        </div>
+      </div>
+      <div id="login-erro" style="display:none;background:rgba(239,68,68,0.1);border:1px solid var(--red);border-radius:8px;padding:10px;font-size:0.85rem;color:var(--red);margin-bottom:14px">
+        <i class="fas fa-exclamation-circle"></i> <span id="login-erro-msg"></span>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="fazerLogin()" id="btn-login">
+        <i class="fas fa-sign-in-alt"></i> Entrar
+      </button>
+    </div>
+    <div style="text-align:center;margin-top:16px;font-size:0.75rem;color:var(--text2)">
+      Seus dados são privados e protegidos 🔐
+    </div>
+  </div>
+</div>
+
 <!-- LOADING -->
 <div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,17,23,0.85);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px">
   <div style="width:40px;height:40px;border:3px solid #2d3248;border-top-color:#4f8ef7;border-radius:50%;animation:spin 0.8s linear infinite"></div>
@@ -221,6 +256,7 @@
     <button class="nav-tab" onclick="goPage('simulado')"><i class="fas fa-brain"></i> <span>Simulado</span></button>
     <button class="nav-tab" onclick="goPage('mapas')"><i class="fas fa-image"></i> <span>Mapas</span></button>
     <button class="nav-tab" onclick="goPage('config')"><i class="fas fa-cog"></i> <span>Config</span></button>
+    <button class="nav-tab" onclick="fazerLogout()" style="color:var(--red)" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
   </div>
 </nav>
 
@@ -427,6 +463,19 @@
         <input type="file" id="importar-input2" accept=".json" style="display:none" onchange="importarBackup(event)">
       </div>
     </div>
+
+    <div class="card">
+      <div class="card-title">📊 Consumo de Dados</div>
+      <div id="monitor-consumo">
+        <div style="color:var(--text2);font-size:0.85rem">Calculando...</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔐 Conta</div>
+      <div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px">Logado como: <strong id="usuario-email" style="color:var(--text)"></strong></div>
+      <button class="btn btn-danger" onclick="fazerLogout()"><i class="fas fa-sign-out-alt"></i> Sair da conta</button>
+    </div>
   </div>
 
 </main>
@@ -507,17 +556,29 @@
 const SUPA_URL = 'https://avqzbqvsqyoxueqexara.supabase.co'
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2cXpicXZzcXlveHVlcWV4YXJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1Nzk0ODcsImV4cCI6MjA5ODE1NTQ4N30.UvNr37PgF3EGpwKmBwE4qkpf9NSxKBzZBay0iUyLvbs'
 
+let authToken = null
+let usuarioAtual = null
+
+function getHeaders(extra = {}) {
+  return {
+    apikey: SUPA_KEY,
+    Authorization: `Bearer ${authToken || SUPA_KEY}`,
+    'Content-Type': 'application/json',
+    ...extra
+  }
+}
+
 const supa = {
   async get(tabela) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?order=created_at`, {
-      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }
+      headers: getHeaders()
     })
     return r.ok ? r.json() : []
   },
   async insert(tabela, dados) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}`, {
       method: 'POST',
-      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      headers: getHeaders({ Prefer: 'return=representation' }),
       body: JSON.stringify(dados)
     })
     return r.ok ? r.json() : null
@@ -525,7 +586,7 @@ const supa = {
   async update(tabela, id, dados) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=eq.${id}`, {
       method: 'PATCH',
-      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      headers: getHeaders({ Prefer: 'return=representation' }),
       body: JSON.stringify(dados)
     })
     return r.ok ? r.json() : null
@@ -533,7 +594,7 @@ const supa = {
   async delete(tabela, id) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=eq.${id}`, {
       method: 'DELETE',
-      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` }
+      headers: getHeaders()
     })
     return r.ok
   }
@@ -542,6 +603,96 @@ const supa = {
 const TABELA_QUESTOES = 'Questões'
 const TABELA_MAPAS = 'Mapas'
 const TABELA_MATERIAS = 'Matérias'
+
+// ===== AUTH =====
+function mostrarTelaLogin() {
+  document.getElementById('tela-login').style.display = 'flex'
+  document.querySelector('nav').style.display = 'none'
+  document.querySelector('main').style.display = 'none'
+}
+
+function esconderTelaLogin() {
+  document.getElementById('tela-login').style.display = 'none'
+  document.querySelector('nav').style.display = 'flex'
+  document.querySelector('main').style.display = 'block'
+}
+
+function toggleSenha() {
+  const input = document.getElementById('login-senha')
+  const olho = document.getElementById('olho-senha')
+  if (input.type === 'password') {
+    input.type = 'text'
+    olho.className = 'fas fa-eye-slash'
+  } else {
+    input.type = 'password'
+    olho.className = 'fas fa-eye'
+  }
+}
+
+async function fazerLogin() {
+  const email = document.getElementById('login-email').value.trim()
+  const senha = document.getElementById('login-senha').value
+  const erroEl = document.getElementById('login-erro')
+  const btnLogin = document.getElementById('btn-login')
+
+  if (!email || !senha) {
+    erroEl.style.display = 'block'
+    document.getElementById('login-erro-msg').textContent = 'Preencha e-mail e senha!'
+    return
+  }
+
+  btnLogin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...'
+  btnLogin.disabled = true
+  erroEl.style.display = 'none'
+
+  try {
+    const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: senha })
+    })
+    const data = await r.json()
+
+    if (!r.ok) {
+      erroEl.style.display = 'block'
+      document.getElementById('login-erro-msg').textContent = 'E-mail ou senha incorretos!'
+      btnLogin.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar'
+      btnLogin.disabled = false
+      return
+    }
+
+    authToken = data.access_token
+    usuarioAtual = data.user
+    localStorage.setItem('supa_token', authToken)
+    localStorage.setItem('supa_user', JSON.stringify(usuarioAtual))
+
+    esconderTelaLogin()
+    await carregarDados()
+
+  } catch(e) {
+    erroEl.style.display = 'block'
+    document.getElementById('login-erro-msg').textContent = 'Erro de conexão. Tente novamente.'
+    btnLogin.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar'
+    btnLogin.disabled = false
+  }
+}
+
+async function fazerLogout() {
+  if (!confirm('Deseja sair da sua conta?')) return
+  try {
+    await fetch(`${SUPA_URL}/auth/v1/logout`, {
+      method: 'POST',
+      headers: getHeaders()
+    })
+  } catch(e) {}
+  authToken = null
+  usuarioAtual = null
+  localStorage.removeItem('supa_token')
+  localStorage.removeItem('supa_user')
+  questoes = []; mapas = []; materias = []
+  mostrarTelaLogin()
+  notif('👋 Você saiu da conta!')
+}
 
 // ===== ESTADO LOCAL =====
 const MATERIAS_PADRAO = [
@@ -1053,11 +1204,14 @@ function fecharModal() { document.getElementById('modal-img').classList.remove('
 function renderConfig() {
   const el = document.getElementById('lista-materias-config')
   if (!materias.length) { el.innerHTML='<div style="color:var(--text2);font-size:0.85rem">Nenhuma matéria cadastrada.</div>'; return }
-  el.innerHTML = materias.map((m, i) => `
+  el.innerHTML = materias.map((m) => `
     <div class="materia-item">
       <span>${m.nome}</span>
       <button class="btn btn-danger btn-sm" onclick="removerMateria('${m.id}')"><i class="fas fa-trash"></i> Remover</button>
     </div>`).join('')
+  const emailEl = document.getElementById('usuario-email')
+  if (emailEl && usuarioAtual) emailEl.textContent = usuarioAtual.email
+  calcularConsumo()
 }
 
 async function adicionarMateria() {
@@ -1112,8 +1266,64 @@ function importarBackup(e) {
 }
 
 // ===== INIT =====
-async function init() {
-  mostrarLoading('Conectando ao banco de dados...')
+// ===== MONITOR DE CONSUMO =====
+function calcularConsumo() {
+  const el = document.getElementById('monitor-consumo')
+  if (!el) return
+  const tamanhoQuestoes = new Blob([JSON.stringify(questoes)]).size
+  const tamanhoMapas = new Blob([JSON.stringify(mapas)]).size
+  const tamanhoMaterias = new Blob([JSON.stringify(materias)]).size
+  const totalBytes = tamanhoQuestoes + tamanhoMapas + tamanhoMaterias
+
+  function fmt(bytes) {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+  }
+
+  const LIMITE = 500 * 1024 * 1024
+  const pct = Math.min((totalBytes / LIMITE) * 100, 100).toFixed(3)
+  const cor = pct > 80 ? 'var(--red)' : pct > 50 ? 'var(--yellow)' : 'var(--green)'
+  const mediaMapaKB = mapas.length ? (tamanhoMapas / mapas.length / 1024) : 300
+  const mapasRestantes = Math.floor((LIMITE - totalBytes) / (mediaMapaKB * 1024))
+
+  el.innerHTML = `
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:0.85rem">Uso total estimado</span>
+        <span style="font-size:0.85rem;font-weight:700;color:${cor}">${fmt(totalBytes)} de 500 MB</span>
+      </div>
+      <div style="background:var(--surface2);border-radius:6px;height:10px;overflow:hidden">
+        <div style="background:${cor};height:10px;border-radius:6px;width:${pct}%"></div>
+      </div>
+      <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">${pct}% do limite gratuito usado</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${questoes.length}</div>
+        <div style="font-size:0.7rem;color:var(--text2);margin-top:2px">Questões</div>
+        <div style="font-size:0.7rem;color:var(--text2)">${fmt(tamanhoQuestoes)}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${mapas.length}</div>
+        <div style="font-size:0.7rem;color:var(--text2);margin-top:2px">Mapas</div>
+        <div style="font-size:0.7rem;color:var(--text2)">${fmt(tamanhoMapas)}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:1.1rem;font-weight:700;color:var(--accent)">${materias.length}</div>
+        <div style="font-size:0.7rem;color:var(--text2);margin-top:2px">Matérias</div>
+        <div style="font-size:0.7rem;color:var(--text2)">${fmt(tamanhoMaterias)}</div>
+      </div>
+    </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:12px;font-size:0.8rem;color:var(--text2);line-height:1.6">
+      ⚠️ <strong>Atenção com mapas mentais!</strong> Cada foto ocupa em média ${Math.round(mediaMapaKB)} KB.
+      Você ainda consegue guardar aproximadamente <strong>${mapasRestantes} mapas</strong> antes de atingir o limite.
+    </div>`
+}
+
+// ===== CARREGAR DADOS =====
+async function carregarDados() {
+  mostrarLoading('Carregando seus dados...')
   try {
     const [q, m, mt] = await Promise.all([
       supa.get(TABELA_QUESTOES),
@@ -1123,8 +1333,6 @@ async function init() {
     questoes = q || []
     mapas = m || []
     materias = mt && mt.length ? mt : []
-
-    // Se não tiver matérias, inserir as padrão
     if (!materias.length) {
       mostrarLoading('Configurando matérias padrão...')
       for (const nome of MATERIAS_PADRAO) {
@@ -1132,16 +1340,44 @@ async function init() {
         if (r) materias.push(r[0])
       }
     }
+    const el = document.getElementById('usuario-email')
+    if (el && usuarioAtual) el.textContent = usuarioAtual.email
   } catch(e) {
-    notif('Erro ao conectar! Verifique sua conexão.','error')
+    notif('Erro ao carregar dados!', 'error')
   }
   esconderLoading()
   popularSelects()
   renderDashboard()
 }
 
-init()
+// ===== INIT =====
+async function init() {
+  document.querySelector('nav').style.display = 'none'
+  document.querySelector('main').style.display = 'none'
 
+  const tokenSalvo = localStorage.getItem('supa_token')
+  const userSalvo = localStorage.getItem('supa_user')
+
+  if (tokenSalvo && userSalvo) {
+    try {
+      const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
+        headers: { apikey: SUPA_KEY, Authorization: `Bearer ${tokenSalvo}` }
+      })
+      if (r.ok) {
+        authToken = tokenSalvo
+        usuarioAtual = JSON.parse(userSalvo)
+        esconderTelaLogin()
+        await carregarDados()
+        return
+      }
+    } catch(e) {}
+    localStorage.removeItem('supa_token')
+    localStorage.removeItem('supa_user')
+  }
+  mostrarTelaLogin()
+}
+
+init()
 </script>
 </body>
 </html>
