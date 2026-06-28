@@ -85,7 +85,7 @@
   .questao-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
   .questao-num { font-size: 1rem; font-weight: 700; color: var(--accent); }
   .questao-gabarito { font-size: 0.8rem; font-weight: 700; color: var(--yellow); }
-  .questao-anotacao { font-size: 0.85rem; color: var(--text2); line-height: 1.5; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .questao-anotacao { font-size: 0.85rem; color: var(--text2); line-height: 1.5; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); white-space: pre-wrap; }
   .questao-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 
   /* ALTERNATIVAS INTERATIVAS NO SIMULADO */
@@ -116,6 +116,7 @@
     background: var(--surface2); border-radius: 8px; padding: 12px 14px;
     font-size: 0.85rem; color: var(--text2); line-height: 1.6;
     margin-top: 10px; border-left: 3px solid var(--yellow);
+    white-space: pre-wrap;
   }
 
   /* QUESTÃO CERTO/ERRADO NO SIMULADO */
@@ -132,7 +133,7 @@
   .simulado-card { background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
   .simulado-num { font-size: 0.75rem; color: var(--text2); margin-bottom: 4px; }
   .simulado-tema { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: var(--text); }
-  .simulado-anotacao { background: var(--surface2); border-radius: 8px; padding: 12px; font-size: 0.85rem; color: var(--text2); line-height: 1.6; margin-bottom: 16px; }
+  .simulado-anotacao { background: var(--surface2); border-radius: 8px; padding: 12px; font-size: 0.85rem; color: var(--text2); line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; }
   .simulado-gabarito { display: none; background: var(--surface2); border-left: 3px solid var(--yellow); border-radius: 8px; padding: 12px; font-size: 0.9rem; margin-bottom: 12px; }
   .simulado-gabarito.visible { display: block; }
   .simulado-progress { font-size: 0.85rem; color: var(--text2); text-align: center; margin-bottom: 16px; }
@@ -345,6 +346,11 @@
     </div>
     <div style="text-align:center;margin-top:16px;font-size:0.75rem;color:var(--text2)">
       Seus dados são privados e protegidos 🔐
+    </div>
+    <div style="text-align:center;margin-top:12px">
+      <button onclick="mostrarTelaSetup()" style="background:none;border:none;color:var(--accent);font-size:0.85rem;cursor:pointer;text-decoration:underline">
+        Não tem conta? Cadastre-se aqui
+      </button>
     </div>
   </div>
 </div>
