@@ -765,23 +765,25 @@ async function finalizarSetup() {
   btnSetup.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Configurando...'
   btnSetup.disabled = true
 
-  // Testar conexão
-  try {
-    const teste = await fetch(`${url}/rest/v1/`, { headers: { apikey: key, Authorization: `Bearer ${key}` } })
-    if (!teste.ok) throw new Error('Conexão falhou')
-  } catch(e) {
-    erroEl.style.display = 'block'
-    document.getElementById('setup-erro-msg').textContent = 'URL ou chave inválida! Verifique e tente novamente.'
-    btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Configurar e Entrar'
-    btnSetup.disabled = false
-    return
-  }
-
-  // Salvar config
+  // Salvar config primeiro
   SUPA_URL = url
   SUPA_KEY = key
   localStorage.setItem('supa_url', url)
   localStorage.setItem('supa_key', key)
+
+  // Testar conexão
+  try {
+    const teste = await fetch(`${url}/rest/v1/`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` }
+    })
+    if (!teste.ok && teste.status !== 404) throw new Error('Conexão falhou')
+  } catch(e) {
+    erroEl.style.display = 'block'
+    document.getElementById('setup-erro-msg').textContent = 'Não foi possível conectar. Verifique sua URL e tente novamente.'
+    btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Configurar e Entrar'
+    btnSetup.disabled = false
+    return
+  }
 
   // Criar usuário no Supabase
   btnSetup.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando conta...'
