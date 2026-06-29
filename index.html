@@ -79,6 +79,16 @@
   .btn-full { width: 100%; justify-content: center; }
   .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
 
+  /* QUESTÃO MINIMALISTA */
+  .questao-mini {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 16px;
+    margin-bottom: 8px; cursor: pointer; transition: border-color 0.2s;
+  }
+  .questao-mini:hover { border-color: var(--accent); }
+  .questao-mini.expandida { border-color: var(--accent); }
+  .questao-mini.dominada { border-left: 3px solid var(--green); opacity: 0.7; }
+
   .questao-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; transition: border-color 0.2s; }
   .questao-card:hover { border-color: var(--accent); }
   .questao-card.dominada { border-left: 3px solid var(--green); opacity: 0.6; }
@@ -1223,35 +1233,62 @@ function renderQuestoes() {
   el.innerHTML = lista.slice().reverse().map(q => {
     const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
     const temAlts = Object.values(alts).some(v => v)
+    const statusIcon = q.dominada ? '✅' : '⏳'
+    const statusCor = q.dominada ? 'var(--green)' : 'var(--yellow)'
+
     return `
-    <div class="questao-card ${q.dominada?'dominada':''}">
-      <div class="questao-header">
-        <div style="display:flex;align-items:center;gap:8px">
-          ${tagMateria(q.materia)}
+    <div class="questao-mini" id="qmini-${q.id}" onclick="toggleQuestao('${q.id}')">
+      <!-- LINHA MINIMALISTA -->
+      <div style="display:flex;align-items:center;gap:10px;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+          <span style="font-size:1rem;flex-shrink:0">${statusIcon}</span>
+          <div style="min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              ${tagMateria(q.materia)}
+              ${q.tema ? `<span style="font-size:0.72rem;color:var(--accent)"><i class="fas fa-tag" style="margin-right:3px"></i>${q.tema}</span>` : ''}
+            </div>
+            ${q.enunciado ? `<div style="font-size:0.8rem;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px">${q.enunciado}</div>` : ''}
+          </div>
         </div>
-        <span class="questao-gabarito">Gabarito: ${q.gabarito}</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span style="font-size:0.8rem;font-weight:700;color:${statusCor}">${q.gabarito}</span>
+          <i class="fas fa-chevron-down" id="chevron-${q.id}" style="color:var(--text2);font-size:0.75rem;transition:transform 0.2s"></i>
+        </div>
       </div>
-      ${q.tema?`<div style="font-size:0.78rem;color:var(--accent);margin:6px 0 2px 0"><i class="fas fa-tag" style="margin-right:4px"></i>${q.tema}</div>`:''}
-      ${q.enunciado?`<div style="font-size:0.85rem;color:var(--text);margin:8px 0;line-height:1.5;padding:10px;background:var(--surface2);border-radius:8px">${q.enunciado}</div>`:''}
-      ${temAlts?`<div style="margin:8px 0;display:flex;flex-direction:column;gap:4px">
-        ${['A','B','C','D','E'].filter(l=>alts[l]).map(l=>`
-          <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 10px;border-radius:6px;${q.gabarito===l?'background:rgba(34,197,94,0.15);border:1px solid var(--green)':'background:var(--surface2)'}">
-            <span style="font-weight:700;color:${q.gabarito===l?'var(--green)':'var(--accent)'};min-width:18px">${l})</span>
-            <span style="font-size:0.85rem;color:var(--text)">${alts[l]}</span>
-          </div>`).join('')}
-      </div>`:''}
-      ${q.anotacao?`<div class="questao-anotacao"><i class="fas fa-comment-dots" style="color:var(--yellow);margin-right:5px"></i>${q.anotacao}</div>`:''}
-      <div class="questao-actions">
-        ${q.video?`<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-play"></i> Vídeo</a>`:''}
-        <button class="btn btn-ghost btn-sm" onclick="abrirEditar('${q.id}')"><i class="fas fa-edit"></i> Editar</button>
-        ${q.dominada
-          ?`<button class="btn btn-ghost btn-sm" onclick="toggleDominada('${q.id}')"><i class="fas fa-undo"></i> Reativar</button>`
-          :`<button class="btn btn-success btn-sm" onclick="toggleDominada('${q.id}')"><i class="fas fa-check"></i> Dominei!</button>`}
-        <button class="btn btn-danger btn-sm" onclick="deletarQuestao('${q.id}')"><i class="fas fa-trash"></i></button>
+
+      <!-- DETALHES EXPANDIDOS -->
+      <div id="qdetail-${q.id}" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)" onclick="event.stopPropagation()">
+        ${q.enunciado ? `<div style="font-size:0.85rem;color:var(--text);margin-bottom:10px;line-height:1.6;padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);white-space:pre-wrap">${q.enunciado}</div>` : ''}
+        ${temAlts ? `<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
+          ${['A','B','C','D','E'].filter(l=>alts[l]).map(l=>`
+            <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 10px;border-radius:6px;${q.gabarito===l?'background:rgba(34,197,94,0.15);border:1px solid var(--green)':'background:var(--surface2)'}">
+              <span style="font-weight:700;color:${q.gabarito===l?'var(--green)':'var(--accent)'};min-width:18px">${l})</span>
+              <span style="font-size:0.85rem;color:var(--text)">${alts[l]}</span>
+            </div>`).join('')}
+        </div>` : ''}
+        ${q.anotacao ? `<div class="questao-anotacao"><i class="fas fa-comment-dots" style="color:var(--yellow);margin-right:5px"></i>${q.anotacao}</div>` : ''}
+        <div class="questao-actions" style="margin-top:12px">
+          ${q.video ? `<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-play"></i> Vídeo</a>` : ''}
+          <button class="btn btn-ghost btn-sm" onclick="abrirEditar('${q.id}')"><i class="fas fa-edit"></i> Editar</button>
+          ${q.dominada
+            ? `<button class="btn btn-ghost btn-sm" onclick="toggleDominada('${q.id}')"><i class="fas fa-undo"></i> Reativar</button>`
+            : `<button class="btn btn-success btn-sm" onclick="toggleDominada('${q.id}')"><i class="fas fa-check"></i> Dominei!</button>`}
+          <button class="btn btn-danger btn-sm" onclick="deletarQuestao('${q.id}')"><i class="fas fa-trash"></i></button>
+        </div>
+        <div style="font-size:0.7rem;color:var(--text2);margin-top:8px">${q.data || ''}</div>
       </div>
-      <div style="font-size:0.7rem;color:var(--text2);margin-top:6px">${q.data||''}</div>
     </div>`
   }).join('')
+}
+
+function toggleQuestao(id) {
+  const detail = document.getElementById(`qdetail-${id}`)
+  const chevron = document.getElementById(`chevron-${id}`)
+  const card = document.getElementById(`qmini-${id}`)
+  const aberto = detail.style.display !== 'none'
+  detail.style.display = aberto ? 'none' : 'block'
+  chevron.style.transform = aberto ? 'rotate(0deg)' : 'rotate(180deg)'
+  card.classList.toggle('expandida', !aberto)
 }
 
 function filtrarMateriaPorIndice(i) {
