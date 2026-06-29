@@ -941,6 +941,10 @@ function toggleSenha() {
 }
 
 async function fazerLogin() {
+  // Garantir que SUPA_URL e SUPA_KEY nunca estejam vazios
+  if (!SUPA_URL || SUPA_URL === '') SUPA_URL = SUPA_URL_DEFAULT
+  if (!SUPA_KEY || SUPA_KEY === '') SUPA_KEY = SUPA_KEY_DEFAULT
+
   const email = document.getElementById('login-email').value.trim()
   const senha = document.getElementById('login-senha').value
   const erroEl = document.getElementById('login-erro')
@@ -2051,12 +2055,18 @@ async function init() {
   document.querySelector('nav').style.display = 'none'
   document.querySelector('main').style.display = 'none'
 
-  // Se tiver Supabase próprio salvo, usa ele. Senão usa o padrão.
+  // Se tiver Supabase próprio salvo e não vazio, usa ele. Senão usa o padrão.
   const urlSalva = localStorage.getItem('supa_url')
   const keySalva = localStorage.getItem('supa_key')
-  if (urlSalva && keySalva) {
+  if (urlSalva && urlSalva.includes('supabase.co')) {
     SUPA_URL = urlSalva
     SUPA_KEY = keySalva
+  } else {
+    // Limpar valores inválidos e usar padrão
+    localStorage.removeItem('supa_url')
+    localStorage.removeItem('supa_key')
+    SUPA_URL = SUPA_URL_DEFAULT
+    SUPA_KEY = SUPA_KEY_DEFAULT
   }
 
   // Verificar se tem sessão salva
