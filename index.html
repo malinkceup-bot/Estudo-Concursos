@@ -453,6 +453,12 @@
         <select id="materia-questao"></select>
       </div>
 
+      <!-- TEMA -->
+      <div class="form-group">
+        <label><i class="fas fa-tag" style="margin-right:5px;color:var(--yellow)"></i>Tema Específico <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(ex: Complemento Nominal, Protocolo, Posse...)</span></label>
+        <input type="text" id="tema-questao" placeholder="Do que se trata essa questão especificamente?">
+      </div>
+
       <!-- ENUNCIADO -->
       <div class="form-group">
         <label><i class="fas fa-align-left" style="margin-right:5px"></i>Enunciado da Questão <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional — cole o enunciado resumido)</span></label>
@@ -665,9 +671,24 @@
 
 </main>
 
-<!-- MODAL IMAGEM -->
-<div class="modal-overlay" id="modal-img" onclick="fecharModal()">
-  <img class="modal-img" id="modal-img-src" onclick="event.stopPropagation()">
+<!-- MODAL IMAGEM COM ZOOM -->
+<div id="modal-img" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;flex-direction:column" onclick="fecharModal()">
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;flex-shrink:0" onclick="event.stopPropagation()">
+    <div id="modal-img-titulo" style="color:#fff;font-size:0.9rem;font-weight:600"></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button onclick="zoomOut()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:36px;height:36px;border-radius:8px;font-size:1.1rem;cursor:pointer">−</button>
+      <span id="zoom-pct" style="color:#fff;font-size:0.85rem;min-width:45px;text-align:center">100%</span>
+      <button onclick="zoomIn()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:36px;height:36px;border-radius:8px;font-size:1.1rem;cursor:pointer">+</button>
+      <button onclick="zoomReset()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;padding:0 12px;height:36px;border-radius:8px;font-size:0.8rem;cursor:pointer">Reset</button>
+      <button onclick="fecharModal()" style="background:rgba(239,68,68,0.7);border:none;color:#fff;width:36px;height:36px;border-radius:8px;font-size:1rem;cursor:pointer">✕</button>
+    </div>
+  </div>
+  <div id="modal-img-container" style="flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:10px;cursor:grab" onclick="event.stopPropagation()">
+    <img id="modal-img-src" style="border-radius:8px;transform-origin:top center;transition:transform 0.2s;max-width:100%">
+  </div>
+  <div style="text-align:center;padding:8px;color:rgba(255,255,255,0.4);font-size:0.75rem">
+    Scroll para zoom · Arraste para mover · Clique fora para fechar
+  </div>
 </div>
 
 <!-- MODAL ADD MAPA -->
@@ -1123,6 +1144,7 @@ function selecionarGabarito(val) {
 // ===== CADASTRAR =====
 async function salvarQuestao() {
   const materia = document.getElementById('materia-questao').value
+  const tema = document.getElementById('tema-questao').value.trim()
   const enunciado = document.getElementById('enunciado-questao').value.trim()
   const altA = document.getElementById('alt-a').value.trim()
   const altB = document.getElementById('alt-b').value.trim()
@@ -1137,7 +1159,7 @@ async function salvarQuestao() {
 
   mostrarLoading('Salvando questão...')
   const resultado = await supa.insert(TABELA_QUESTOES, {
-    materia, enunciado,
+    materia, tema, enunciado,
     alternativas: JSON.stringify({ A: altA, B: altB, C: altC, D: altD, E: altE }),
     gabarito, anotacao, video, dominada: false,
     data: new Date().toLocaleDateString('pt-BR')
@@ -1149,6 +1171,7 @@ async function salvarQuestao() {
   questoes.push(resultado[0])
 
   document.getElementById('materia-questao').value = ''
+  document.getElementById('tema-questao').value = ''
   document.getElementById('enunciado-questao').value = ''
   document.getElementById('alt-a').value = ''
   document.getElementById('alt-b').value = ''
@@ -1208,6 +1231,7 @@ function renderQuestoes() {
         </div>
         <span class="questao-gabarito">Gabarito: ${q.gabarito}</span>
       </div>
+      ${q.tema?`<div style="font-size:0.78rem;color:var(--accent);margin:6px 0 2px 0"><i class="fas fa-tag" style="margin-right:4px"></i>${q.tema}</div>`:''}
       ${q.enunciado?`<div style="font-size:0.85rem;color:var(--text);margin:8px 0;line-height:1.5;padding:10px;background:var(--surface2);border-radius:8px">${q.enunciado}</div>`:''}
       ${temAlts?`<div style="margin:8px 0;display:flex;flex-direction:column;gap:4px">
         ${['A','B','C','D','E'].filter(l=>alts[l]).map(l=>`
@@ -1386,10 +1410,11 @@ function renderSimuladoQuestao() {
 
   document.getElementById('simulado-questao-atual').innerHTML = `
     <div class="simulado-card">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         ${tagMateria(q.materia)}
         <span style="font-size:0.75rem;color:var(--text2)">${q.data || ''}</span>
       </div>
+      ${q.tema ? `<div style="font-size:0.78rem;color:var(--accent);margin-bottom:10px"><i class="fas fa-tag" style="margin-right:4px"></i>${q.tema}</div>` : ''}
       ${q.enunciado ? `<div style="font-size:0.95rem;color:var(--text);line-height:1.6;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);white-space:pre-wrap">${q.enunciado}</div>` : '<div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px;font-style:italic">Selecione sua resposta:</div>'}
       ${alternativasHTML}
     </div>`
@@ -1738,12 +1763,72 @@ async function deletarMapa(id) {
   mapas = mapas.filter(m => String(m.id) !== String(id))
   notif('🗑️ Mapa deletado!'); renderMapas()
 }
+// ===== MODAL IMAGEM COM ZOOM =====
+let zoomLevel = 1
+
 function abrirImagem(id) {
-  const m = mapas.find(m => String(m.id) === String(id)); if(!m) return
+  const m = mapas.find(m => String(m.id) === String(id))
+  if (!m) return
+  zoomLevel = 1
   document.getElementById('modal-img-src').src = m.img
-  document.getElementById('modal-img').classList.add('open')
+  document.getElementById('modal-img-src').style.transform = 'scale(1)'
+  document.getElementById('modal-img-titulo').textContent = m.titulo || ''
+  document.getElementById('zoom-pct').textContent = '100%'
+  document.getElementById('modal-img').style.display = 'flex'
+
+  // Scroll para zoom
+  const container = document.getElementById('modal-img-container')
+  container.onwheel = (e) => {
+    e.preventDefault()
+    if (e.deltaY < 0) zoomIn()
+    else zoomOut()
+  }
+
+  // Arrastar para mover
+  let isDragging = false, startX, startY, scrollLeft, scrollTop
+  container.onmousedown = (e) => {
+    isDragging = true
+    container.style.cursor = 'grabbing'
+    startX = e.pageX - container.offsetLeft
+    startY = e.pageY - container.offsetTop
+    scrollLeft = container.scrollLeft
+    scrollTop = container.scrollTop
+  }
+  container.onmousemove = (e) => {
+    if (!isDragging) return
+    e.preventDefault()
+    container.scrollLeft = scrollLeft - (e.pageX - container.offsetLeft - startX)
+    container.scrollTop = scrollTop - (e.pageY - container.offsetTop - startY)
+  }
+  container.onmouseup = () => { isDragging = false; container.style.cursor = 'grab' }
+  container.onmouseleave = () => { isDragging = false; container.style.cursor = 'grab' }
 }
-function fecharModal() { document.getElementById('modal-img').classList.remove('open') }
+
+function zoomIn() {
+  zoomLevel = Math.min(zoomLevel + 0.25, 5)
+  aplicarZoom()
+}
+
+function zoomOut() {
+  zoomLevel = Math.max(zoomLevel - 0.25, 0.25)
+  aplicarZoom()
+}
+
+function zoomReset() {
+  zoomLevel = 1
+  aplicarZoom()
+  document.getElementById('modal-img-container').scrollTo(0, 0)
+}
+
+function aplicarZoom() {
+  document.getElementById('modal-img-src').style.transform = `scale(${zoomLevel})`
+  document.getElementById('zoom-pct').textContent = Math.round(zoomLevel * 100) + '%'
+}
+
+function fecharModal() {
+  document.getElementById('modal-img').style.display = 'none'
+  zoomLevel = 1
+}
 
 // ===== GERENCIAR MATÉRIAS =====
 function salvarNome() {
