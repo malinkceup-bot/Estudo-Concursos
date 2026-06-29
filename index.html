@@ -537,11 +537,14 @@
   <div class="page" id="page-simulado">
     <div id="simulado-config">
       <div class="card">
-        <div class="card-title">Configurar Simulado</div>
+        <div class="card-title">🧠 Configurar Simulado</div>
+
         <div class="form-group">
-          <label>Filtrar por Matéria (opcional)</label>
-          <select id="simulado-materia"></select>
+          <label>Selecione as Matérias</label>
+          <div style="font-size:0.78rem;color:var(--text2);margin-bottom:8px">Clique para selecionar uma ou mais matérias. Nenhuma selecionada = todas.</div>
+          <div id="simulado-materias-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px"></div>
         </div>
+
         <div class="form-group">
           <label>Incluir questões já dominadas?</label>
           <select id="simulado-incluir-dom">
@@ -549,21 +552,50 @@
             <option value="sim">Sim — todas</option>
           </select>
         </div>
-        <button class="btn btn-primary btn-full" onclick="iniciarSimulado()"><i class="fas fa-play"></i> Iniciar Simulado</button>
+
+        <button class="btn btn-primary btn-full" onclick="iniciarSimulado()">
+          <i class="fas fa-play"></i> Iniciar Simulado
+        </button>
       </div>
     </div>
+
     <div id="simulado-ativo" style="display:none">
-      <div class="simulado-progress" id="simulado-progress"></div>
+      <!-- Barra de progresso e navegação -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div class="simulado-progress" id="simulado-progress" style="margin-bottom:0"></div>
+        <button class="btn btn-ghost btn-sm" onclick="cancelarSimulado()" style="color:var(--red);border-color:var(--red)">
+          <i class="fas fa-times"></i> Cancelar
+        </button>
+      </div>
+
+      <!-- Barra de progresso visual -->
+      <div style="background:var(--surface2);border-radius:6px;height:6px;margin-bottom:16px;overflow:hidden">
+        <div id="simulado-barra" style="background:var(--accent);height:6px;border-radius:6px;transition:width 0.3s;width:0%"></div>
+      </div>
+
       <div id="simulado-questao-atual"></div>
+
+      <!-- Botões de navegação sempre visíveis -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn btn-ghost" onclick="voltarSimulado()" id="btn-voltar-simulado">
+          <i class="fas fa-arrow-left"></i> Anterior
+        </button>
+        <button class="btn btn-ghost" onclick="pularSimulado()" id="btn-pular-simulado">
+          <i class="fas fa-forward"></i> Pular
+        </button>
+      </div>
 
       <!-- Botões aparecem só após responder -->
       <div id="simulado-acoes" style="display:none;margin-top:12px">
         <div id="simulado-feedback" style="margin-bottom:12px"></div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="proximaSimulado()"><i class="fas fa-arrow-right"></i> Próxima</button>
+          <button class="btn btn-primary" onclick="proximaSimulado()">
+            <i class="fas fa-arrow-right"></i> Próxima
+          </button>
         </div>
       </div>
     </div>
+
     <div id="simulado-fim" style="display:none">
       <div class="card" style="text-align:center">
         <div style="font-size:3rem;margin-bottom:12px">🎉</div>
@@ -973,11 +1005,17 @@ function goPage(id) {
 // ===== POPULAR SELECTS =====
 function popularSelects() {
   const opts = `<option value="">Selecione a matéria</option>` + materias.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('')
-  const optsSimulado = `<option value="">Todas as matérias</option>` + materias.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('')
   const ids = ['materia-questao','mapa-materia','edit-materia']
   ids.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = opts })
-  const sim = document.getElementById('simulado-materia')
-  if(sim) sim.innerHTML = optsSimulado
+
+  // Checkboxes de matéria para o simulado
+  const checkboxEl = document.getElementById('simulado-materias-checkboxes')
+  if (checkboxEl) {
+    checkboxEl.innerHTML = materias.map(m => `
+      <button type="button" class="filtro-btn simulado-mat-btn" onclick="toggleSimuladoMateria(this, '${m.nome.replace(/'/g,"\\'")}')">
+        ${m.nome}
+      </button>`).join('')
+  }
 }
 
 // ===== NOTIF =====
@@ -1268,34 +1306,63 @@ async function salvarEdicao() {
 
 // ===== SIMULADO =====
 let simuladoLista = [], simuladoIdx = 0, simuladoAcertos = 0, simuladoErros = 0, simuladoRespondida = false
+let simuladoMatSelecionadas = []
+
+function toggleSimuladoMateria(btn, nome) {
+  btn.classList.toggle('active')
+  if (simuladoMatSelecionadas.includes(nome)) {
+    simuladoMatSelecionadas = simuladoMatSelecionadas.filter(m => m !== nome)
+  } else {
+    simuladoMatSelecionadas.push(nome)
+  }
+}
 
 function iniciarSimulado() {
   goPage('simulado')
   popularSelects()
-  const materia = document.getElementById('simulado-materia').value
   const inclDom = document.getElementById('simulado-incluir-dom').value === 'sim'
   let lista = questoes
-  if (materia) lista = lista.filter(q => q.materia === materia)
+
+  if (simuladoMatSelecionadas.length > 0) {
+    lista = lista.filter(q => simuladoMatSelecionadas.includes(q.materia))
+  }
   if (!inclDom) lista = lista.filter(q => !q.dominada)
-  if (!lista.length) { notif('Nenhuma questão encontrada!', 'error'); return }
+  if (!lista.length) { notif('Nenhuma questão encontrada para as matérias selecionadas!', 'error'); return }
+
   simuladoLista = lista.sort(() => Math.random() - 0.5)
   simuladoIdx = 0; simuladoAcertos = 0; simuladoErros = 0; simuladoRespondida = false
+
   document.getElementById('simulado-config').style.display = 'none'
   document.getElementById('simulado-ativo').style.display = 'block'
   document.getElementById('simulado-fim').style.display = 'none'
   renderSimuladoQuestao()
 }
+
+function atualizarBarraProgresso() {
+  const pct = ((simuladoIdx) / simuladoLista.length) * 100
+  document.getElementById('simulado-barra').style.width = pct + '%'
+  document.getElementById('simulado-progress').textContent =
+    `Questão ${simuladoIdx + 1} de ${simuladoLista.length} — ✅ ${simuladoAcertos} acertos · ❌ ${simuladoErros} erros`
+
+  // Botão voltar — desativa na primeira questão
+  const btnVoltar = document.getElementById('btn-voltar-simulado')
+  if (btnVoltar) btnVoltar.disabled = simuladoIdx === 0
+
+  // Botão pular — desativa na última questão
+  const btnPular = document.getElementById('btn-pular-simulado')
+  if (btnPular) btnPular.disabled = simuladoIdx >= simuladoLista.length - 1
+}
+
 function renderSimuladoQuestao() {
   simuladoRespondida = false
   document.getElementById('simulado-acoes').style.display = 'none'
   document.getElementById('simulado-feedback').innerHTML = ''
+  atualizarBarraProgresso()
 
   const q = simuladoLista[simuladoIdx]
   const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
   const temAlts = Object.values(alts).some(v => v)
   const ehCertoErrado = q.gabarito === 'Certo' || q.gabarito === 'Errado'
-
-  document.getElementById('simulado-progress').textContent = `Questão ${simuladoIdx + 1} de ${simuladoLista.length} — ✅ ${simuladoAcertos} acertos · ❌ ${simuladoErros} erros`
 
   let alternativasHTML = ''
   if (temAlts) {
@@ -1323,7 +1390,7 @@ function renderSimuladoQuestao() {
         ${tagMateria(q.materia)}
         <span style="font-size:0.75rem;color:var(--text2)">${q.data || ''}</span>
       </div>
-      ${q.enunciado ? `<div style="font-size:0.95rem;color:var(--text);line-height:1.6;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent)">${q.enunciado}</div>` : '<div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px;font-style:italic">Selecione sua resposta:</div>'}
+      ${q.enunciado ? `<div style="font-size:0.95rem;color:var(--text);line-height:1.6;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);white-space:pre-wrap">${q.enunciado}</div>` : '<div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px;font-style:italic">Selecione sua resposta:</div>'}
       ${alternativasHTML}
     </div>`
 }
@@ -1340,12 +1407,8 @@ function responderAlternativa(escolha) {
   const btnEscolhido = document.getElementById(`alt-btn-${escolha}`)
   const btnCorreto = document.getElementById(`alt-btn-${q.gabarito}`)
 
-  if (acertou) {
-    btnEscolhido?.classList.add('correta')
-  } else {
-    btnEscolhido?.classList.add('errada')
-    btnCorreto?.classList.add('correta')
-  }
+  if (acertou) { btnEscolhido?.classList.add('correta') }
+  else { btnEscolhido?.classList.add('errada'); btnCorreto?.classList.add('correta') }
 
   const feedbackEl = document.getElementById('simulado-feedback')
   feedbackEl.innerHTML = `
@@ -1368,7 +1431,7 @@ function responderSemAlternativa() {
   const card = document.getElementById('simulado-questao-atual').querySelector('.simulado-card')
   card.innerHTML += `<div style="background:rgba(79,142,247,0.1);border:1px solid var(--accent);border-radius:8px;padding:12px;margin-top:8px">
     <strong style="color:var(--accent)">Gabarito: ${q.gabarito}</strong>
-    ${q.anotacao ? `<div style="font-size:0.85rem;color:var(--text2);margin-top:6px;line-height:1.6">${q.anotacao}</div>` : ''}
+    ${q.anotacao ? `<div style="font-size:0.85rem;color:var(--text2);margin-top:6px;line-height:1.6;white-space:pre-wrap">${q.anotacao}</div>` : ''}
   </div>`
   document.getElementById('simulado-feedback').innerHTML = `
     <div style="font-size:0.9rem;font-weight:600;margin-bottom:8px;color:var(--text2)">Você acertou?</div>
@@ -1399,12 +1462,30 @@ async function atualizarDominada(id, dominada) {
   questoes = questoes.map(q => String(q.id) === String(id) ? { ...q, dominada } : q)
 }
 
+function voltarSimulado() {
+  if (simuladoIdx === 0) return
+  simuladoIdx--
+  renderSimuladoQuestao()
+}
+
+function pularSimulado() {
+  if (simuladoIdx >= simuladoLista.length - 1) return
+  simuladoIdx++
+  renderSimuladoQuestao()
+}
+
+function cancelarSimulado() {
+  if (!confirm('Cancelar o simulado? Seu progresso atual será perdido.')) return
+  resetSimulado()
+}
+
 function proximaSimulado() {
   simuladoIdx++
   if (simuladoIdx >= simuladoLista.length) {
     document.getElementById('simulado-ativo').style.display = 'none'
     document.getElementById('simulado-fim').style.display = 'block'
-    const pct = Math.round((simuladoAcertos / simuladoLista.length) * 100)
+    const total = simuladoAcertos + simuladoErros
+    const pct = total ? Math.round((simuladoAcertos / total) * 100) : 0
     document.getElementById('simulado-resultado').innerHTML = `
       <div style="font-size:2rem;font-weight:700;color:${pct>=70?'var(--green)':pct>=40?'var(--yellow)':'var(--red)'}">${pct}%</div>
       <div style="margin-top:6px">✅ ${simuladoAcertos} acertos · ❌ ${simuladoErros} erros de ${simuladoLista.length} questões</div>
@@ -1416,6 +1497,8 @@ function proximaSimulado() {
 }
 
 function resetSimulado() {
+  simuladoMatSelecionadas = []
+  document.querySelectorAll('.simulado-mat-btn').forEach(b => b.classList.remove('active'))
   document.getElementById('simulado-config').style.display = 'block'
   document.getElementById('simulado-ativo').style.display = 'none'
   document.getElementById('simulado-fim').style.display = 'none'
