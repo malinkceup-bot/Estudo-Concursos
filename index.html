@@ -768,9 +768,15 @@
 <div class="notif" id="notif"></div>
 
 <script>
-// ===== SUPABASE CONFIG DINÂMICA =====
-let SUPA_URL = localStorage.getItem('supa_url') || ''
-let SUPA_KEY = localStorage.getItem('supa_key') || ''
+// ===== SUPABASE CONFIG =====
+// Chaves padrão (usadas quando não há configuração personalizada)
+const SUPA_URL_DEFAULT = 'https://avqzbqvsqyoxueqexara.supabase.co'
+const SUPA_KEY_DEFAULT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2cXpicXZzcXlveHVlcWV4YXJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1Nzk0ODcsImV4cCI6MjA5ODE1NTQ4N30.UvNr37PgF3EGpwKmBwE4qkpf9NSxKBzZBay0iUyLvbs'
+
+// Usa chaves do Local Storage se existirem (usuário novo com Supabase próprio)
+// Caso contrário usa as chaves padrão
+let SUPA_URL = localStorage.getItem('supa_url') || SUPA_URL_DEFAULT
+let SUPA_KEY = localStorage.getItem('supa_key') || SUPA_KEY_DEFAULT
 
 let authToken = null
 let usuarioAtual = null
@@ -2045,18 +2051,13 @@ async function init() {
   document.querySelector('nav').style.display = 'none'
   document.querySelector('main').style.display = 'none'
 
-  // Verificar se tem configuração do Supabase salva
+  // Se tiver Supabase próprio salvo, usa ele. Senão usa o padrão.
   const urlSalva = localStorage.getItem('supa_url')
   const keySalva = localStorage.getItem('supa_key')
-
-  if (!urlSalva || !keySalva) {
-    // Primeira vez — mostrar tela de setup
-    mostrarTelaSetup()
-    return
+  if (urlSalva && keySalva) {
+    SUPA_URL = urlSalva
+    SUPA_KEY = keySalva
   }
-
-  SUPA_URL = urlSalva
-  SUPA_KEY = keySalva
 
   // Verificar se tem sessão salva
   const tokenSalvo = localStorage.getItem('supa_token')
@@ -2079,6 +2080,7 @@ async function init() {
     localStorage.removeItem('supa_user')
   }
 
+  // Ir para login — não para setup (setup só pelo botão "Não tem conta?")
   mostrarTelaLogin()
 }
 
