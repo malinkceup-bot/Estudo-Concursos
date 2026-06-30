@@ -6,6 +6,7 @@
 <title>Estudo Concursos</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   :root {
     --bg: #0f1117;
@@ -404,6 +405,42 @@
       <div class="stat-box" style="border-color:var(--accent)"><div class="stat-num" id="stat-pct" style="color:var(--accent)">0%</div><div class="stat-label">Aproveit.</div></div>
     </div>
 
+    <!-- VISÃO GERAL — GRÁFICO DONUT -->
+    <div class="card">
+      <div class="card-title">🍩 Visão Geral</div>
+      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <div style="position:relative;width:160px;height:160px;flex-shrink:0">
+          <canvas id="chart-donut" role="img" aria-label="Gráfico de rosca mostrando proporção de questões dominadas e pendentes"></canvas>
+          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+            <div style="font-size:1.6rem;font-weight:700;color:var(--accent)" id="donut-pct">0%</div>
+            <div style="font-size:0.65rem;color:var(--text2)">domínio</div>
+          </div>
+        </div>
+        <div style="flex:1;min-width:150px;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:12px;height:12px;border-radius:3px;background:var(--green);flex-shrink:0"></span>
+            <span style="font-size:0.85rem">Dominadas: <strong id="legenda-dom">0</strong></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:12px;height:12px;border-radius:3px;background:var(--yellow);flex-shrink:0"></span>
+            <span style="font-size:0.85rem">Pendentes: <strong id="legenda-pend">0</strong></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:12px;height:12px;border-radius:3px;background:var(--accent);flex-shrink:0"></span>
+            <span style="font-size:0.85rem">Total cadastrado: <strong id="legenda-total">0</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRÁFICO DE BARRAS POR MATÉRIA -->
+    <div class="card">
+      <div class="card-title">📈 Aproveitamento por Matéria</div>
+      <div style="position:relative;width:100%;height:260px" id="chart-barras-wrapper">
+        <canvas id="chart-barras" role="img" aria-label="Gráfico de barras comparando percentual de aproveitamento entre matérias"></canvas>
+      </div>
+    </div>
+
     <!-- DESEMPENHO POR MATÉRIA -->
     <div class="card">
       <div class="card-title">📊 Desempenho por Matéria</div>
@@ -756,8 +793,8 @@
 <div class="modal-overlay" id="modal-confirmar">
   <div class="modal" style="max-width:360px;text-align:center">
     <div style="font-size:2rem;margin-bottom:12px">🗑️</div>
-    <div style="font-weight:700;margin-bottom:8px">Deletar questão?</div>
-    <div style="font-size:0.85rem;color:var(--text2);margin-bottom:20px">Essa ação não pode ser desfeita.</div>
+    <div style="font-weight:700;margin-bottom:8px" id="confirmar-titulo">Deletar questão?</div>
+    <div style="font-size:0.85rem;color:var(--text2);margin-bottom:20px" id="confirmar-texto">Essa ação não pode ser desfeita.</div>
     <div style="display:flex;gap:10px;justify-content:center">
       <button class="btn btn-danger" id="confirmar-sim">Sim, deletar</button>
       <button class="btn btn-ghost" onclick="document.getElementById('modal-confirmar').classList.remove('open')">Cancelar</button>
@@ -1081,19 +1118,27 @@ function renderDashboard() {
   document.getElementById('stat-erros').textContent = pend
   document.getElementById('stat-dom').textContent = dom
   document.getElementById('stat-pct').textContent = pct + '%'
+  document.getElementById('donut-pct').textContent = pct + '%'
+  document.getElementById('legenda-dom').textContent = dom
+  document.getElementById('legenda-pend').textContent = pend
+  document.getElementById('legenda-total').textContent = total
+
+  renderDonutChart(dom, pend)
 
   const h = new Date().getHours()
   const saud = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
   const nome = localStorage.getItem('usuario_nome') || 'estudante'
   document.getElementById('dash-saudacao').textContent = `${saud}, ${nome}! 👋`
   document.getElementById('dash-subtitulo').textContent = total
-    ? `Você tem ${pend} questão${pend !== 1 ? 'ões' : ''} pendente${pend !== 1 ? 's' : ''} para revisar.`
+    ? `Você tem ${pend} ${pend !== 1 ? 'questões pendentes' : 'questão pendente'} para revisar.`
     : 'Comece cadastrando suas primeiras questões!'
 
   const elMat = document.getElementById('desempenho-materias')
   if (!total) {
     elMat.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;text-align:center;padding:20px">Nenhuma questão cadastrada ainda.</div>'
     document.getElementById('dash-situacao').innerHTML = ''
+    if (window._donutChart) { window._donutChart.destroy(); window._donutChart = null }
+    if (window._barrasChart) { window._barrasChart.destroy(); window._barrasChart = null }
     return
   }
 
@@ -1106,6 +1151,8 @@ function renderDashboard() {
   })
 
   const sorted = Object.entries(porMateria).sort((a, b) => (a[1].dominadas/a[1].total) - (b[1].dominadas/b[1].total))
+
+  renderBarrasChart(sorted)
 
   elMat.innerHTML = sorted.map(([m, dados]) => {
     const p = Math.round((dados.dominadas / dados.total) * 100)
@@ -1129,7 +1176,7 @@ function renderDashboard() {
         <div style="background:var(--surface2);border-radius:6px;height:10px;overflow:hidden">
           <div style="background:${cor};height:10px;border-radius:6px;width:${p}%"></div>
         </div>
-        <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">${dados.total} questão${dados.total!==1?'ões':''} cadastrada${dados.total!==1?'s':''}</div>
+        <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">${dados.total} ${dados.total!==1?'questões cadastradas':'questão cadastrada'}</div>
       </div>`
   }).join('')
 
@@ -1137,8 +1184,8 @@ function renderDashboard() {
     const p = Math.round((dados.dominadas / dados.total) * 100)
     const pend = dados.total - dados.dominadas
     if (p >= 70) return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px"><span>✅</span><span style="font-size:0.85rem">Você está indo bem em <strong>${m}</strong> — ${p}% de aproveitamento.</span></div>`
-    if (p >= 40) return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px"><span>⚠️</span><span style="font-size:0.85rem">Em <strong>${m}</strong> você acerta cerca de metade — ainda tem ${pend} questão${pend!==1?'ões':''} pendente${pend!==1?'s':''}.</span></div>`
-    return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px"><span>❌</span><span style="font-size:0.85rem">Você erra bastante em <strong>${m}</strong> — ${pend} questão${pend!==1?'ões':''} ainda pendente${pend!==1?'s':''}. Foque aqui!</span></div>`
+    if (p >= 40) return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px"><span>⚠️</span><span style="font-size:0.85rem">Em <strong>${m}</strong> você acerta cerca de metade — ainda tem ${pend} ${pend!==1?'questões pendentes':'questão pendente'}.</span></div>`
+    return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px"><span>❌</span><span style="font-size:0.85rem">Você erra bastante em <strong>${m}</strong> — ainda tem ${pend} ${pend!==1?'questões pendentes':'questão pendente'}. Foque aqui!</span></div>`
   })
 
   const pior = sorted[0]
@@ -1150,6 +1197,94 @@ function renderDashboard() {
     </div>`
   }
   document.getElementById('dash-situacao').innerHTML = frases.join('') + dica
+}
+
+function renderDonutChart(dom, pend) {
+  const ctx = document.getElementById('chart-donut')
+  if (!ctx) return
+  if (window._donutChart) window._donutChart.destroy()
+
+  if (dom === 0 && pend === 0) return
+
+  window._donutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Dominadas', 'Pendentes'],
+      datasets: [{
+        data: [dom, pend],
+        backgroundColor: ['#22c55e', '#f59e0b'],
+        borderColor: '#1a1d27',
+        borderWidth: 3,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '72%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.label}: ${ctx.parsed}`
+          }
+        }
+      }
+    }
+  })
+}
+
+function renderBarrasChart(sorted) {
+  const ctx = document.getElementById('chart-barras')
+  if (!ctx) return
+  if (window._barrasChart) window._barrasChart.destroy()
+  if (!sorted.length) return
+
+  const labels = sorted.map(([m]) => m.length > 18 ? m.slice(0, 16) + '…' : m)
+  const percentuais = sorted.map(([, dados]) => Math.round((dados.dominadas / dados.total) * 100))
+  const cores = percentuais.map(p => p >= 70 ? '#22c55e' : p >= 40 ? '#f59e0b' : '#ef4444')
+
+  window._barrasChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Aproveitamento (%)',
+        data: percentuais,
+        backgroundColor: cores,
+        borderRadius: 6,
+        maxBarThickness: 32
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          min: 0, max: 100,
+          grid: { color: 'rgba(148,163,184,0.1)' },
+          ticks: { color: '#94a3b8', font: { size: 11 }, callback: (v) => v + '%' }
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: '#e2e8f0', font: { size: 11 } }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => `${ctx.parsed.x}% de aproveitamento`
+          }
+        }
+      }
+    }
+  })
+
+  // Ajustar altura do wrapper conforme número de matérias
+  const wrapper = document.getElementById('chart-barras-wrapper')
+  if (wrapper) wrapper.style.height = Math.max(sorted.length * 38 + 40, 120) + 'px'
 }
 
 // ===== GABARITO SELECTOR =====
@@ -1330,6 +1465,8 @@ async function toggleDominada(id) {
 let _deletarId = null
 function deletarQuestao(id) {
   _deletarId = id
+  document.getElementById('confirmar-titulo').textContent = 'Deletar questão?'
+  document.getElementById('confirmar-texto').textContent = 'Essa ação não pode ser desfeita.'
   document.getElementById('modal-confirmar').classList.add('open')
   document.getElementById('confirmar-sim').onclick = async () => {
     mostrarLoading('Deletando...')
@@ -1930,17 +2067,29 @@ async function adicionarMateria() {
   popularSelects()
 }
 
-async function removerMateria(id) {
+let _materiaParaRemover = null
+function removerMateria(id) {
   const m = materias.find(m => String(m.id) === String(id))
+  if (!m) return
   const emUso = questoes.some(q => q.materia === m.nome) || mapas.some(mp => mp.materia === m.nome)
-  if (emUso && !confirm(`A matéria "${m.nome}" está em uso. Remover mesmo assim?`)) return
-  mostrarLoading('Removendo...')
-  await supa.delete(TABELA_MATERIAS, id)
-  esconderLoading()
-  materias = materias.filter(m => String(m.id) !== String(id))
-  notif('🗑️ Matéria removida!')
-  renderConfig()
-  popularSelects()
+  _materiaParaRemover = id
+
+  document.getElementById('confirmar-titulo').textContent = `Remover "${m.nome}"?`
+  document.getElementById('confirmar-texto').textContent = emUso
+    ? 'Essa matéria está sendo usada em questões ou mapas. Tem certeza que deseja remover?'
+    : 'Essa ação não pode ser desfeita.'
+
+  document.getElementById('modal-confirmar').classList.add('open')
+  document.getElementById('confirmar-sim').onclick = async () => {
+    mostrarLoading('Removendo...')
+    await supa.delete(TABELA_MATERIAS, _materiaParaRemover)
+    esconderLoading()
+    materias = materias.filter(m => String(m.id) !== String(_materiaParaRemover))
+    document.getElementById('modal-confirmar').classList.remove('open')
+    notif('🗑️ Matéria removida!')
+    renderConfig()
+    popularSelects()
+  }
 }
 
 // ===== BACKUP =====
