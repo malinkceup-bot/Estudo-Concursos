@@ -827,25 +827,83 @@ function getHeaders(extra = {}) {
   }
 }
 
+// ===== RENOVAÇÃO DE TOKEN =====
+let _refreshEmAndamento = null
+
+async function renovarToken() {
+  if (_refreshEmAndamento) return _refreshEmAndamento
+
+  const refreshToken = localStorage.getItem('supa_refresh_token')
+  if (!refreshToken) return false
+
+  _refreshEmAndamento = (async () => {
+    try {
+      const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      })
+      if (!r.ok) return false
+      const data = await r.json()
+      authToken = data.access_token
+      localStorage.setItem('supa_token', authToken)
+      if (data.refresh_token) localStorage.setItem('supa_refresh_token', data.refresh_token)
+      return true
+    } catch(e) {
+      return false
+    } finally {
+      _refreshEmAndamento = null
+    }
+  })()
+
+  return _refreshEmAndamento
+}
+
+async function fetchComRenovacao(url, options) {
+  let r = await fetch(url, options)
+  if (r.status === 401) {
+    const renovou = await renovarToken()
+    if (renovou) {
+      // Atualiza o header Authorization com o novo token e tenta de novo
+      options.headers = { ...options.headers, Authorization: `Bearer ${authToken}` }
+      r = await fetch(url, options)
+    } else {
+      // Não conseguiu renovar — sessão realmente expirou, manda para login
+      sessaoExpirada()
+    }
+  }
+  return r
+}
+
+function sessaoExpirada() {
+  authToken = null
+  usuarioAtual = null
+  localStorage.removeItem('supa_token')
+  localStorage.removeItem('supa_refresh_token')
+  localStorage.removeItem('supa_user')
+  notif('Sessão expirada. Faça login novamente.', 'error')
+  mostrarTelaLogin()
+}
+
 const supa = {
   async get(tabela) {
-    const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?order=created_at`, { headers: getHeaders() })
+    const r = await fetchComRenovacao(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?order=created_at`, { headers: getHeaders() })
     return r.ok ? r.json() : []
   },
   async insert(tabela, dados) {
-    const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}`, {
+    const r = await fetchComRenovacao(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}`, {
       method: 'POST', headers: getHeaders({ Prefer: 'return=representation' }), body: JSON.stringify(dados)
     })
     return r.ok ? r.json() : null
   },
   async update(tabela, id, dados) {
-    const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=eq.${id}`, {
+    const r = await fetchComRenovacao(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=eq.${id}`, {
       method: 'PATCH', headers: getHeaders({ Prefer: 'return=representation' }), body: JSON.stringify(dados)
     })
     return r.ok ? r.json() : null
   },
   async delete(tabela, id) {
-    const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=eq.${id}`, {
+    const r = await fetchComRenovacao(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=eq.${id}`, {
       method: 'DELETE', headers: getHeaders()
     })
     return r.ok
@@ -855,6 +913,20 @@ const supa = {
 const TABELA_QUESTOES = 'Questões'
 const TABELA_MAPAS = 'Mapas'
 const TABELA_MATERIAS = 'Matérias'
+
+// Renovar token automaticamente a cada 50 minutos (antes de expirar em 60min)
+setInterval(() => {
+  if (authToken && localStorage.getItem('supa_refresh_token')) {
+    renovarToken()
+  }
+}, 50 * 60 * 1000)
+
+// Renovar também quando a aba voltar a ficar visível (usuário voltou depois de um tempo)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && authToken && localStorage.getItem('supa_refresh_token')) {
+    renovarToken()
+  }
+})
 
 // ===== TELA DE SETUP =====
 
@@ -1013,9 +1085,19 @@ async function fazerLogin() {
       return
     }
 
+    // Derrubar todas as outras sessões ativas (outros dispositivos/navegadores)
+    // usando scope=global — invalida todos os refresh tokens anteriores deste usuário
+    try {
+      await fetch(`${SUPA_URL}/auth/v1/logout?scope=others`, {
+        method: 'POST',
+        headers: { apikey: SUPA_KEY, Authorization: `Bearer ${data.access_token}`, 'Content-Type': 'application/json' }
+      })
+    } catch(e) {}
+
     authToken = data.access_token
     usuarioAtual = data.user
     localStorage.setItem('supa_token', authToken)
+    localStorage.setItem('supa_refresh_token', data.refresh_token || '')
     localStorage.setItem('supa_user', JSON.stringify(usuarioAtual))
 
     esconderTelaLogin()
@@ -1040,6 +1122,7 @@ async function fazerLogout() {
   authToken = null
   usuarioAtual = null
   localStorage.removeItem('supa_token')
+  localStorage.removeItem('supa_refresh_token')
   localStorage.removeItem('supa_user')
   questoes = []; mapas = []; materias = []
   mostrarTelaLogin()
@@ -2233,9 +2316,20 @@ async function init() {
         esconderTelaLogin()
         await carregarDados()
         return
+      } else if (r.status === 401) {
+        // Token expirado — tentar renovar com refresh token
+        authToken = tokenSalvo
+        const renovou = await renovarToken()
+        if (renovou) {
+          usuarioAtual = JSON.parse(userSalvo)
+          esconderTelaLogin()
+          await carregarDados()
+          return
+        }
       }
     } catch(e) {}
     localStorage.removeItem('supa_token')
+    localStorage.removeItem('supa_refresh_token')
     localStorage.removeItem('supa_user')
   }
 
