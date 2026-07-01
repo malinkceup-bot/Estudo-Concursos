@@ -699,12 +699,18 @@
   <div class="page" id="page-config">
     <div class="card">
       <div class="card-title">⚙️ Gerenciar Matérias</div>
-      <p style="font-size:0.85rem;color:var(--text2);margin-bottom:16px">Adicione ou remova matérias. Elas aparecerão em todos os formulários do app.</p>
+      <p style="font-size:0.85rem;color:var(--text2);margin-bottom:16px">Renomear ou remover matérias atualiza automaticamente todas as questões e mapas.</p>
       <div id="lista-materias-config"></div>
       <div class="add-materia-row">
         <input type="text" id="nova-materia-input" placeholder="Nome da nova matéria..." onkeydown="if(event.key==='Enter') adicionarMateria()">
         <button class="btn btn-primary" onclick="adicionarMateria()"><i class="fas fa-plus"></i> Adicionar</button>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏷️ Gerenciar Temas</div>
+      <p style="font-size:0.85rem;color:var(--text2);margin-bottom:16px">Renomear ou remover temas atualiza automaticamente todas as questões com esse tema.</p>
+      <div id="lista-temas-config"></div>
     </div>
 
     <div class="card">
@@ -743,6 +749,21 @@
   </div>
 
 </main>
+
+<!-- MODAL EDITAR MATÉRIA/TEMA -->
+<div class="modal-overlay" id="modal-editar-nome">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title" id="modal-editar-nome-titulo">Editar Matéria</div>
+    <div class="form-group">
+      <label>Novo Nome</label>
+      <input type="text" id="editar-nome-input" onkeydown="if(event.key==='Enter') confirmarEdicaoNome()">
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="confirmarEdicaoNome()"><i class="fas fa-save"></i> Salvar</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-editar-nome').classList.remove('open')">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL IMAGEM COM ZOOM -->
 <div id="modal-img" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);z-index:9999;flex-direction:column" onclick="fecharModal()">
@@ -2226,13 +2247,24 @@ function resetarConfig() {
 }
 
 function renderConfig() {
+  // Matérias
   const el = document.getElementById('lista-materias-config')
-  if (!materias.length) { el.innerHTML='<div style="color:var(--text2);font-size:0.85rem">Nenhuma matéria cadastrada.</div>'; return }
-  el.innerHTML = materias.map((m) => `
-    <div class="materia-item">
-      <span>${m.nome}</span>
-      <button class="btn btn-danger btn-sm" onclick="removerMateria('${m.id}')"><i class="fas fa-trash"></i> Remover</button>
-    </div>`).join('')
+  if (!materias.length) {
+    el.innerHTML = '<div style="color:var(--text2);font-size:0.85rem">Nenhuma matéria cadastrada.</div>'
+  } else {
+    el.innerHTML = materias.map((m) => `
+      <div class="materia-item">
+        <span style="flex:1">${m.nome}</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="abrirEditarMateria('${m.id}','${m.nome.replace(/'/g,"\\'")}')"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-danger btn-sm" onclick="removerMateria('${m.id}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`).join('')
+  }
+
+  // Temas
+  renderTemasConfig()
+
   const emailEl = document.getElementById('usuario-email')
   if (emailEl && usuarioAtual) emailEl.textContent = usuarioAtual.email
   const supaEl = document.getElementById('usuario-supa-url')
@@ -2240,6 +2272,116 @@ function renderConfig() {
   const nomeEl = document.getElementById('config-nome')
   if (nomeEl) nomeEl.value = localStorage.getItem('usuario_nome') || ''
   calcularConsumo()
+}
+
+function renderTemasConfig() {
+  const el = document.getElementById('lista-temas-config')
+  if (!el) return
+  const temas = getTemasCadastrados()
+  if (!temas.length) {
+    el.innerHTML = '<div style="color:var(--text2);font-size:0.85rem">Nenhum tema cadastrado ainda. Temas são criados ao cadastrar questões.</div>'
+    return
+  }
+  el.innerHTML = temas.map(t => {
+    const count = questoes.filter(q => q.tema === t).length
+    return `
+      <div class="materia-item">
+        <div style="flex:1">
+          <span>${t}</span>
+          <span style="font-size:0.72rem;color:var(--text2);margin-left:8px">${count} questão${count!==1?'ões':''}</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="abrirEditarTema('${t.replace(/'/g,"\\'")}')"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-danger btn-sm" onclick="removerTema('${t.replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>`
+  }).join('')
+}
+
+// ===== EDITAR MATÉRIA =====
+let _editarMateriaId = null
+let _editarMateriaNomeAntigo = null
+let _editarTema = false
+
+function abrirEditarMateria(id, nomeAtual) {
+  _editarMateriaId = id
+  _editarMateriaNomeAntigo = nomeAtual
+  _editarTema = false
+  document.getElementById('modal-editar-nome-titulo').textContent = 'Editar Matéria'
+  document.getElementById('editar-nome-input').value = nomeAtual
+  document.getElementById('modal-editar-nome').classList.add('open')
+  setTimeout(() => document.getElementById('editar-nome-input').focus(), 100)
+}
+
+function abrirEditarTema(temaAtual) {
+  _editarMateriaNomeAntigo = temaAtual
+  _editarTema = true
+  document.getElementById('modal-editar-nome-titulo').textContent = 'Editar Tema'
+  document.getElementById('editar-nome-input').value = temaAtual
+  document.getElementById('modal-editar-nome').classList.add('open')
+  setTimeout(() => document.getElementById('editar-nome-input').focus(), 100)
+}
+
+async function confirmarEdicaoNome() {
+  const novoNome = document.getElementById('editar-nome-input').value.trim()
+  if (!novoNome) { notif('Digite um nome!', 'error'); return }
+  if (novoNome === _editarMateriaNomeAntigo) { document.getElementById('modal-editar-nome').classList.remove('open'); return }
+
+  mostrarLoading('Atualizando...')
+
+  if (_editarTema) {
+    // Atualizar tema em todas as questões
+    const questoesAfetadas = questoes.filter(q => q.tema === _editarMateriaNomeAntigo)
+    for (const q of questoesAfetadas) {
+      await supa.update(TABELA_QUESTOES, q.id, { tema: novoNome })
+      q.tema = novoNome
+    }
+    notif(`✅ Tema renomeado! ${questoesAfetadas.length} questão${questoesAfetadas.length!==1?'ões':''} atualizada${questoesAfetadas.length!==1?'s':''}!`)
+  } else {
+    // Atualizar nome da matéria no Supabase
+    await supa.update(TABELA_MATERIAS, _editarMateriaId, { nome: novoNome })
+    materias = materias.map(m => String(m.id) === String(_editarMateriaId) ? { ...m, nome: novoNome } : m)
+
+    // Atualizar matéria em todas as questões e mapas
+    const questoesAfetadas = questoes.filter(q => q.materia === _editarMateriaNomeAntigo)
+    const mapasAfetados = mapas.filter(m => m.materia === _editarMateriaNomeAntigo)
+
+    for (const q of questoesAfetadas) {
+      await supa.update(TABELA_QUESTOES, q.id, { materia: novoNome })
+      q.materia = novoNome
+    }
+    for (const m of mapasAfetados) {
+      await supa.update(TABELA_MAPAS, m.id, { materia: novoNome })
+      m.materia = novoNome
+    }
+    notif(`✅ Matéria renomeada! ${questoesAfetadas.length + mapasAfetados.length} item${questoesAfetadas.length + mapasAfetados.length!==1?'s':''} atualizado${questoesAfetadas.length + mapasAfetados.length!==1?'s':''}!`)
+    popularSelects()
+  }
+
+  esconderLoading()
+  document.getElementById('modal-editar-nome').classList.remove('open')
+  renderConfig()
+  renderDashboard()
+}
+
+async function removerTema(tema) {
+  _materiaParaRemover = null
+  const count = questoes.filter(q => q.tema === tema).length
+  document.getElementById('confirmar-titulo').textContent = `Remover tema "${tema}"?`
+  document.getElementById('confirmar-texto').textContent = `Isso vai remover o tema de ${count} questão${count!==1?'ões':''}. Não apaga as questões, só o tema delas.`
+  document.getElementById('modal-confirmar').classList.add('open')
+  document.getElementById('confirmar-sim').onclick = async () => {
+    mostrarLoading('Removendo tema...')
+    const questoesAfetadas = questoes.filter(q => q.tema === tema)
+    for (const q of questoesAfetadas) {
+      await supa.update(TABELA_QUESTOES, q.id, { tema: '' })
+      q.tema = ''
+    }
+    esconderLoading()
+    document.getElementById('modal-confirmar').classList.remove('open')
+    notif('🗑️ Tema removido!')
+    renderConfig()
+  }
 }
 
 async function adicionarMateria() {
