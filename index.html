@@ -2151,10 +2151,30 @@ function mapaCardHTML(m) {
     <div class="mapa-grid-card">
       <img class="mapa-grid-img" src="${m.img}" onclick="abrirImagem('${m.id}')" title="${m.titulo}">
       <div class="mapa-grid-info">
-        <div><div class="mapa-grid-titulo">${m.titulo}</div><div class="mapa-grid-data">${m.data||''}</div></div>
-        <button class="btn btn-danger btn-sm" onclick="deletarMapa('${m.id}')"><i class="fas fa-trash"></i></button>
+        <div style="flex:1;min-width:0">
+          <div class="mapa-grid-titulo" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.titulo}</div>
+          <div class="mapa-grid-data">${m.data||''}</div>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="btn btn-ghost btn-sm" onclick="editarTituloMapa('${m.id}','${m.titulo.replace(/'/g,"\\'")}')"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-danger btn-sm" onclick="deletarMapa('${m.id}')"><i class="fas fa-trash"></i></button>
+        </div>
       </div>
     </div>`
+}
+
+async function editarTituloMapa(id, tituloAtual) {
+  _editarMateriaId = id
+  _editarMateriaNomeAntigo = tituloAtual
+  _editarTema = false
+  document.getElementById('modal-editar-nome-titulo').textContent = 'Editar Título do Mapa'
+  document.getElementById('editar-nome-input').value = tituloAtual
+  document.getElementById('modal-editar-nome').classList.add('open')
+  setTimeout(() => document.getElementById('editar-nome-input').focus(), 100)
+
+  // Override confirmarEdicaoNome para este caso específico
+  window._editarMapaTitulo = true
+  window._editarMapaId = id
 }
 function setMapaTab(tab) { mapaTabAtiva = tab; renderMapas() }
 async function deletarMapa(id) {
@@ -2333,6 +2353,18 @@ async function confirmarEdicaoNome() {
   if (novoNome === _editarMateriaNomeAntigo) { document.getElementById('modal-editar-nome').classList.remove('open'); return }
 
   mostrarLoading('Atualizando...')
+
+  // Editar título do mapa
+  if (window._editarMapaTitulo) {
+    window._editarMapaTitulo = false
+    await supa.update(TABELA_MAPAS, window._editarMapaId, { titulo: novoNome })
+    mapas = mapas.map(m => String(m.id) === String(window._editarMapaId) ? { ...m, titulo: novoNome } : m)
+    esconderLoading()
+    document.getElementById('modal-editar-nome').classList.remove('open')
+    notif('✅ Título atualizado!')
+    renderMapas()
+    return
+  }
 
   if (_editarTema) {
     // Atualizar tema em todas as questões
