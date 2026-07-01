@@ -1854,14 +1854,13 @@ function resetSimulado() {
 }
 
 // ===== SISTEMA DE TAGS DE TEMA =====
+let _dropdownAberto = false
+
 function getTemasCadastrados() {
   const temas = questoes
     .map(q => q.tema)
     .filter(t => t && t.trim())
-    .reduce((acc, t) => {
-      acc[t] = (acc[t] || 0) + 1
-      return acc
-    }, {})
+    .reduce((acc, t) => { acc[t] = (acc[t] || 0) + 1; return acc }, {})
   return Object.entries(temas).sort((a,b) => b[1]-a[1]).map(([t]) => t)
 }
 
@@ -1870,26 +1869,26 @@ function renderTemasTags(inputId, tagsId) {
   if (!tagsEl) return
   const temas = getTemasCadastrados().slice(0, 12)
   if (!temas.length) { tagsEl.innerHTML = ''; return }
-
   const valorAtual = document.getElementById(inputId)?.value || ''
   tagsEl.innerHTML = temas.map(t => `
-    <span class="tema-tag ${valorAtual === t ? 'selecionada' : ''}" onmousedown="event.preventDefault();selecionarTema('${t.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
+    <span class="tema-tag ${valorAtual === t ? 'selecionada' : ''}"
+      onclick="selecionarTema('${t.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
       <i class="fas fa-tag" style="font-size:0.65rem"></i>${t}
     </span>`).join('')
 }
 
 function selecionarTema(tema, inputId, tagsId) {
   const input = document.getElementById(inputId)
-  if (input.value === tema) {
-    input.value = ''
-  } else {
-    input.value = tema
-  }
-  fecharDropdown(inputId === 'tema-questao' ? 'tema-dropdown' : 'edit-tema-dropdown')
+  if (!input) return
+  input.value = (input.value === tema) ? '' : tema
+  const dropdownId = inputId === 'tema-questao' ? 'tema-dropdown' : 'edit-tema-dropdown'
+  const dropdown = document.getElementById(dropdownId)
+  if (dropdown) dropdown.style.display = 'none'
   renderTemasTags(inputId, tagsId)
 }
 
 function mostrarTemas(inputId, dropdownId) {
+  _dropdownAberto = true
   filtrarTemas(document.getElementById(inputId)?.value || '', inputId, dropdownId)
   const tagsId = inputId === 'tema-questao' ? 'temas-tags' : 'edit-temas-tags'
   renderTemasTags(inputId, tagsId)
@@ -1902,28 +1901,34 @@ function filtrarTemas(valor, inputId, dropdownId) {
   const filtrados = valor
     ? temas.filter(t => t.toLowerCase().includes(valor.toLowerCase()))
     : temas
+  const tagsId = inputId === 'tema-questao' ? 'temas-tags' : 'edit-temas-tags'
 
   if (!filtrados.length && !valor) { dropdown.style.display = 'none'; return }
 
-  const tagsId = inputId === 'tema-questao' ? 'temas-tags' : 'edit-temas-tags'
   let html = filtrados.map(t => `
-    <div class="tema-dropdown-item" onmousedown="event.preventDefault();selecionarTema('${t.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
+    <div class="tema-dropdown-item"
+      onclick="selecionarTema('${t.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}');event.stopPropagation()">
       <i class="fas fa-tag" style="font-size:0.7rem;margin-right:6px;color:var(--accent)"></i>${t}
     </div>`).join('')
 
-  if (valor && !temas.includes(valor)) {
-    html += `<div class="tema-dropdown-novo" onmousedown="event.preventDefault();selecionarTema('${valor.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
+  if (valor && !temas.find(t => t.toLowerCase() === valor.toLowerCase())) {
+    html += `<div class="tema-dropdown-novo"
+      onclick="selecionarTema('${valor.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}');event.stopPropagation()">
       <i class="fas fa-plus" style="margin-right:6px"></i>Criar tema: <strong>${valor}</strong>
     </div>`
   }
 
   dropdown.innerHTML = html
-  dropdown.style.display = filtrados.length || valor ? 'block' : 'none'
+  dropdown.style.display = 'block'
 }
 
 function fecharDropdown(dropdownId) {
-  const el = document.getElementById(dropdownId)
-  if (el) el.style.display = 'none'
+  // Pequeno delay para permitir que o click no item seja processado primeiro
+  setTimeout(() => {
+    const el = document.getElementById(dropdownId)
+    if (el) el.style.display = 'none'
+    _dropdownAberto = false
+  }, 200)
 }
 
 // ===== OCR — LEITURA DE PRINT =====
