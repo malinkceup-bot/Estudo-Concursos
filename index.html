@@ -1873,7 +1873,7 @@ function renderTemasTags(inputId, tagsId) {
 
   const valorAtual = document.getElementById(inputId)?.value || ''
   tagsEl.innerHTML = temas.map(t => `
-    <span class="tema-tag ${valorAtual === t ? 'selecionada' : ''}" onclick="selecionarTema('${t.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
+    <span class="tema-tag ${valorAtual === t ? 'selecionada' : ''}" onmousedown="event.preventDefault();selecionarTema('${t.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
       <i class="fas fa-tag" style="font-size:0.65rem"></i>${t}
     </span>`).join('')
 }
@@ -1907,12 +1907,12 @@ function filtrarTemas(valor, inputId, dropdownId) {
 
   const tagsId = inputId === 'tema-questao' ? 'temas-tags' : 'edit-temas-tags'
   let html = filtrados.map(t => `
-    <div class="tema-dropdown-item" onmousedown="selecionarTema('${t.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
+    <div class="tema-dropdown-item" onmousedown="event.preventDefault();selecionarTema('${t.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
       <i class="fas fa-tag" style="font-size:0.7rem;margin-right:6px;color:var(--accent)"></i>${t}
     </div>`).join('')
 
   if (valor && !temas.includes(valor)) {
-    html += `<div class="tema-dropdown-novo" onmousedown="selecionarTema('${valor.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
+    html += `<div class="tema-dropdown-novo" onmousedown="event.preventDefault();selecionarTema('${valor.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
       <i class="fas fa-plus" style="margin-right:6px"></i>Criar tema: <strong>${valor}</strong>
     </div>`
   }
