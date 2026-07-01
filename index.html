@@ -1954,7 +1954,15 @@ function ocrProcessar(e) {
 }
 
 async function ocrLerImagem(file) {
-  // Mostrar preview
+  const status = document.getElementById('ocr-status')
+  const msg = document.getElementById('ocr-msg')
+  const spinner = document.getElementById('ocr-spinner')
+  status.style.display = 'block'
+  msg.style.color = ''
+  spinner.style.display = 'block'
+  msg.textContent = 'Preparando imagem...'
+
+  // Mostrar preview da imagem original
   const reader = new FileReader()
   reader.onload = ev => {
     const prev = document.getElementById('ocr-preview')
@@ -1963,32 +1971,41 @@ async function ocrLerImagem(file) {
   }
   reader.readAsDataURL(file)
 
-  // Mostrar status
-  const status = document.getElementById('ocr-status')
-  const msg = document.getElementById('ocr-msg')
-  const spinner = document.getElementById('ocr-spinner')
-  status.style.display = 'block'
-  msg.textContent = 'Carregando leitor de texto...'
-
   try {
+    // PRÉ-PROCESSAMENTO
+    const imagemProcessada = await preprocessarImagem(file)
+    msg.textContent = 'Carregando leitor de texto...'
+
     const worker = await Tesseract.createWorker('por', 1, {
       logger: m => {
         if (m.status === 'recognizing text') {
           msg.textContent = `Lendo texto... ${Math.round(m.progress * 100)}%`
+        } else if (m.status === 'loading tesseract core') {
+          msg.textContent = 'Carregando núcleo...'
+        } else if (m.status === 'initializing api') {
+          msg.textContent = 'Inicializando...'
         }
       }
     })
 
-    msg.textContent = 'Processando imagem...'
-    const { data: { text } } = await worker.recognize(file)
+    await worker.setParameters({
+      preserve_interword_spaces: '1',
+    })
+
+    msg.textContent = 'Reconhecendo texto...'
+    const { data: { text, confidence } } = await worker.recognize(imagemProcessada)
     await worker.terminate()
 
-    // Processar o texto extraído
     ocrProcessarTexto(text)
 
     spinner.style.display = 'none'
-    msg.innerHTML = '✅ Texto lido! Confira os campos abaixo e ajuste se necessário.'
-    msg.style.color = 'var(--green)'
+    if (confidence < 30) {
+      msg.innerHTML = `⚠️ Qualidade baixa (${Math.round(confidence)}%). Verifique os campos.`
+      msg.style.color = 'var(--yellow)'
+    } else {
+      msg.innerHTML = `✅ Texto lido com ${Math.round(confidence)}% de confiança! Confira os campos.`
+      msg.style.color = 'var(--green)'
+    }
 
   } catch(e) {
     spinner.style.display = 'none'
@@ -1998,49 +2015,91 @@ async function ocrLerImagem(file) {
   }
 }
 
-function ocrProcessarTexto(texto) {
-  // Limpar texto
-  const linhas = texto.split('\n').map(l => l.trim()).filter(l => l.length > 1)
+async function preprocessarImagem(file) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
 
-  // Detectar padrões de alternativas: A) B) C) D) E) ou a) b) c) d) e)
-  const regexAlt = /^([A-Ea-e])[)\.\-]\s*(.+)/
+      // Escalar para melhor resolução
+      const escala = Math.max(1, 2000 / img.width)
+      canvas.width = img.width * escala
+      canvas.height = img.height * escala
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+      // Converter para preto e branco com alto contraste
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const data = imageData.data
+      for (let i = 0; i < data.length; i += 4) {
+        const cinza = 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2]
+        const valor = cinza > 128 ? 255 : 0
+        data[i] = data[i+1] = data[i+2] = valor
+      }
+      ctx.putImageData(imageData, 0, 0)
+      URL.revokeObjectURL(url)
+      canvas.toBlob(blob => resolve(blob), 'image/png')
+    }
+    img.src = url
+  })
+}
+
+function ocrProcessarTexto(texto) {
+  // LIMPEZA DO TEXTO
+  const linhas = texto.split('\n')
+    .map(l => l.trim()
+      .replace(/\s{2,}/g, ' ')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"')
+    )
+    .filter(l => l.length > 1)
+
+  // DETECTAR ALTERNATIVAS — suporta A) A. A- (A) a) a.
+  const regexAlt = /^[\(\[]?([A-Ea-e])[\)\]\.\-\s:]\s*(.+)/
   const alternativas = { A: '', B: '', C: '', D: '', E: '' }
   const enunciadoLinhas = []
   let dentroAlt = false
   let ultimaLetra = null
 
-  linhas.forEach(linha => {
+  for (const linha of linhas) {
     const match = linha.match(regexAlt)
     if (match) {
       dentroAlt = true
       ultimaLetra = match[1].toUpperCase()
-      alternativas[ultimaLetra] = match[2].trim()
-    } else if (dentroAlt && ultimaLetra) {
-      // Continuação da alternativa anterior
+      alternativas[ultimaLetra] = match[2].replace(/^[)\.\.\-\s]+/, '').trim()
+    } else if (dentroAlt && ultimaLetra && linha.length > 2) {
       alternativas[ultimaLetra] += ' ' + linha
-    } else {
+    } else if (!dentroAlt) {
       enunciadoLinhas.push(linha)
     }
-  })
-
-  // Preencher enunciado
-  const enunciado = enunciadoLinhas.join(' ').trim()
-  if (enunciado) document.getElementById('enunciado-questao').value = enunciado
-
-  // Preencher alternativas
-  if (alternativas.A) document.getElementById('alt-a').value = alternativas.A.trim()
-  if (alternativas.B) document.getElementById('alt-b').value = alternativas.B.trim()
-  if (alternativas.C) document.getElementById('alt-c').value = alternativas.C.trim()
-  if (alternativas.D) document.getElementById('alt-d').value = alternativas.D.trim()
-  if (alternativas.E) document.getElementById('alt-e').value = alternativas.E.trim()
-
-  // Verificar se é questão Certo/Errado
-  const textoBaixo = texto.toLowerCase()
-  if (!alternativas.A && (textoBaixo.includes('certo') || textoBaixo.includes('errado'))) {
-    notif('💡 Parece ser questão Certo/Errado! Selecione o gabarito abaixo.', 'ok')
   }
 
-  notif('✅ Campos preenchidos! Confira e ajuste o que precisar.')
+  // PREENCHER ENUNCIADO
+  const enunciado = enunciadoLinhas.join(' ').replace(/\s{2,}/g, ' ').trim()
+  if (enunciado) document.getElementById('enunciado-questao').value = enunciado
+
+  // PREENCHER ALTERNATIVAS
+  const temAlts = Object.values(alternativas).some(v => v)
+  if (temAlts) {
+    if (alternativas.A) document.getElementById('alt-a').value = alternativas.A.trim()
+    if (alternativas.B) document.getElementById('alt-b').value = alternativas.B.trim()
+    if (alternativas.C) document.getElementById('alt-c').value = alternativas.C.trim()
+    if (alternativas.D) document.getElementById('alt-d').value = alternativas.D.trim()
+    if (alternativas.E) document.getElementById('alt-e').value = alternativas.E.trim()
+  }
+
+  // AVISOS INTELIGENTES
+  const textoLower = texto.toLowerCase()
+  const ehCertoErrado = !temAlts && (textoLower.includes('certo') || textoLower.includes('errado'))
+  if (ehCertoErrado) {
+    notif('💡 Questão Certo/Errado detectada! Selecione o gabarito.', 'ok')
+  } else if (!temAlts) {
+    notif('⚠️ Não detectei alternativas. Preencha manualmente se necessário.', 'ok')
+  } else {
+    const qtd = Object.values(alternativas).filter(v => v).length
+    notif(`✅ ${qtd} alternativa${qtd !== 1 ? 's' : ''} detectada${qtd !== 1 ? 's' : ''}! Confira os campos.`)
+  }
 }
 
 // ===== DRAG AND DROP =====
