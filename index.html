@@ -80,6 +80,28 @@
   .btn-full { width: 100%; justify-content: center; }
   .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
 
+  /* TAGS DE TEMA */
+  .tema-tag {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 10px; font-size: 0.75rem;
+    color: var(--text2); cursor: pointer; transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .tema-tag:hover { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,0.08); }
+  .tema-tag.selecionada { background: rgba(79,142,247,0.15); border-color: var(--accent); color: var(--accent); }
+
+  .tema-dropdown-item {
+    padding: 8px 12px; font-size: 0.85rem; cursor: pointer;
+    color: var(--text); transition: background 0.15s; border-radius: 6px;
+  }
+  .tema-dropdown-item:hover { background: var(--surface2); color: var(--accent); }
+  .tema-dropdown-novo {
+    padding: 8px 12px; font-size: 0.85rem; cursor: pointer;
+    color: var(--green); transition: background 0.15s; border-radius: 6px;
+    border-top: 1px solid var(--border); margin-top: 2px;
+  }
+  .tema-dropdown-novo:hover { background: var(--surface2); }
+
   /* QUESTÃO MINIMALISTA */
   .questao-mini {
     background: var(--surface); border: 1px solid var(--border);
@@ -502,8 +524,13 @@
 
       <!-- TEMA -->
       <div class="form-group">
-        <label><i class="fas fa-tag" style="margin-right:5px;color:var(--yellow)"></i>Tema Específico <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(ex: Complemento Nominal, Protocolo, Posse...)</span></label>
-        <input type="text" id="tema-questao" placeholder="Do que se trata essa questão especificamente?">
+        <label><i class="fas fa-tag" style="margin-right:5px;color:var(--yellow)"></i>Tema Específico <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(selecione ou digite um novo)</span></label>
+        <div style="position:relative">
+          <input type="text" id="tema-questao" placeholder="Digite ou selecione um tema..." oninput="filtrarTemas(this.value, 'tema-questao', 'tema-dropdown')" onfocus="mostrarTemas('tema-questao', 'tema-dropdown')" onblur="setTimeout(()=>fecharDropdown('tema-dropdown'),200)" autocomplete="off">
+          <div id="tema-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-radius:8px;max-height:180px;overflow-y:auto;z-index:999;margin-top:4px"></div>
+        </div>
+        <!-- Tags de temas usados recentemente -->
+        <div id="temas-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
       </div>
 
       <!-- ENUNCIADO -->
@@ -711,7 +738,6 @@
       <div style="font-size:0.75rem;color:var(--text2);margin-bottom:16px;word-break:break-all" id="usuario-supa-url"></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-danger" onclick="fazerLogout()"><i class="fas fa-sign-out-alt"></i> Sair da conta</button>
-        <button class="btn btn-ghost" onclick="resetarConfig()" style="font-size:0.8rem"><i class="fas fa-redo"></i> Trocar Supabase</button>
       </div>
     </div>
   </div>
@@ -778,7 +804,14 @@
     <input type="hidden" id="edit-id">
     <div class="form-group"><label>Número</label><input type="text" id="edit-num"></div>
     <div class="form-group"><label>Matéria</label><select id="edit-materia"></select></div>
-    <div class="form-group"><label>Tema</label><input type="text" id="edit-tema"></div>
+    <div class="form-group">
+      <label>Tema</label>
+      <div style="position:relative">
+        <input type="text" id="edit-tema" placeholder="Digite ou selecione um tema..." oninput="filtrarTemas(this.value, 'edit-tema', 'edit-tema-dropdown')" onfocus="mostrarTemas('edit-tema', 'edit-tema-dropdown')" onblur="setTimeout(()=>fecharDropdown('edit-tema-dropdown'),200)" autocomplete="off">
+        <div id="edit-tema-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-radius:8px;max-height:180px;overflow-y:auto;z-index:9999;margin-top:4px"></div>
+      </div>
+      <div id="edit-temas-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+    </div>
     <div class="form-group"><label>Gabarito</label><input type="text" id="edit-gabarito"></div>
     <div class="form-group"><label>Anotação</label><textarea id="edit-anotacao"></textarea></div>
     <div class="form-group"><label>Link do Vídeo</label><input type="url" id="edit-video"></div>
@@ -1161,6 +1194,7 @@ function goPage(id) {
   if (id === 'mapas') renderMapas()
   if (id === 'config') renderConfig()
   if (id === 'cadastro' || id === 'simulado' || id === 'mapas') popularSelects()
+  if (id === 'cadastro') setTimeout(() => renderTemasTags('tema-questao', 'temas-tags'), 100)
 }
 
 // ===== POPULAR SELECTS =====
@@ -1575,6 +1609,7 @@ function abrirEditar(id) {
   document.getElementById('edit-anotacao').value = q.anotacao || ''
   document.getElementById('edit-video').value = q.video || ''
   document.getElementById('modal-editar').classList.add('open')
+  setTimeout(() => renderTemasTags('edit-tema', 'edit-temas-tags'), 100)
 }
 function fecharEditar() { document.getElementById('modal-editar').classList.remove('open') }
 async function salvarEdicao() {
@@ -1795,6 +1830,79 @@ function resetSimulado() {
   document.getElementById('simulado-config').style.display = 'block'
   document.getElementById('simulado-ativo').style.display = 'none'
   document.getElementById('simulado-fim').style.display = 'none'
+}
+
+// ===== SISTEMA DE TAGS DE TEMA =====
+function getTemasCadastrados() {
+  const temas = questoes
+    .map(q => q.tema)
+    .filter(t => t && t.trim())
+    .reduce((acc, t) => {
+      acc[t] = (acc[t] || 0) + 1
+      return acc
+    }, {})
+  return Object.entries(temas).sort((a,b) => b[1]-a[1]).map(([t]) => t)
+}
+
+function renderTemasTags(inputId, tagsId) {
+  const tagsEl = document.getElementById(tagsId)
+  if (!tagsEl) return
+  const temas = getTemasCadastrados().slice(0, 12)
+  if (!temas.length) { tagsEl.innerHTML = ''; return }
+
+  const valorAtual = document.getElementById(inputId)?.value || ''
+  tagsEl.innerHTML = temas.map(t => `
+    <span class="tema-tag ${valorAtual === t ? 'selecionada' : ''}" onclick="selecionarTema('${t.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
+      <i class="fas fa-tag" style="font-size:0.65rem"></i>${t}
+    </span>`).join('')
+}
+
+function selecionarTema(tema, inputId, tagsId) {
+  const input = document.getElementById(inputId)
+  if (input.value === tema) {
+    input.value = ''
+  } else {
+    input.value = tema
+  }
+  fecharDropdown(inputId === 'tema-questao' ? 'tema-dropdown' : 'edit-tema-dropdown')
+  renderTemasTags(inputId, tagsId)
+}
+
+function mostrarTemas(inputId, dropdownId) {
+  filtrarTemas(document.getElementById(inputId)?.value || '', inputId, dropdownId)
+  const tagsId = inputId === 'tema-questao' ? 'temas-tags' : 'edit-temas-tags'
+  renderTemasTags(inputId, tagsId)
+}
+
+function filtrarTemas(valor, inputId, dropdownId) {
+  const dropdown = document.getElementById(dropdownId)
+  if (!dropdown) return
+  const temas = getTemasCadastrados()
+  const filtrados = valor
+    ? temas.filter(t => t.toLowerCase().includes(valor.toLowerCase()))
+    : temas
+
+  if (!filtrados.length && !valor) { dropdown.style.display = 'none'; return }
+
+  const tagsId = inputId === 'tema-questao' ? 'temas-tags' : 'edit-temas-tags'
+  let html = filtrados.map(t => `
+    <div class="tema-dropdown-item" onmousedown="selecionarTema('${t.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
+      <i class="fas fa-tag" style="font-size:0.7rem;margin-right:6px;color:var(--accent)"></i>${t}
+    </div>`).join('')
+
+  if (valor && !temas.includes(valor)) {
+    html += `<div class="tema-dropdown-novo" onmousedown="selecionarTema('${valor.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
+      <i class="fas fa-plus" style="margin-right:6px"></i>Criar tema: <strong>${valor}</strong>
+    </div>`
+  }
+
+  dropdown.innerHTML = html
+  dropdown.style.display = filtrados.length || valor ? 'block' : 'none'
+}
+
+function fecharDropdown(dropdownId) {
+  const el = document.getElementById(dropdownId)
+  if (el) el.style.display = 'none'
 }
 
 // ===== OCR — LEITURA DE PRINT =====
