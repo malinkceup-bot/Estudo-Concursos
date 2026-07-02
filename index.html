@@ -713,6 +713,20 @@
       <div id="lista-temas-config"></div>
     </div>
 
+    <div class="card" id="card-migracao" style="display:none">
+      <div class="card-title">☁️ Migrar Mapas para Cloudinary</div>
+      <div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px" id="migracao-info"></div>
+      <div id="migracao-progresso" style="display:none;margin-bottom:12px">
+        <div style="background:var(--surface2);border-radius:6px;height:10px;overflow:hidden;margin-bottom:6px">
+          <div id="migracao-barra" style="background:var(--accent);height:10px;border-radius:6px;width:0%;transition:width 0.3s"></div>
+        </div>
+        <div id="migracao-status" style="font-size:0.8rem;color:var(--text2)"></div>
+      </div>
+      <button class="btn btn-primary" id="btn-migrar" onclick="migrarMapasCloudinary()">
+        <i class="fas fa-cloud-upload-alt"></i> Migrar agora
+      </button>
+    </div>
+
     <div class="card">
       <div class="card-title">💾 Backup dos Dados</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -2118,19 +2132,43 @@ function dropImagem(e) {
   if (!file || !file.type.startsWith('image/')) { notif('Arquivo inválido!','error'); return }
   lerImagemComoBase64(file)
 }
+
+// ===== CLOUDINARY CONFIG =====
+const CLOUDINARY_CLOUD = 'hdrcw3tn'
+const CLOUDINARY_PRESET = 'u3sfojz2'
+
+let mapaArquivo = null  // guarda o arquivo original para upload
+
 function lerImagemComoBase64(file) {
+  mapaArquivo = file  // guarda para upload posterior
   const reader = new FileReader()
   reader.onload = (ev) => {
-    mapaImgBase64 = ev.target.result
     const p = document.getElementById('mapa-preview')
-    p.src = mapaImgBase64; p.style.display = 'block'
+    p.src = ev.target.result
+    p.style.display = 'block'
     notif('✅ Imagem carregada!')
   }
   reader.readAsDataURL(file)
 }
 
+async function uploadCloudinary(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('upload_preset', CLOUDINARY_PRESET)
+  formData.append('folder', 'estudo-concursos')
+
+  const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+    method: 'POST',
+    body: formData
+  })
+
+  if (!r.ok) throw new Error('Erro no upload para Cloudinary')
+  const data = await r.json()
+  return data.secure_url  // URL permanente da imagem
+}
+
 // ===== MAPAS =====
-let mapaImgBase64 = null
+let mapaImgBase64 = null  // mantido para compatibilidade com mapas antigos
 let mapaTabAtiva = 'todas'
 
 function abrirModalAddMapa() {
@@ -2139,6 +2177,7 @@ function abrirModalAddMapa() {
   document.getElementById('mapa-materia').value = ''
   document.getElementById('mapa-preview').style.display = 'none'
   mapaImgBase64 = null
+  mapaArquivo = null
   document.getElementById('modal-add-mapa').classList.add('open')
 }
 function fecharModalAddMapa() { document.getElementById('modal-add-mapa').classList.remove('open') }
@@ -2151,15 +2190,29 @@ function previewMapa(e) {
 async function salvarMapa() {
   const titulo = document.getElementById('mapa-titulo').value.trim()
   const materia = document.getElementById('mapa-materia').value
-  if(!titulo || !mapaImgBase64) { notif('Preencha o título e selecione uma imagem!','error'); return }
+  if (!titulo || !mapaArquivo) { notif('Preencha o título e selecione uma imagem!', 'error'); return }
+
+  mostrarLoading('Enviando imagem...')
+  let imgUrl = ''
+  try {
+    imgUrl = await uploadCloudinary(mapaArquivo)
+  } catch(e) {
+    esconderLoading()
+    notif('Erro ao enviar imagem. Tente novamente!', 'error')
+    return
+  }
+
   mostrarLoading('Salvando mapa...')
-  const resultado = await supa.insert(TABELA_MAPAS, { titulo, materia, img: mapaImgBase64, data: new Date().toLocaleDateString('pt-BR') })
+  const resultado = await supa.insert(TABELA_MAPAS, {
+    titulo, materia, img: imgUrl, data: new Date().toLocaleDateString('pt-BR')
+  })
   esconderLoading()
-  if (!resultado) { notif('Erro ao salvar mapa!','error'); return }
+  if (!resultado) { notif('Erro ao salvar mapa!', 'error'); return }
   mapas.push(resultado[0])
   fecharModalAddMapa()
   notif('✅ Mapa mental salvo!')
   mapaTabAtiva = materia || 'todas'
+  mapaArquivo = null
   renderMapas()
 }
 
@@ -2349,6 +2402,17 @@ function renderConfig() {
   // Temas
   renderTemasConfig()
 
+  // Migração Cloudinary
+  const mapasBase64 = mapas.filter(m => m.img && m.img.startsWith('data:'))
+  const cardMigracao = document.getElementById('card-migracao')
+  const migracaoInfo = document.getElementById('migracao-info')
+  if (mapasBase64.length > 0) {
+    cardMigracao.style.display = 'block'
+    migracaoInfo.innerHTML = `Você tem <strong style="color:var(--yellow)">${mapasBase64.length} mapa${mapasBase64.length!==1?'s':''}</strong> ainda salvos no Supabase (base64). Migre para o Cloudinary para liberar espaço!`
+  } else {
+    cardMigracao.style.display = 'none'
+  }
+
   const emailEl = document.getElementById('usuario-email')
   if (emailEl && usuarioAtual) emailEl.textContent = usuarioAtual.email
   const supaEl = document.getElementById('usuario-supa-url')
@@ -2358,7 +2422,71 @@ function renderConfig() {
   calcularConsumo()
 }
 
-function renderTemasConfig() {
+async function migrarMapasCloudinary() {
+  const mapasBase64 = mapas.filter(m => m.img && m.img.startsWith('data:'))
+  if (!mapasBase64.length) { notif('Nenhum mapa para migrar!'); return }
+
+  const btn = document.getElementById('btn-migrar')
+  btn.disabled = true
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Migrando...'
+
+  const progresso = document.getElementById('migracao-progresso')
+  const barra = document.getElementById('migracao-barra')
+  const status = document.getElementById('migracao-status')
+  progresso.style.display = 'block'
+
+  let sucesso = 0
+  let erro = 0
+
+  for (let i = 0; i < mapasBase64.length; i++) {
+    const mapa = mapasBase64[i]
+    status.textContent = `Migrando ${i+1} de ${mapasBase64.length}: "${mapa.titulo}"...`
+    barra.style.width = `${Math.round(((i) / mapasBase64.length) * 100)}%`
+
+    try {
+      // Converter base64 para blob
+      const blob = base64ParaBlob(mapa.img)
+      // Upload para Cloudinary
+      const url = await uploadCloudinary(blob)
+      // Atualizar no Supabase com a nova URL
+      await supa.update(TABELA_MAPAS, mapa.id, { img: url })
+      // Atualizar na memória
+      mapas = mapas.map(m => String(m.id) === String(mapa.id) ? { ...m, img: url } : m)
+      sucesso++
+    } catch(e) {
+      console.error(`Erro ao migrar mapa ${mapa.titulo}:`, e)
+      erro++
+    }
+  }
+
+  barra.style.width = '100%'
+  barra.style.background = erro ? 'var(--yellow)' : 'var(--green)'
+
+  if (erro === 0) {
+    status.textContent = `✅ ${sucesso} mapa${sucesso!==1?'s':''} migrado${sucesso!==1?'s':''} com sucesso!`
+    status.style.color = 'var(--green)'
+    notif(`✅ Migração concluída! ${sucesso} mapas no Cloudinary!`)
+  } else {
+    status.textContent = `⚠️ ${sucesso} migrado${sucesso!==1?'s':''}, ${erro} com erro.`
+    status.style.color = 'var(--yellow)'
+    notif(`Migração parcial: ${sucesso} ok, ${erro} com erro.`, 'error')
+  }
+
+  btn.innerHTML = '<i class="fas fa-check"></i> Migração concluída'
+  renderMapas()
+  renderConfig()
+}
+
+function base64ParaBlob(base64) {
+  const partes = base64.split(',')
+  const tipo = partes[0].match(/:(.*?);/)[1]
+  const binario = atob(partes[1])
+  const array = new Uint8Array(binario.length)
+  for (let i = 0; i < binario.length; i++) {
+    array[i] = binario.charCodeAt(i)
+  }
+  return new Blob([array], { type: tipo })
+}
   const el = document.getElementById('lista-temas-config')
   if (!el) return
   const temas = getTemasCadastrados()
