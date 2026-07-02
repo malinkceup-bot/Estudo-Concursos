@@ -2487,6 +2487,8 @@ function base64ParaBlob(base64) {
   }
   return new Blob([array], { type: tipo })
 }
+
+function renderTemasConfig() {
   const el = document.getElementById('lista-temas-config')
   if (!el) return
   const temas = getTemasCadastrados()
