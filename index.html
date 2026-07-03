@@ -282,41 +282,168 @@
 <body>
 
 <!-- TELA DE CONFIGURAÇÃO (primeira vez) -->
-<div id="tela-config-supa" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9997;align-items:center;justify-content:center;padding:20px;overflow-y:auto">
-  <div style="width:100%;max-width:420px;padding:20px 0">
+<div id="tela-config-supa" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9997;overflow-y:auto">
+  <div style="max-width:520px;margin:0 auto;padding:30px 20px">
+
+    <!-- HEADER -->
     <div style="text-align:center;margin-bottom:28px">
-      <div style="font-size:2.5rem;margin-bottom:8px">⚙️</div>
-      <div style="font-size:1.3rem;font-weight:700">Configurar meu Supabase</div>
-      <div style="font-size:0.85rem;color:var(--text2);margin-top:6px;line-height:1.5">Configure seu próprio banco de dados.<br>Seus dados serão 100% seus e independentes!</div>
+      <div style="font-size:2.5rem;margin-bottom:8px">📚</div>
+      <div style="font-size:1.4rem;font-weight:700">Estudo Concursos</div>
+      <div style="font-size:0.85rem;color:var(--text2);margin-top:6px;line-height:1.5">
+        Bem-vindo! Siga os passos abaixo para configurar sua conta.<br>
+        <strong style="color:var(--accent)">Seus dados serão 100% seus e independentes!</strong>
+      </div>
+    </div>
+
+    <!-- VISÃO GERAL -->
+    <div style="background:var(--surface2);border-radius:var(--radius);padding:16px;margin-bottom:20px;font-size:0.82rem;color:var(--text2);line-height:1.7">
+      <div style="font-weight:700;color:var(--text);margin-bottom:8px">📋 O que você vai precisar criar (tudo gratuito):</div>
+      <div>1️⃣ <strong style="color:var(--text)">Supabase</strong> — banco de dados para suas questões e anotações</div>
+      <div>2️⃣ <strong style="color:var(--text)">Cloudinary</strong> — armazenamento de imagens para seus mapas mentais</div>
+      <div style="margin-top:8px;color:var(--yellow)">⚠️ Não pule nenhum passo — o sistema não vai funcionar corretamente!</div>
+    </div>
+
+    <!-- ═══ SUPABASE ═══ -->
+    <div style="font-size:0.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;padding-left:4px">
+      ━━━ PARTE 1: SUPABASE ━━━
     </div>
 
     <!-- PASSO 1 -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:12px">
-      <div style="font-size:0.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Passo 1 — URL do projeto</div>
-      <div style="font-size:0.82rem;color:var(--text2);margin-bottom:10px;line-height:1.5">
-        No Supabase vá em <strong style="color:var(--text)">Settings → API</strong> e copie o <strong style="color:var(--text)">Project URL</strong>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="background:var(--accent);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0">1</span>
+        <span style="font-weight:700">Criar conta no Supabase</span>
       </div>
-      <input type="url" id="setup-url" placeholder="https://xxxxxxxxxxx.supabase.co">
+      <div style="font-size:0.82rem;color:var(--text2);line-height:1.6;margin-bottom:10px">
+        📌 Acesse <a href="https://supabase.com" target="_blank" style="color:var(--accent)">supabase.com</a> e crie uma conta gratuita<br>
+        📌 Clique em <strong style="color:var(--text)">New Project</strong> e crie um projeto<br>
+        📌 Aguarde 2 minutos para o projeto ficar pronto
+      </div>
     </div>
 
     <!-- PASSO 2 -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:12px">
-      <div style="font-size:0.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Passo 2 — Chave anon public</div>
-      <div style="font-size:0.82rem;color:var(--text2);margin-bottom:10px;line-height:1.5">
-        Na mesma página copie a chave <strong style="color:var(--text)">anon public</strong> (começa com eyJ...)
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="background:var(--accent);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0">2</span>
+        <span style="font-weight:700">Criar as tabelas no banco</span>
       </div>
-      <textarea id="setup-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="min-height:70px;font-size:0.75rem"></textarea>
+      <div style="font-size:0.82rem;color:var(--text2);line-height:1.6;margin-bottom:10px">
+        📌 No menu lateral clique em <strong style="color:var(--text)">SQL Editor</strong><br>
+        📌 Clique em <strong style="color:var(--text)">Create a new snippet</strong><br>
+        📌 Cole o SQL abaixo e clique em <strong style="color:var(--green)">Run ▶️</strong>
+      </div>
+      <div style="position:relative">
+        <pre style="background:var(--surface2);border-radius:8px;padding:12px;font-size:0.7rem;color:var(--text2);overflow-x:auto;line-height:1.5;white-space:pre-wrap">create table if not exists "Questões" (id bigint generated always as identity primary key);
+create table if not exists "Mapas" (id bigint generated always as identity primary key);
+create table if not exists "Matérias" (id bigint generated always as identity primary key);
+alter table "Questões" add column if not exists materia text;
+alter table "Questões" add column if not exists enunciado text;
+alter table "Questões" add column if not exists alternativas text;
+alter table "Questões" add column if not exists gabarito text;
+alter table "Questões" add column if not exists anotacao text;
+alter table "Questões" add column if not exists video text;
+alter table "Questões" add column if not exists dominada boolean default false;
+alter table "Questões" add column if not exists data text;
+alter table "Questões" add column if not exists tema text;
+alter table "Questões" add column if not exists created_at timestamptz default now();
+alter table "Mapas" add column if not exists titulo text;
+alter table "Mapas" add column if not exists materia text;
+alter table "Mapas" add column if not exists img text;
+alter table "Mapas" add column if not exists data text;
+alter table "Mapas" add column if not exists created_at timestamptz default now();
+alter table "Matérias" add column if not exists nome text;
+alter table "Matérias" add column if not exists created_at timestamptz default now();
+alter table "Questões" enable row level security;
+alter table "Mapas" enable row level security;
+alter table "Matérias" enable row level security;
+do $$ begin create policy "acesso autenticado" on "Questões" for all using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "acesso autenticado" on "Mapas" for all using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
+do $$ begin create policy "acesso autenticado" on "Matérias" for all using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;</pre>
+        <button onclick="copiarSQL()" style="position:absolute;top:8px;right:8px;background:var(--surface);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer">
+          <i class="fas fa-copy"></i> Copiar
+        </button>
+      </div>
     </div>
 
     <!-- PASSO 3 -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px">
-      <div style="font-size:0.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Passo 3 — Criar seu login</div>
-      <div style="font-size:0.82rem;color:var(--text2);margin-bottom:10px;line-height:1.5">
-        Defina como o app vai te chamar e suas credenciais de acesso
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="background:var(--accent);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0">3</span>
+        <span style="font-weight:700">Pegar as chaves do Supabase</span>
+      </div>
+      <div style="font-size:0.82rem;color:var(--text2);line-height:1.6;margin-bottom:10px">
+        📌 No menu lateral clique em <strong style="color:var(--text)">Settings ⚙️ → API</strong><br>
+        📌 Copie o <strong style="color:var(--text)">Project URL</strong><br>
+        📌 Copie a chave <strong style="color:var(--text)">anon public</strong> (começa com eyJ...)
+      </div>
+      <div class="form-group">
+        <label>Project URL</label>
+        <input type="url" id="setup-url" placeholder="https://xxxxxxxxxxx.supabase.co">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Chave anon public</label>
+        <textarea id="setup-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="min-height:60px;font-size:0.75rem"></textarea>
+      </div>
+    </div>
+
+    <!-- ═══ CLOUDINARY ═══ -->
+    <div style="font-size:0.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin:20px 0 10px;padding-left:4px">
+      ━━━ PARTE 2: CLOUDINARY (imagens) ━━━
+    </div>
+
+    <!-- PASSO 4 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="background:#f59e0b;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0">4</span>
+        <span style="font-weight:700">Criar conta no Cloudinary</span>
+      </div>
+      <div style="font-size:0.82rem;color:var(--text2);line-height:1.6">
+        📌 Acesse <a href="https://cloudinary.com" target="_blank" style="color:var(--accent)">cloudinary.com</a> e crie uma conta gratuita<br>
+        📌 No painel inicial (Dashboard) copie o <strong style="color:var(--text)">Cloud Name</strong>
+      </div>
+    </div>
+
+    <!-- PASSO 5 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="background:#f59e0b;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0">5</span>
+        <span style="font-weight:700">Criar Upload Preset no Cloudinary</span>
+      </div>
+      <div style="font-size:0.82rem;color:var(--text2);line-height:1.6;margin-bottom:10px">
+        📌 Clique em <strong style="color:var(--text)">Settings ⚙️ → Upload</strong><br>
+        📌 Role até <strong style="color:var(--text)">Upload Presets</strong><br>
+        📌 Clique em <strong style="color:var(--text)">Add upload preset</strong><br>
+        📌 Em <strong style="color:var(--text)">Signing Mode</strong> selecione <strong style="color:var(--green)">Unsigned</strong><br>
+        📌 Dê um nome (ex: <code style="background:var(--surface2);padding:1px 6px;border-radius:4px">meus-estudos</code>) e clique em <strong style="color:var(--text)">Save</strong><br>
+        📌 Copie o nome do preset criado
+      </div>
+      <div class="form-group">
+        <label>Cloud Name</label>
+        <input type="text" id="setup-cloud-name" placeholder="Ex: hdrcw3tn">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Upload Preset</label>
+        <input type="text" id="setup-cloud-preset" placeholder="Ex: meus-estudos">
+      </div>
+    </div>
+
+    <!-- ═══ CONTA ═══ -->
+    <div style="font-size:0.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin:20px 0 10px;padding-left:4px">
+      ━━━ PARTE 3: SUA CONTA ━━━
+    </div>
+
+    <!-- PASSO 6 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="background:var(--green);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0">6</span>
+        <span style="font-weight:700">Criar seu login</span>
+      </div>
+      <div style="font-size:0.82rem;color:var(--text2);line-height:1.6;margin-bottom:12px">
+        Defina como o app vai te chamar e suas credenciais de acesso.
       </div>
       <div class="form-group">
         <label>Seu Nome</label>
-        <input type="text" id="setup-nome" placeholder="Ex: Moisés, João, Maria...">
+        <input type="text" id="setup-nome" placeholder="Ex: João, Maria...">
       </div>
       <div class="form-group">
         <label>E-mail</label>
@@ -332,19 +459,16 @@
       <i class="fas fa-exclamation-circle"></i> <span id="setup-erro-msg"></span>
     </div>
 
-    <button class="btn btn-primary btn-full" onclick="finalizarSetup()" id="btn-setup">
-      <i class="fas fa-rocket"></i> Configurar e Entrar
+    <button class="btn btn-primary btn-full" onclick="finalizarSetup()" id="btn-setup" style="padding:14px">
+      <i class="fas fa-rocket"></i> Finalizar Configuração e Entrar
     </button>
 
     <div style="text-align:center;margin-top:14px">
       <button onclick="mostrarTelaLogin()" style="background:none;border:none;color:var(--text2);font-size:0.8rem;cursor:pointer;text-decoration:underline">
-        Já tenho configuração — fazer login
+        Já tenho conta — fazer login
       </button>
     </div>
 
-    <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-top:16px;font-size:0.78rem;color:var(--text2);line-height:1.6">
-      📋 <strong>Lembrete:</strong> Antes de continuar você precisa ter criado as tabelas no Supabase rodando o SQL fornecido.
-    </div>
   </div>
 </div>
 
@@ -756,6 +880,20 @@
       <div style="font-weight:600;color:var(--text);margin-bottom:12px" id="usuario-email"></div>
       <div style="font-size:0.85rem;color:var(--text2);margin-bottom:4px">Supabase:</div>
       <div style="font-size:0.75rem;color:var(--text2);margin-bottom:16px;word-break:break-all" id="usuario-supa-url"></div>
+
+      <div style="border-top:1px solid var(--border);margin:16px 0"></div>
+      <div style="font-size:0.8rem;font-weight:700;color:var(--yellow);margin-bottom:10px">☁️ Cloudinary (imagens)</div>
+      <div class="form-group">
+        <label>Cloud Name</label>
+        <input type="text" id="config-cloud-name" placeholder="Ex: hdrcw3tn">
+      </div>
+      <div class="form-group">
+        <label>Upload Preset</label>
+        <input type="text" id="config-cloud-preset" placeholder="Ex: meus-estudos">
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="salvarCloudinaryConfig()" style="margin-bottom:16px">
+        <i class="fas fa-save"></i> Salvar configuração Cloudinary
+      </button>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-danger" onclick="fazerLogout()"><i class="fas fa-sign-out-alt"></i> Sair da conta</button>
       </div>
@@ -981,6 +1119,7 @@ const supa = {
 const TABELA_QUESTOES = 'Questões'
 const TABELA_MAPAS = 'Mapas'
 const TABELA_MATERIAS = 'Matérias'
+const TABELA_CONFIG = 'Configurações'
 
 // Renovar token automaticamente a cada 50 minutos (antes de expirar em 60min)
 setInterval(() => {
@@ -1001,23 +1140,24 @@ document.addEventListener('visibilitychange', () => {
 async function finalizarSetup() {
   const url = document.getElementById('setup-url').value.trim().replace(/\/$/, '')
   const key = document.getElementById('setup-key').value.trim()
+  const cloudName = document.getElementById('setup-cloud-name').value.trim()
+  const cloudPreset = document.getElementById('setup-cloud-preset').value.trim()
   const nome = document.getElementById('setup-nome').value.trim()
   const email = document.getElementById('setup-email').value.trim()
   const senha = document.getElementById('setup-senha').value
 
   const erroEl = document.getElementById('setup-erro')
   const btnSetup = document.getElementById('btn-setup')
-
   erroEl.style.display = 'none'
 
-  if (!url || !key || !nome || !email || !senha) {
+  if (!url || !key || !cloudName || !cloudPreset || !nome || !email || !senha) {
     erroEl.style.display = 'block'
-    document.getElementById('setup-erro-msg').textContent = 'Preencha todos os campos incluindo seu nome!'
+    document.getElementById('setup-erro-msg').textContent = 'Preencha todos os campos!'
     return
   }
   if (!url.includes('supabase.co')) {
     erroEl.style.display = 'block'
-    document.getElementById('setup-erro-msg').textContent = 'URL inválida! Deve conter supabase.co'
+    document.getElementById('setup-erro-msg').textContent = 'URL do Supabase inválida! Deve conter supabase.co'
     return
   }
   if (senha.length < 6) {
@@ -1029,14 +1169,14 @@ async function finalizarSetup() {
   btnSetup.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Configurando...'
   btnSetup.disabled = true
 
-  // Salvar config primeiro
+  // Salvar config
   SUPA_URL = url
   SUPA_KEY = key
   localStorage.setItem('supa_url', url)
   localStorage.setItem('supa_key', key)
   localStorage.setItem('usuario_nome', nome)
-
-  // Testar conexão
+  localStorage.setItem('cloud_name', cloudName)
+  localStorage.setItem('cloud_preset', cloudPreset)
   try {
     const teste = await fetch(`${url}/rest/v1/`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` }
@@ -1044,8 +1184,8 @@ async function finalizarSetup() {
     if (!teste.ok && teste.status !== 404) throw new Error('Conexão falhou')
   } catch(e) {
     erroEl.style.display = 'block'
-    document.getElementById('setup-erro-msg').textContent = 'Não foi possível conectar. Verifique sua URL e tente novamente.'
-    btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Configurar e Entrar'
+    document.getElementById('setup-erro-msg').textContent = 'Não foi possível conectar ao Supabase. Verifique a URL e a chave.'
+    btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Finalizar Configuração e Entrar'
     btnSetup.disabled = false
     return
   }
@@ -1059,28 +1199,52 @@ async function finalizarSetup() {
   })
   const signUpData = await signUp.json()
 
-  // Verificar se criou com sucesso ou já existe
   if (!signUp.ok && signUpData.msg && signUpData.msg.includes('already registered')) {
     erroEl.style.display = 'block'
-    document.getElementById('setup-erro-msg').textContent = 'Este e-mail já está cadastrado. Clique em "Já tenho configuração" para fazer login.'
-    btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Configurar e Entrar'
+    document.getElementById('setup-erro-msg').textContent = 'Este e-mail já está cadastrado. Clique em "Já tenho conta" para fazer login.'
+    btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Finalizar Configuração e Entrar'
     btnSetup.disabled = false
     return
   }
 
-  // Mostrar sucesso e ir para login
   btnSetup.innerHTML = '<i class="fas fa-check"></i> Conta criada com sucesso!'
   btnSetup.style.background = 'var(--green)'
 
+  // Fazer login para obter token e salvar configs no Supabase
+  try {
+    const loginR = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: senha })
+    })
+    if (loginR.ok) {
+      const loginData = await loginR.json()
+      authToken = loginData.access_token
+      // Salvar Cloudinary no Supabase
+      await salvarConfiguracaoSupabase('cloud_name', cloudName)
+      await salvarConfiguracaoSupabase('cloud_preset', cloudPreset)
+      await salvarConfiguracaoSupabase('usuario_nome', nome)
+      authToken = null // limpar token, vai logar de novo na tela de login
+    }
+  } catch(e) {}
+
   setTimeout(() => {
-    // Preencher e-mail na tela de login automaticamente
     mostrarTelaLogin()
     document.getElementById('login-email').value = email
     notif(`✅ Conta criada! Faça login para entrar, ${nome}!`)
-    btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Configurar e Entrar'
+    btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Finalizar Configuração e Entrar'
     btnSetup.style.background = ''
     btnSetup.disabled = false
   }, 1500)
+}
+
+function copiarSQL() {
+  const sql = document.querySelector('#tela-config-supa pre').textContent
+  navigator.clipboard.writeText(sql).then(() => {
+    notif('✅ SQL copiado!')
+  }).catch(() => {
+    notif('Copie o texto manualmente!', 'error')
+  })
 }
 
 // ===== AUTH =====
@@ -2134,8 +2298,12 @@ function dropImagem(e) {
 }
 
 // ===== CLOUDINARY CONFIG =====
-const CLOUDINARY_CLOUD = 'hdrcw3tn'
-const CLOUDINARY_PRESET = 'u3sfojz2'
+function getCloudinaryCloud() {
+  return localStorage.getItem('cloud_name') || ''
+}
+function getCloudinaryPreset() {
+  return localStorage.getItem('cloud_preset') || ''
+}
 
 let mapaArquivo = null  // guarda o arquivo original para upload
 
@@ -2154,10 +2322,10 @@ function lerImagemComoBase64(file) {
 async function uploadCloudinary(file) {
   const formData = new FormData()
   formData.append('file', file)
-  formData.append('upload_preset', CLOUDINARY_PRESET)
+  formData.append('upload_preset', getCloudinaryPreset())
   formData.append('folder', 'estudo-concursos')
 
-  const r = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+  const r = await fetch(`https://api.cloudinary.com/v1_1/${getCloudinaryCloud()}/image/upload`, {
     method: 'POST',
     body: formData
   })
@@ -2191,6 +2359,11 @@ async function salvarMapa() {
   const titulo = document.getElementById('mapa-titulo').value.trim()
   const materia = document.getElementById('mapa-materia').value
   if (!titulo || !mapaArquivo) { notif('Preencha o título e selecione uma imagem!', 'error'); return }
+
+  if (!getCloudinaryCloud() || !getCloudinaryPreset()) {
+    notif('⚠️ Configure o Cloudinary em Config → Conta antes de salvar mapas!', 'error')
+    return
+  }
 
   mostrarLoading('Enviando imagem...')
   let imgUrl = ''
@@ -2365,10 +2538,60 @@ function fecharModal() {
 }
 
 // ===== GERENCIAR MATÉRIAS =====
+function salvarCloudinaryConfig() {
+  const cloudName = document.getElementById('config-cloud-name').value.trim()
+  const cloudPreset = document.getElementById('config-cloud-preset').value.trim()
+  if (!cloudName || !cloudPreset) { notif('Preencha Cloud Name e Upload Preset!', 'error'); return }
+  localStorage.setItem('cloud_name', cloudName)
+  localStorage.setItem('cloud_preset', cloudPreset)
+  // Salvar no Supabase também
+  salvarConfiguracaoSupabase('cloud_name', cloudName)
+  salvarConfiguracaoSupabase('cloud_preset', cloudPreset)
+  notif('✅ Cloudinary configurado e salvo!')
+}
+
+async function salvarConfiguracaoSupabase(chave, valor) {
+  try {
+    // Verificar se já existe
+    const r = await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(TABELA_CONFIG)}?chave=eq.${chave}`, {
+      headers: getHeaders()
+    })
+    const existentes = await r.json()
+    if (existentes && existentes.length > 0) {
+      // Atualizar
+      await fetch(`${SUPA_URL}/rest/v1/${encodeURIComponent(TABELA_CONFIG)}?chave=eq.${chave}`, {
+        method: 'PATCH',
+        headers: getHeaders({ Prefer: 'return=representation' }),
+        body: JSON.stringify({ valor })
+      })
+    } else {
+      // Inserir
+      await supa.insert(TABELA_CONFIG, { chave, valor })
+    }
+  } catch(e) {
+    console.error('Erro ao salvar configuração:', e)
+  }
+}
+
+async function carregarConfiguracoesSupabase() {
+  try {
+    const configs = await supa.get(TABELA_CONFIG)
+    if (!configs || !configs.length) return
+    configs.forEach(c => {
+      if (c.chave && c.valor) {
+        localStorage.setItem(c.chave, c.valor)
+      }
+    })
+  } catch(e) {
+    console.error('Erro ao carregar configurações:', e)
+  }
+}
+
 function salvarNome() {
   const nome = document.getElementById('config-nome').value.trim()
   if (!nome) { notif('Digite seu nome!', 'error'); return }
   localStorage.setItem('usuario_nome', nome)
+  salvarConfiguracaoSupabase('usuario_nome', nome)
   notif(`✅ Nome atualizado para ${nome}!`)
   renderDashboard()
 }
@@ -2419,6 +2642,10 @@ function renderConfig() {
   if (supaEl) supaEl.textContent = SUPA_URL
   const nomeEl = document.getElementById('config-nome')
   if (nomeEl) nomeEl.value = localStorage.getItem('usuario_nome') || ''
+  const cloudNameEl = document.getElementById('config-cloud-name')
+  if (cloudNameEl) cloudNameEl.value = localStorage.getItem('cloud_name') || ''
+  const cloudPresetEl = document.getElementById('config-cloud-preset')
+  if (cloudPresetEl) cloudPresetEl.value = localStorage.getItem('cloud_preset') || ''
   calcularConsumo()
 }
 
@@ -2748,6 +2975,10 @@ async function carregarDados() {
         if (r) materias.push(r[0])
       }
     }
+
+    // Carregar configurações do Supabase (Cloudinary etc)
+    await carregarConfiguracoesSupabase()
+
     const el = document.getElementById('usuario-email')
     if (el && usuarioAtual) el.textContent = usuarioAtual.email
   } catch(e) {
