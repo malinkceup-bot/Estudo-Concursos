@@ -419,7 +419,7 @@ do $$ begin create policy "acesso autenticado" on "Matérias" for all using (aut
       </div>
       <div class="form-group">
         <label>Cloud Name</label>
-        <input type="text" id="setup-cloud-name" placeholder="Ex: hdrcw3tn">
+        <input type="text" id="setup-cloud-name" placeholder="Seu Cloud Name">
       </div>
       <div class="form-group" style="margin-bottom:0">
         <label>Upload Preset</label>
@@ -885,7 +885,7 @@ do $$ begin create policy "acesso autenticado" on "Matérias" for all using (aut
       <div style="font-size:0.8rem;font-weight:700;color:var(--yellow);margin-bottom:10px">☁️ Cloudinary (imagens)</div>
       <div class="form-group">
         <label>Cloud Name</label>
-        <input type="text" id="config-cloud-name" placeholder="Ex: hdrcw3tn">
+        <input type="text" id="config-cloud-name" placeholder="Seu Cloud Name">
       </div>
       <div class="form-group">
         <label>Upload Preset</label>
@@ -1190,6 +1190,17 @@ async function finalizarSetup() {
     return
   }
 
+  // Verificar se o Cloudinary já está em uso por outra conta
+  btnSetup.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando Cloudinary...'
+  const cloudEmUso = await verificarCloudinaryEmUso(cloudName, cloudPreset)
+  if (cloudEmUso) {
+    erroEl.style.display = 'block'
+    document.getElementById('setup-erro-msg').textContent = 'Este Cloudinary já está sendo usado por outra conta. Use seu próprio Cloud Name e Upload Preset.'
+    btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Finalizar Configuração e Entrar'
+    btnSetup.disabled = false
+    return
+  }
+
   // Criar usuário no Supabase
   btnSetup.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando conta...'
   const signUp = await fetch(`${SUPA_URL}/auth/v1/signup`, {
@@ -1224,7 +1235,9 @@ async function finalizarSetup() {
       await salvarConfiguracaoSupabase('cloud_name', cloudName)
       await salvarConfiguracaoSupabase('cloud_preset', cloudPreset)
       await salvarConfiguracaoSupabase('usuario_nome', nome)
-      authToken = null // limpar token, vai logar de novo na tela de login
+      // Registrar Cloudinary no registro compartilhado
+      await registrarCloudinary(cloudName, cloudPreset, url)
+      authToken = null
     }
   } catch(e) {}
 
@@ -2297,7 +2310,42 @@ function dropImagem(e) {
   lerImagemComoBase64(file)
 }
 
-// ===== CLOUDINARY CONFIG =====
+// ===== REGISTRO COMPARTILHADO DE CLOUDINARY =====
+// Usa o Supabase principal para registrar quais Cloudinarys estão em uso
+const SUPA_URL_REGISTRO = 'https://avqzbqvsqyoxueqexara.supabase.co'
+const SUPA_KEY_REGISTRO = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2cXpicXZzcXlveHVlcWV4YXJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1Nzk0ODcsImV4cCI6MjA5ODE1NTQ4N30.UvNr37PgF3EGpwKmBwE4qkpf9NSxKBzZBay0iUyLvbs'
+
+async function verificarCloudinaryEmUso(cloudName, preset) {
+  try {
+    const r = await fetch(
+      `${SUPA_URL_REGISTRO}/rest/v1/cloudinary_registro?cloud_name=eq.${encodeURIComponent(cloudName)}&preset=eq.${encodeURIComponent(preset)}`,
+      { headers: { apikey: SUPA_KEY_REGISTRO, Authorization: `Bearer ${SUPA_KEY_REGISTRO}` } }
+    )
+    if (!r.ok) return false
+    const data = await r.json()
+    return data && data.length > 0
+  } catch(e) {
+    return false // Em caso de erro, permite continuar
+  }
+}
+
+async function registrarCloudinary(cloudName, preset, supaUrl) {
+  try {
+    await fetch(`${SUPA_URL_REGISTRO}/rest/v1/cloudinary_registro`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPA_KEY_REGISTRO,
+        Authorization: `Bearer ${SUPA_KEY_REGISTRO}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal'
+      },
+      body: JSON.stringify({ cloud_name: cloudName, preset, supa_url: supaUrl })
+    })
+  } catch(e) {
+    console.error('Erro ao registrar Cloudinary:', e)
+  }
+}
+
 function getCloudinaryCloud() {
   return localStorage.getItem('cloud_name') || ''
 }
@@ -2538,15 +2586,25 @@ function fecharModal() {
 }
 
 // ===== GERENCIAR MATÉRIAS =====
-function salvarCloudinaryConfig() {
+async function salvarCloudinaryConfig() {
   const cloudName = document.getElementById('config-cloud-name').value.trim()
   const cloudPreset = document.getElementById('config-cloud-preset').value.trim()
   if (!cloudName || !cloudPreset) { notif('Preencha Cloud Name e Upload Preset!', 'error'); return }
+
+  mostrarLoading('Verificando disponibilidade...')
+  const emUso = await verificarCloudinaryEmUso(cloudName, cloudPreset)
+  esconderLoading()
+
+  if (emUso) {
+    notif('⚠️ Este Cloudinary já está em uso por outra conta!', 'error')
+    return
+  }
+
   localStorage.setItem('cloud_name', cloudName)
   localStorage.setItem('cloud_preset', cloudPreset)
-  // Salvar no Supabase também
-  salvarConfiguracaoSupabase('cloud_name', cloudName)
-  salvarConfiguracaoSupabase('cloud_preset', cloudPreset)
+  await salvarConfiguracaoSupabase('cloud_name', cloudName)
+  await salvarConfiguracaoSupabase('cloud_preset', cloudPreset)
+  await registrarCloudinary(cloudName, cloudPreset, SUPA_URL)
   notif('✅ Cloudinary configurado e salvo!')
 }
 
