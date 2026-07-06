@@ -102,6 +102,17 @@
   }
   .tema-dropdown-novo:hover { background: var(--surface2); }
 
+  /* FAVORITA */
+  .btn-favorita { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 2px 4px; transition: transform 0.2s; }
+  .btn-favorita:hover { transform: scale(1.2); }
+
+  /* TENTATIVAS BADGE */
+  .tentativas-badge {
+    font-size: 0.7rem; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 2px 8px; color: var(--text2);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+
   /* QUESTÃO MINIMALISTA */
   .questao-mini {
     background: var(--surface); border: 1px solid var(--border);
@@ -733,6 +744,7 @@ do $$ begin create policy "acesso autenticado" on "Matérias" for all using (aut
       <button class="filtro-btn active" id="filtro-todas" onclick="filtrarStatus('todas')">Todas</button>
       <button class="filtro-btn" id="filtro-pendentes" onclick="filtrarStatus('pendentes')">Pendentes</button>
       <button class="filtro-btn" id="filtro-dominadas" onclick="filtrarStatus('dominadas')">Dominadas</button>
+      <button class="filtro-btn" id="filtro-favoritas" onclick="filtrarStatus('favoritas')">⭐ Favoritas</button>
     </div>
     <div id="lista-questoes"></div>
   </div>
@@ -745,8 +757,15 @@ do $$ begin create policy "acesso autenticado" on "Matérias" for all using (aut
 
         <div class="form-group">
           <label>Selecione as Matérias</label>
-          <div style="font-size:0.78rem;color:var(--text2);margin-bottom:8px">Clique para selecionar uma ou mais matérias. Nenhuma selecionada = todas.</div>
+          <div style="font-size:0.78rem;color:var(--text2);margin-bottom:8px">Nenhuma selecionada = todas.</div>
           <div id="simulado-materias-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
+
+        <div class="form-group">
+          <label>Filtrar por Tema (opcional)</label>
+          <div id="simulado-temas-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px">
+            <span style="font-size:0.8rem;color:var(--text2)">Selecione uma matéria primeiro para ver os temas</span>
+          </div>
         </div>
 
         <div class="form-group">
@@ -754,6 +773,18 @@ do $$ begin create policy "acesso autenticado" on "Matérias" for all using (aut
           <select id="simulado-incluir-dom">
             <option value="nao">Não — só pendentes</option>
             <option value="sim">Sim — todas</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>⏱️ Temporizador por questão (opcional)</label>
+          <select id="simulado-timer">
+            <option value="0">Sem temporizador</option>
+            <option value="60">1 minuto</option>
+            <option value="90">1 minuto e 30 segundos</option>
+            <option value="120">2 minutos</option>
+            <option value="180">3 minutos</option>
+            <option value="300">5 minutos</option>
           </select>
         </div>
 
@@ -767,14 +798,23 @@ do $$ begin create policy "acesso autenticado" on "Matérias" for all using (aut
       <!-- Barra de progresso e navegação -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
         <div class="simulado-progress" id="simulado-progress" style="margin-bottom:0"></div>
-        <button class="btn btn-ghost btn-sm" onclick="cancelarSimulado()" style="color:var(--red);border-color:var(--red)">
-          <i class="fas fa-times"></i> Cancelar
-        </button>
+        <div style="display:flex;align-items:center;gap:8px">
+          <!-- TEMPORIZADOR -->
+          <div id="simulado-timer-display" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:4px 12px;font-size:0.9rem;font-weight:700;font-family:monospace"></div>
+          <button class="btn btn-ghost btn-sm" onclick="cancelarSimulado()" style="color:var(--red);border-color:var(--red)">
+            <i class="fas fa-times"></i> Cancelar
+          </button>
+        </div>
       </div>
 
       <!-- Barra de progresso visual -->
       <div style="background:var(--surface2);border-radius:6px;height:6px;margin-bottom:16px;overflow:hidden">
         <div id="simulado-barra" style="background:var(--accent);height:6px;border-radius:6px;transition:width 0.3s;width:0%"></div>
+      </div>
+
+      <!-- Barra do temporizador -->
+      <div id="simulado-timer-barra-wrap" style="display:none;background:var(--surface2);border-radius:6px;height:4px;margin-bottom:12px;overflow:hidden">
+        <div id="simulado-timer-barra" style="background:var(--green);height:4px;border-radius:6px;width:100%;transition:width 1s linear"></div>
       </div>
 
       <div id="simulado-questao-atual"></div>
@@ -1423,6 +1463,7 @@ function popularSelects() {
         ${m.nome}
       </button>`).join('')
   }
+  renderSimuladoTemas()
 }
 
 // ===== NOTIF =====
@@ -1700,6 +1741,7 @@ function renderQuestoes() {
   if (filtroMateria !== 'todas-materias') lista = lista.filter(q => q.materia === filtroMateria)
   if (filtroStatus === 'pendentes') lista = lista.filter(q => !q.dominada)
   if (filtroStatus === 'dominadas') lista = lista.filter(q => q.dominada)
+  if (filtroStatus === 'favoritas') lista = lista.filter(q => q.favorita)
 
   const el = document.getElementById('lista-questoes')
   if (!lista.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Nenhuma questão encontrada.</div></div>'; return }
@@ -1709,9 +1751,13 @@ function renderQuestoes() {
     const temAlts = Object.values(alts).some(v => v)
     const statusIcon = q.dominada ? '✅' : '⏳'
     const statusCor = q.dominada ? 'var(--green)' : 'var(--yellow)'
+    const tentativas = q.tentativas || 0
+    const acertos = q.acertos || 0
+    const taxaAcerto = tentativas > 0 ? Math.round((acertos / tentativas) * 100) : null
+    const corTaxa = taxaAcerto === null ? '' : taxaAcerto >= 70 ? 'var(--green)' : taxaAcerto >= 40 ? 'var(--yellow)' : 'var(--red)'
 
     return `
-    <div class="questao-mini" id="qmini-${q.id}" onclick="toggleQuestao('${q.id}')">
+    <div class="questao-mini ${q.favorita ? 'border-left:3px solid var(--yellow)' : ''}" id="qmini-${q.id}" onclick="toggleQuestao('${q.id}')" style="${q.favorita ? 'border-left:3px solid var(--yellow)' : ''}">
       <!-- LINHA MINIMALISTA -->
       <div style="display:flex;align-items:center;gap:10px;justify-content:space-between">
         <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
@@ -1720,11 +1766,14 @@ function renderQuestoes() {
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               ${tagMateria(q.materia)}
               ${q.tema ? `<span style="font-size:0.72rem;color:var(--accent)"><i class="fas fa-tag" style="margin-right:3px"></i>${q.tema}</span>` : ''}
+              ${q.favorita ? `<span style="font-size:0.75rem">⭐</span>` : ''}
             </div>
             ${q.enunciado ? `<div style="font-size:0.8rem;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px">${q.enunciado}</div>` : ''}
+            ${tentativas > 0 ? `<div style="margin-top:4px"><span class="tentativas-badge"><i class="fas fa-redo" style="font-size:0.6rem"></i>${tentativas} tentativa${tentativas!==1?'s':''} · <span style="color:${corTaxa}">${taxaAcerto}% acerto</span></span></div>` : ''}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <button class="btn-favorita" onclick="event.stopPropagation();toggleFavorita('${q.id}')" title="${q.favorita ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}">${q.favorita ? '⭐' : '☆'}</button>
           <span style="font-size:0.8rem;font-weight:700;color:${statusCor}">${q.gabarito}</span>
           <i class="fas fa-chevron-down" id="chevron-${q.id}" style="color:var(--text2);font-size:0.75rem;transition:transform 0.2s"></i>
         </div>
@@ -1755,7 +1804,15 @@ function renderQuestoes() {
   }).join('')
 }
 
-function toggleQuestao(id) {
+async function toggleFavorita(id) {
+  const q = questoes.find(q => String(q.id) === String(id))
+  if (!q) return
+  const novoValor = !q.favorita
+  await supa.update(TABELA_QUESTOES, id, { favorita: novoValor })
+  q.favorita = novoValor
+  notif(novoValor ? '⭐ Adicionada aos favoritos!' : '☆ Removida dos favoritos!')
+  renderQuestoes()
+}
   const detail = document.getElementById(`qdetail-${id}`)
   const chevron = document.getElementById(`chevron-${id}`)
   const card = document.getElementById(`qmini-${id}`)
@@ -1773,7 +1830,7 @@ function filtrarMateriaPorIndice(i) {
 function filtrarMateria(m) { filtroMateria = m; renderQuestoes() }
 function filtrarStatus(s) {
   filtroStatus = s
-  document.querySelectorAll('#filtro-todas,#filtro-pendentes,#filtro-dominadas').forEach(b => b.classList.remove('active'))
+  document.querySelectorAll('#filtro-todas,#filtro-pendentes,#filtro-dominadas,#filtro-favoritas').forEach(b => b.classList.remove('active'))
   document.getElementById('filtro-'+s).classList.add('active')
   renderQuestoes()
 }
@@ -1846,6 +1903,9 @@ async function salvarEdicao() {
 // ===== SIMULADO =====
 let simuladoLista = [], simuladoIdx = 0, simuladoAcertos = 0, simuladoErros = 0, simuladoRespondida = false
 let simuladoMatSelecionadas = []
+let simuladoTemasSelecionados = []
+let simuladoTimerSegundos = 0
+let simuladoTimerInterval = null
 
 function toggleSimuladoMateria(btn, nome) {
   btn.classList.toggle('active')
@@ -1854,19 +1914,54 @@ function toggleSimuladoMateria(btn, nome) {
   } else {
     simuladoMatSelecionadas.push(nome)
   }
+  // Atualizar temas disponíveis
+  renderSimuladoTemas()
+}
+
+function renderSimuladoTemas() {
+  const el = document.getElementById('simulado-temas-checkboxes')
+  if (!el) return
+  let questoesFiltradas = questoes
+  if (simuladoMatSelecionadas.length > 0) {
+    questoesFiltradas = questoes.filter(q => simuladoMatSelecionadas.includes(q.materia))
+  }
+  const temas = [...new Set(questoesFiltradas.map(q => q.tema).filter(t => t && t.trim()))]
+  if (!temas.length) {
+    el.innerHTML = '<span style="font-size:0.8rem;color:var(--text2)">Nenhum tema disponível para as matérias selecionadas</span>'
+    simuladoTemasSelecionados = []
+    return
+  }
+  el.innerHTML = temas.map(t => `
+    <button type="button" class="filtro-btn simulado-tema-btn ${simuladoTemasSelecionados.includes(t) ? 'active' : ''}"
+      onclick="toggleSimuladoTema(this, '${t.replace(/'/g,"\\'")}')">
+      ${t}
+    </button>`).join('')
+}
+
+function toggleSimuladoTema(btn, nome) {
+  btn.classList.toggle('active')
+  if (simuladoTemasSelecionados.includes(nome)) {
+    simuladoTemasSelecionados = simuladoTemasSelecionados.filter(t => t !== nome)
+  } else {
+    simuladoTemasSelecionados.push(nome)
+  }
 }
 
 function iniciarSimulado() {
   goPage('simulado')
   popularSelects()
   const inclDom = document.getElementById('simulado-incluir-dom').value === 'sim'
+  simuladoTimerSegundos = parseInt(document.getElementById('simulado-timer').value) || 0
   let lista = questoes
 
   if (simuladoMatSelecionadas.length > 0) {
     lista = lista.filter(q => simuladoMatSelecionadas.includes(q.materia))
   }
+  if (simuladoTemasSelecionados.length > 0) {
+    lista = lista.filter(q => simuladoTemasSelecionados.includes(q.tema))
+  }
   if (!inclDom) lista = lista.filter(q => !q.dominada)
-  if (!lista.length) { notif('Nenhuma questão encontrada para as matérias selecionadas!', 'error'); return }
+  if (!lista.length) { notif('Nenhuma questão encontrada!', 'error'); return }
 
   simuladoLista = lista.sort(() => Math.random() - 0.5)
   simuladoIdx = 0; simuladoAcertos = 0; simuladoErros = 0; simuladoRespondida = false
@@ -1877,17 +1972,62 @@ function iniciarSimulado() {
   renderSimuladoQuestao()
 }
 
+function iniciarTimer() {
+  pararTimer()
+  if (!simuladoTimerSegundos) return
+
+  let restante = simuladoTimerSegundos
+  const display = document.getElementById('simulado-timer-display')
+  const barra = document.getElementById('simulado-timer-barra')
+  const barraWrap = document.getElementById('simulado-timer-barra-wrap')
+  if (display) display.style.display = 'block'
+  if (barraWrap) barraWrap.style.display = 'block'
+
+  function atualizar() {
+    const min = Math.floor(restante / 60)
+    const seg = restante % 60
+    const texto = `⏱️ ${min > 0 ? min + 'm ' : ''}${String(seg).padStart(2,'0')}s`
+    if (display) {
+      display.textContent = texto
+      display.style.color = restante <= 10 ? 'var(--red)' : restante <= 30 ? 'var(--yellow)' : 'var(--text)'
+      display.style.borderColor = restante <= 10 ? 'var(--red)' : restante <= 30 ? 'var(--yellow)' : 'var(--border)'
+    }
+    if (barra) {
+      const pct = (restante / simuladoTimerSegundos) * 100
+      barra.style.width = pct + '%'
+      barra.style.background = restante <= 10 ? 'var(--red)' : restante <= 30 ? 'var(--yellow)' : 'var(--green)'
+    }
+    if (restante <= 0) {
+      pararTimer()
+      notif('⏰ Tempo esgotado!', 'error')
+      // Auto-revelar gabarito quando o tempo acabar
+      if (!simuladoRespondida) responderSemAlternativa()
+      return
+    }
+    restante--
+  }
+  atualizar()
+  simuladoTimerInterval = setInterval(atualizar, 1000)
+}
+
+function pararTimer() {
+  if (simuladoTimerInterval) {
+    clearInterval(simuladoTimerInterval)
+    simuladoTimerInterval = null
+  }
+  const display = document.getElementById('simulado-timer-display')
+  const barraWrap = document.getElementById('simulado-timer-barra-wrap')
+  if (display) display.style.display = 'none'
+  if (barraWrap) barraWrap.style.display = 'none'
+}
+
 function atualizarBarraProgresso() {
   const pct = ((simuladoIdx) / simuladoLista.length) * 100
   document.getElementById('simulado-barra').style.width = pct + '%'
   document.getElementById('simulado-progress').textContent =
     `Questão ${simuladoIdx + 1} de ${simuladoLista.length} — ✅ ${simuladoAcertos} acertos · ❌ ${simuladoErros} erros`
-
-  // Botão voltar — desativa na primeira questão
   const btnVoltar = document.getElementById('btn-voltar-simulado')
   if (btnVoltar) btnVoltar.disabled = simuladoIdx === 0
-
-  // Botão pular — desativa na última questão
   const btnPular = document.getElementById('btn-pular-simulado')
   if (btnPular) btnPular.disabled = simuladoIdx >= simuladoLista.length - 1
 }
@@ -1897,6 +2037,7 @@ function renderSimuladoQuestao() {
   document.getElementById('simulado-acoes').style.display = 'none'
   document.getElementById('simulado-feedback').innerHTML = ''
   atualizarBarraProgresso()
+  iniciarTimer()
 
   const q = simuladoLista[simuladoIdx]
   const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
@@ -1959,9 +2100,24 @@ function responderAlternativa(escolha) {
     ${q.video ? `<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm" style="margin-top:8px"><i class="fas fa-play"></i> Ver Vídeo</a>` : ''}`
 
   document.getElementById('simulado-acoes').style.display = 'block'
+  pararTimer()
 
-  if (acertou) { simuladoAcertos++; atualizarDominada(q.id, true) }
-  else { simuladoErros++; atualizarDominada(q.id, false) }
+  if (acertou) {
+    simuladoAcertos++
+    atualizarDominada(q.id, true)
+    // Registrar tentativa + acerto
+    const novasTentativas = (q.tentativas || 0) + 1
+    const novosAcertos = (q.acertos || 0) + 1
+    await supa.update(TABELA_QUESTOES, q.id, { tentativas: novasTentativas, acertos: novosAcertos })
+    q.tentativas = novasTentativas; q.acertos = novosAcertos
+  } else {
+    simuladoErros++
+    atualizarDominada(q.id, false)
+    // Registrar tentativa sem acerto
+    const novasTentativas = (q.tentativas || 0) + 1
+    await supa.update(TABELA_QUESTOES, q.id, { tentativas: novasTentativas })
+    q.tentativas = novasTentativas
+  }
 }
 
 function responderSemAlternativa() {
@@ -2037,11 +2193,18 @@ function proximaSimulado() {
 }
 
 function resetSimulado() {
+  pararTimer()
   simuladoMatSelecionadas = []
-  document.querySelectorAll('.simulado-mat-btn').forEach(b => b.classList.remove('active'))
+  simuladoTemasSelecionados = []
+  document.querySelectorAll('.simulado-mat-btn, .simulado-tema-btn').forEach(b => b.classList.remove('active'))
   document.getElementById('simulado-config').style.display = 'block'
   document.getElementById('simulado-ativo').style.display = 'none'
   document.getElementById('simulado-fim').style.display = 'none'
+}
+
+function cancelarSimulado() {
+  if (!confirm('Cancelar o simulado? Seu progresso atual será perdido.')) return
+  resetSimulado()
 }
 
 // ===== SISTEMA DE TAGS DE TEMA =====
