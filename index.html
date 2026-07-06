@@ -1813,6 +1813,8 @@ async function toggleFavorita(id) {
   notif(novoValor ? '⭐ Adicionada aos favoritos!' : '☆ Removida dos favoritos!')
   renderQuestoes()
 }
+
+function toggleQuestao(id) {
   const detail = document.getElementById(`qdetail-${id}`)
   const chevron = document.getElementById(`chevron-${id}`)
   const card = document.getElementById(`qmini-${id}`)
@@ -2076,7 +2078,7 @@ function renderSimuladoQuestao() {
     </div>`
 }
 
-function responderAlternativa(escolha) {
+async function responderAlternativa(escolha) {
   if (simuladoRespondida) return
   simuladoRespondida = true
 
