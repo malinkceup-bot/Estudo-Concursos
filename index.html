@@ -739,13 +739,38 @@ do $$ begin create policy "acesso autenticado" on "Matérias" for all using (aut
 
   <!-- QUESTÕES -->
   <div class="page" id="page-questoes">
-    <div class="filtros" id="filtros-materias"></div>
-    <div style="display:flex;gap:8px;margin-bottom:16px">
+
+    <!-- BUSCA GLOBAL -->
+    <div style="position:relative;margin-bottom:12px">
+      <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:0.85rem"></i>
+      <input type="text" id="busca-questoes" placeholder="Buscar por enunciado, tema ou anotação..."
+        style="padding-left:36px" oninput="renderQuestoes()">
+      <button id="btn-limpar-busca" onclick="limparBusca()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);cursor:pointer;font-size:0.9rem">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- FILTROS DE MATÉRIA (colapsável) -->
+    <div style="margin-bottom:8px">
+      <button onclick="toggleFiltroMaterias()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text2);padding:6px 14px;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;gap:6px;width:100%">
+        <i class="fas fa-filter"></i>
+        <span id="filtro-materias-label">Filtrar por matéria</span>
+        <i class="fas fa-chevron-down" id="filtro-materias-chevron" style="margin-left:auto;transition:transform 0.2s"></i>
+      </button>
+      <div id="filtros-materias-wrap" style="display:none;margin-top:8px">
+        <div class="filtros" id="filtros-materias"></div>
+      </div>
+    </div>
+
+    <!-- FILTROS DE STATUS -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
       <button class="filtro-btn active" id="filtro-todas" onclick="filtrarStatus('todas')">Todas</button>
       <button class="filtro-btn" id="filtro-pendentes" onclick="filtrarStatus('pendentes')">Pendentes</button>
       <button class="filtro-btn" id="filtro-dominadas" onclick="filtrarStatus('dominadas')">Dominadas</button>
       <button class="filtro-btn" id="filtro-favoritas" onclick="filtrarStatus('favoritas')">⭐ Favoritas</button>
+      <span id="busca-resultado" style="font-size:0.8rem;color:var(--text2);align-self:center;margin-left:4px"></span>
     </div>
+
     <div id="lista-questoes"></div>
   </div>
 
@@ -763,8 +788,15 @@ do $$ begin create policy "acesso autenticado" on "Matérias" for all using (aut
 
         <div class="form-group">
           <label>Filtrar por Tema (opcional)</label>
-          <div id="simulado-temas-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px">
-            <span style="font-size:0.8rem;color:var(--text2)">Selecione uma matéria primeiro para ver os temas</span>
+          <button onclick="toggleSimuladoTemas()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text2);padding:6px 14px;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;gap:6px;width:100%;margin-bottom:8px">
+            <i class="fas fa-tag"></i>
+            <span id="simulado-temas-label">Ver temas disponíveis</span>
+            <i class="fas fa-chevron-down" id="simulado-temas-chevron" style="margin-left:auto;transition:transform 0.2s"></i>
+          </button>
+          <div id="simulado-temas-wrap" style="display:none">
+            <div id="simulado-temas-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px">
+              <span style="font-size:0.8rem;color:var(--text2)">Selecione uma matéria primeiro</span>
+            </div>
           </div>
         </div>
 
@@ -1729,8 +1761,6 @@ let filtroStatus = 'todas'
 
 function renderQuestoes() {
   const materiasList = [...new Set(questoes.map(q => q.materia))].filter(Boolean)
-  
-  // Guardar lista global para usar no filtro por índice
   window._materiasListaFiltro = materiasList
 
   document.getElementById('filtros-materias').innerHTML =
@@ -1742,6 +1772,27 @@ function renderQuestoes() {
   if (filtroStatus === 'pendentes') lista = lista.filter(q => !q.dominada)
   if (filtroStatus === 'dominadas') lista = lista.filter(q => q.dominada)
   if (filtroStatus === 'favoritas') lista = lista.filter(q => q.favorita)
+
+  // BUSCA GLOBAL
+  const buscaInput = document.getElementById('busca-questoes')
+  const busca = buscaInput ? buscaInput.value.trim().toLowerCase() : ''
+  const btnLimpar = document.getElementById('btn-limpar-busca')
+  const buscaResultado = document.getElementById('busca-resultado')
+
+  if (busca) {
+    if (btnLimpar) btnLimpar.style.display = 'block'
+    lista = lista.filter(q =>
+      (q.enunciado && q.enunciado.toLowerCase().includes(busca)) ||
+      (q.tema && q.tema.toLowerCase().includes(busca)) ||
+      (q.anotacao && q.anotacao.toLowerCase().includes(busca)) ||
+      (q.materia && q.materia.toLowerCase().includes(busca)) ||
+      (q.gabarito && q.gabarito.toLowerCase().includes(busca))
+    )
+    if (buscaResultado) buscaResultado.textContent = `${lista.length} resultado${lista.length !== 1 ? 's' : ''} encontrado${lista.length !== 1 ? 's' : ''}`
+  } else {
+    if (btnLimpar) btnLimpar.style.display = 'none'
+    if (buscaResultado) buscaResultado.textContent = ''
+  }
 
   const el = document.getElementById('lista-questoes')
   if (!lista.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Nenhuma questão encontrada.</div></div>'; return }
@@ -1811,6 +1862,34 @@ async function toggleFavorita(id) {
   await supa.update(TABELA_QUESTOES, id, { favorita: novoValor })
   q.favorita = novoValor
   notif(novoValor ? '⭐ Adicionada aos favoritos!' : '☆ Removida dos favoritos!')
+  renderQuestoes()
+}
+
+function toggleFiltroMaterias() {
+  const wrap = document.getElementById('filtros-materias-wrap')
+  const chevron = document.getElementById('filtro-materias-chevron')
+  const label = document.getElementById('filtro-materias-label')
+  const aberto = wrap.style.display !== 'none'
+  wrap.style.display = aberto ? 'none' : 'block'
+  chevron.style.transform = aberto ? 'rotate(0deg)' : 'rotate(180deg)'
+  label.textContent = aberto ? 'Filtrar por matéria' : 'Ocultar filtros de matéria'
+}
+
+function toggleSimuladoTemas() {
+  const wrap = document.getElementById('simulado-temas-wrap')
+  const chevron = document.getElementById('simulado-temas-chevron')
+  const label = document.getElementById('simulado-temas-label')
+  const aberto = wrap.style.display !== 'none'
+  wrap.style.display = aberto ? 'none' : 'block'
+  chevron.style.transform = aberto ? 'rotate(0deg)' : 'rotate(180deg)'
+  label.textContent = aberto ? 'Ver temas disponíveis' : 'Ocultar temas'
+  if (!aberto) renderSimuladoTemas()
+}
+
+function limparBusca() {
+  document.getElementById('busca-questoes').value = ''
+  document.getElementById('btn-limpar-busca').style.display = 'none'
+  document.getElementById('busca-resultado').textContent = ''
   renderQuestoes()
 }
 
