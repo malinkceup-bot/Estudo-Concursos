@@ -1273,6 +1273,17 @@ async function finalizarSetup() {
     return
   }
 
+  // Verificar se esse Supabase já está em uso por outra conta
+  btnSetup.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando Supabase...'
+  const supabaseEmUso = await verificarSupabaseEmUso(url)
+  if (supabaseEmUso) {
+    erroEl.style.display = 'block'
+    document.getElementById('setup-erro-msg').textContent = 'Este Supabase já está vinculado a outra conta. Cada usuário precisa criar seu próprio projeto Supabase.'
+    btnSetup.innerHTML = '<i class="fas fa-rocket"></i> Finalizar Configuração e Entrar'
+    btnSetup.disabled = false
+    return
+  }
+
   // Criar usuário no Supabase
   btnSetup.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando conta...'
   const signUp = await fetch(`${SUPA_URL}/auth/v1/signup`, {
@@ -2559,35 +2570,44 @@ function dropImagem(e) {
 const SUPA_URL_REGISTRO = 'https://avqzbqvsqyoxueqexara.supabase.co'
 const SUPA_KEY_REGISTRO = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF2cXpicXZzcXlveHVlcWV4YXJhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1Nzk0ODcsImV4cCI6MjA5ODE1NTQ4N30.UvNr37PgF3EGpwKmBwE4qkpf9NSxKBzZBay0iUyLvbs'
 
-async function verificarCloudinaryEmUso(cloudName, preset) {
+// A tabela cloudinary_registro tem RLS habilitado e SEM policies — ou seja,
+// não é acessível diretamente via /rest/v1/. Toda checagem/registro passa
+// por funções RPC (security definer), que expõem só a operação necessária.
+async function chamarRpcRegistro(nomeFuncao, params) {
   try {
-    const r = await fetch(
-      `${SUPA_URL_REGISTRO}/rest/v1/cloudinary_registro?cloud_name=eq.${encodeURIComponent(cloudName)}&preset=eq.${encodeURIComponent(preset)}`,
-      { headers: { apikey: SUPA_KEY_REGISTRO, Authorization: `Bearer ${SUPA_KEY_REGISTRO}` } }
-    )
-    if (!r.ok) return false
-    const data = await r.json()
-    return data && data.length > 0
-  } catch(e) {
-    return false // Em caso de erro, permite continuar
-  }
-}
-
-async function registrarCloudinary(cloudName, preset, supaUrl) {
-  try {
-    await fetch(`${SUPA_URL_REGISTRO}/rest/v1/cloudinary_registro`, {
+    const r = await fetch(`${SUPA_URL_REGISTRO}/rest/v1/rpc/${nomeFuncao}`, {
       method: 'POST',
       headers: {
         apikey: SUPA_KEY_REGISTRO,
         Authorization: `Bearer ${SUPA_KEY_REGISTRO}`,
-        'Content-Type': 'application/json',
-        Prefer: 'return=minimal'
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ cloud_name: cloudName, preset, supa_url: supaUrl })
+      body: JSON.stringify(params)
     })
+    if (!r.ok) return null
+    return await r.json()
   } catch(e) {
-    console.error('Erro ao registrar Cloudinary:', e)
+    console.error(`Erro ao chamar ${nomeFuncao}:`, e)
+    return null
   }
+}
+
+async function verificarCloudinaryEmUso(cloudName, preset) {
+  const resultado = await chamarRpcRegistro('checar_cloudinary_em_uso', {
+    p_cloud_name: cloudName, p_preset: preset
+  })
+  return resultado === true // null (erro) ou false => não bloqueia
+}
+
+async function verificarSupabaseEmUso(supaUrl) {
+  const resultado = await chamarRpcRegistro('checar_supabase_em_uso', { p_supa_url: supaUrl })
+  return resultado === true
+}
+
+async function registrarCloudinary(cloudName, preset, supaUrl) {
+  await chamarRpcRegistro('registrar_credenciais', {
+    p_cloud_name: cloudName, p_preset: preset, p_supa_url: supaUrl
+  })
 }
 
 function getCloudinaryCloud() {
