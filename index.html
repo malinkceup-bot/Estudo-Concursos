@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   :root {
     --bg: #0f1117;
@@ -671,9 +672,7 @@ for each row execute function restringir_cadastro_email();</pre>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="goPage('cadastro')"><i class="fas fa-plus"></i> Cadastrar Erro</button>
         <button class="btn btn-ghost" onclick="iniciarSimulado()"><i class="fas fa-brain"></i> Iniciar Simulado</button>
-        <button class="btn btn-ghost" onclick="exportarBackup()"><i class="fas fa-download"></i> Exportar Backup</button>
-        <button class="btn btn-ghost" onclick="document.getElementById('importar-input').click()"><i class="fas fa-upload"></i> Importar Backup</button>
-        <input type="file" id="importar-input" accept=".json" style="display:none" onchange="importarBackup(event)">
+        <button class="btn btn-ghost" onclick="abrirModalBackup()"><i class="fas fa-box-archive"></i> Backup e Exportação</button>
       </div>
     </div>
 
@@ -979,11 +978,10 @@ for each row execute function restringir_cadastro_email();</pre>
     </div>
 
     <div class="card">
-      <div class="card-title">💾 Backup dos Dados</div>
+      <div class="card-title">💾 Backup e Exportação</div>
+      <div style="font-size:0.8rem;color:var(--text2);margin-bottom:12px">Baixe um backup completo, restaure um backup anterior, ou exporte suas questões em PDF.</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="exportarBackup()"><i class="fas fa-download"></i> Exportar Backup</button>
-        <button class="btn btn-ghost" onclick="document.getElementById('importar-input2').click()"><i class="fas fa-upload"></i> Importar Backup</button>
-        <input type="file" id="importar-input2" accept=".json" style="display:none" onchange="importarBackup(event)">
+        <button class="btn btn-primary" onclick="abrirModalBackup()"><i class="fas fa-box-archive"></i> Abrir Central de Backup</button>
       </div>
     </div>
 
@@ -1131,6 +1129,63 @@ for each row execute function restringir_cadastro_email();</pre>
     <div style="display:flex;gap:10px;justify-content:center">
       <button class="btn btn-danger" id="confirmar-sim">Sim, deletar</button>
       <button class="btn btn-ghost" onclick="document.getElementById('modal-confirmar').classList.remove('open')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CENTRAL DE BACKUP E EXPORTAÇÃO -->
+<div class="modal-overlay" id="modal-backup">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title">💾 Central de Backup e Exportação</div>
+
+    <div style="margin-bottom:22px">
+      <div style="font-weight:700;margin-bottom:6px">📦 Backup completo</div>
+      <div style="font-size:0.8rem;color:var(--text2);margin-bottom:12px">Arquivo .json com todas as suas questões, mapas e matérias. Use para restaurar tudo depois, ou trocar de dispositivo.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="exportarBackup()"><i class="fas fa-download"></i> Baixar backup (.json)</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('importar-input-modal').click()"><i class="fas fa-upload"></i> Restaurar backup</button>
+        <input type="file" id="importar-input-modal" accept=".json" style="display:none" onchange="importarBackup(event)">
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);padding-top:20px">
+      <div style="font-weight:700;margin-bottom:6px">📄 Exportar questões em PDF</div>
+      <div style="font-size:0.8rem;color:var(--text2);margin-bottom:12px">Gera um PDF organizado das suas questões, pronto pra imprimir ou revisar offline.</div>
+
+      <div class="form-group">
+        <label>Quais questões incluir?</label>
+        <select id="pdf-filtro-escopo" onchange="atualizarFiltroMateriaPDF()">
+          <option value="todas">Todas as questões</option>
+          <option value="materia">Só de uma matéria específica</option>
+          <option value="favoritas">Só as favoritas</option>
+          <option value="nao-dominadas">Só as que ainda não domino</option>
+        </select>
+      </div>
+      <div class="form-group" id="pdf-materia-wrap" style="display:none">
+        <label>Matéria</label>
+        <select id="pdf-filtro-materia"></select>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="pdf-incluir-gabarito" checked style="width:auto">
+        <label style="margin:0">Incluir gabarito e comentário</label>
+      </div>
+      <button class="btn btn-primary" onclick="exportarQuestoesPDF()"><i class="fas fa-file-pdf"></i> Gerar PDF</button>
+    </div>
+
+    <button class="btn btn-ghost" style="width:100%;margin-top:22px" onclick="document.getElementById('modal-backup').classList.remove('open')">Fechar</button>
+  </div>
+</div>
+
+<!-- ESCOLHA DE MODO DE IMPORTAÇÃO -->
+<div class="modal-overlay" id="modal-importar-modo">
+  <div class="modal" style="max-width:400px;text-align:center">
+    <div style="font-size:2rem;margin-bottom:12px">📥</div>
+    <div style="font-weight:700;margin-bottom:8px">Restaurar backup</div>
+    <div style="font-size:0.85rem;color:var(--text2);margin-bottom:20px" id="importar-resumo-texto"></div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-primary" onclick="executarImportacao('mesclar')"><i class="fas fa-plus"></i> Mesclar (adicionar ao que já tenho)</button>
+      <button class="btn btn-danger" onclick="executarImportacao('substituir')"><i class="fas fa-triangle-exclamation"></i> Substituir tudo (apaga os dados atuais)</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-importar-modo').classList.remove('open')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -3256,26 +3311,209 @@ function removerMateria(id) {
   }
 }
 
-// ===== BACKUP =====
+// ===== BACKUP E EXPORTAÇÃO =====
+
+// Nome padronizado com data e hora, pra sempre saber qual é o backup mais recente
+function nomeArquivoBackup(ext) {
+  const d = new Date()
+  const pad = n => String(n).padStart(2, '0')
+  const data = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
+  const hora = `${pad(d.getHours())}h${pad(d.getMinutes())}`
+  return `estudo-concursos-backup_${data}_${hora}.${ext}`
+}
+
+function abrirModalBackup() {
+  popularFiltroMateriaPDF()
+  document.getElementById('modal-backup').classList.add('open')
+}
+
+function popularFiltroMateriaPDF() {
+  const sel = document.getElementById('pdf-filtro-materia')
+  if (!sel) return
+  sel.innerHTML = materias.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('')
+}
+
+function atualizarFiltroMateriaPDF() {
+  const escopo = document.getElementById('pdf-filtro-escopo').value
+  document.getElementById('pdf-materia-wrap').style.display = escopo === 'materia' ? 'block' : 'none'
+}
+
+// ----- Exportar backup completo (.json) -----
 function exportarBackup() {
-  const data = { questoes, mapas, materias, exportadoEm: new Date().toISOString() }
-  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'})
+  const data = { app: 'Estudo Concursos', exportadoEm: new Date().toISOString(), questoes, mapas, materias }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href=url; a.download=`backup-alece-${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.json`; a.click()
+  a.href = url; a.download = nomeArquivoBackup('json'); a.click()
+  URL.revokeObjectURL(url)
   notif('✅ Backup exportado!')
 }
+
+// ----- Restaurar backup (.json) -----
+let _backupPendente = null
+
 function importarBackup(e) {
-  const file=e.target.files[0]; if(!file) return
-  const reader=new FileReader()
-  reader.onload=(ev)=>{
-    try {
-      const data=JSON.parse(ev.target.result)
-      if(!confirm('Importar backup?\nIsso VAI SUBSTITUIR seus dados atuais!')) return
-      notif('⚠️ Para importar backup use a exportação e re-cadastre via app.','error')
-    } catch { notif('Erro ao ler backup!','error') }
+  const file = e.target.files[0]; if (!file) return
+  const reader = new FileReader()
+  reader.onload = (ev) => {
+    let data
+    try { data = JSON.parse(ev.target.result) }
+    catch { notif('❌ Arquivo inválido — não é um backup do Estudo Concursos.', 'error'); e.target.value = ''; return }
+
+    if (!data || (!Array.isArray(data.questoes) && !Array.isArray(data.mapas) && !Array.isArray(data.materias))) {
+      notif('❌ Esse arquivo não parece ser um backup válido.', 'error'); e.target.value = ''; return
+    }
+
+    _backupPendente = data
+    const qtdQ = (data.questoes || []).length
+    const qtdM = (data.mapas || []).length
+    const qtdMt = (data.materias || []).length
+    document.getElementById('importar-resumo-texto').innerHTML =
+      `Esse backup tem <strong>${qtdQ} questões</strong>, <strong>${qtdM} mapas</strong> e <strong>${qtdMt} matérias</strong>.<br><br>Como você quer importar?`
+    document.getElementById('modal-backup').classList.remove('open')
+    document.getElementById('modal-importar-modo').classList.add('open')
+    e.target.value = ''
   }
   reader.readAsText(file)
+}
+
+async function apagarTodosRegistros(tabela) {
+  await fetchComRenovacao(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=gt.0`, {
+    method: 'DELETE', headers: getHeaders()
+  })
+}
+
+async function executarImportacao(modo) {
+  const data = _backupPendente
+  document.getElementById('modal-importar-modo').classList.remove('open')
+  if (!data) return
+
+  if (modo === 'substituir' && !confirm('Tem certeza? Isso vai APAGAR permanentemente todas as suas questões, mapas e matérias atuais antes de restaurar o backup. Essa ação não pode ser desfeita.')) {
+    _backupPendente = null
+    return
+  }
+
+  mostrarLoading('Restaurando backup...')
+  try {
+    if (modo === 'substituir') {
+      await apagarTodosRegistros(TABELA_QUESTOES)
+      await apagarTodosRegistros(TABELA_MAPAS)
+      await apagarTodosRegistros(TABELA_MATERIAS)
+    }
+
+    // Remove campos que o banco preenche sozinho (id, dono, data de criação)
+    const limpar = (arr) => (arr || []).map(({ id, created_at, user_id, ...resto }) => resto)
+
+    const materiasBackup = limpar(data.materias)
+    if (materiasBackup.length) await supa.insert(TABELA_MATERIAS, materiasBackup)
+
+    const questoesBackup = limpar(data.questoes)
+    if (questoesBackup.length) await supa.insert(TABELA_QUESTOES, questoesBackup)
+
+    const mapasBackup = limpar(data.mapas)
+    if (mapasBackup.length) await supa.insert(TABELA_MAPAS, mapasBackup)
+
+    await carregarDados()
+    notif('✅ Backup restaurado com sucesso!')
+  } catch (err) {
+    console.error(err)
+    esconderLoading()
+    notif('❌ Erro ao restaurar backup. Tente novamente.', 'error')
+  } finally {
+    _backupPendente = null
+  }
+}
+
+// ----- Exportar questões em PDF -----
+function filtrarQuestoesPDF() {
+  const escopo = document.getElementById('pdf-filtro-escopo').value
+  if (escopo === 'materia') {
+    const materia = document.getElementById('pdf-filtro-materia').value
+    return { lista: questoes.filter(q => q.materia === materia), titulo: `Questões — ${materia}` }
+  }
+  if (escopo === 'favoritas') return { lista: questoes.filter(q => q.favorita), titulo: 'Questões Favoritas' }
+  if (escopo === 'nao-dominadas') return { lista: questoes.filter(q => !q.dominada), titulo: 'Questões — Ainda Não Dominadas' }
+  return { lista: questoes, titulo: 'Todas as Questões' }
+}
+
+function exportarQuestoesPDF() {
+  const { lista, titulo } = filtrarQuestoesPDF()
+  if (!lista.length) { notif('Nenhuma questão encontrada para esse filtro.', 'error'); return }
+  if (!window.jspdf) { notif('❌ Não foi possível carregar o gerador de PDF. Verifique sua conexão.', 'error'); return }
+
+  const incluirGabarito = document.getElementById('pdf-incluir-gabarito').checked
+  const { jsPDF } = window.jspdf
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+  const margem = 40
+  const larguraUtil = doc.internal.pageSize.getWidth() - margem * 2
+  const alturaPagina = doc.internal.pageSize.getHeight()
+  let y = margem
+
+  function rodape() {
+    const pagina = doc.internal.getNumberOfPages()
+    doc.setFontSize(8); doc.setTextColor(150)
+    doc.text(`Estudo Concursos — página ${pagina}`, margem, alturaPagina - 20)
+  }
+
+  function novaLinha(altura) {
+    if (y + altura > alturaPagina - margem) {
+      rodape()
+      doc.addPage()
+      y = margem
+    }
+  }
+
+  // Capa/cabeçalho
+  doc.setFontSize(18); doc.setTextColor(20)
+  doc.text(titulo, margem, y); y += 22
+  doc.setFontSize(10); doc.setTextColor(120)
+  doc.text(`Exportado em ${new Date().toLocaleString('pt-BR')} — ${lista.length} questão(ões)`, margem, y)
+  y += 24
+  doc.setDrawColor(220); doc.line(margem, y, margem + larguraUtil, y); y += 20
+
+  lista.forEach((q, i) => {
+    novaLinha(60)
+    doc.setFontSize(9); doc.setTextColor(120)
+    doc.text(`${q.materia || 'Sem matéria'}${q.tema ? ' • ' + q.tema : ''}`, margem, y)
+    y += 14
+
+    doc.setFontSize(11); doc.setTextColor(20)
+    const enunciado = doc.splitTextToSize(`${i + 1}. ${q.enunciado || ''}`, larguraUtil)
+    enunciado.forEach(linha => { novaLinha(15); doc.text(linha, margem, y); y += 15 })
+    y += 4
+
+    const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
+    doc.setFontSize(10); doc.setTextColor(20)
+    ;['A', 'B', 'C', 'D', 'E'].forEach(letra => {
+      if (!alts[letra]) return
+      const linhas = doc.splitTextToSize(`${letra}) ${alts[letra]}`, larguraUtil - 10)
+      linhas.forEach(l => { novaLinha(14); doc.text(l, margem + 10, y); y += 14 })
+    })
+
+    if (incluirGabarito && q.gabarito) {
+      y += 4; novaLinha(14)
+      doc.setTextColor(0, 120, 60)
+      doc.text(`Gabarito: ${q.gabarito}`, margem, y); y += 14
+      doc.setTextColor(20)
+    }
+
+    if (incluirGabarito && q.anotacao) {
+      const comentario = doc.splitTextToSize(`Comentário: ${q.anotacao}`, larguraUtil)
+      doc.setFontSize(9); doc.setTextColor(90)
+      comentario.forEach(l => { novaLinha(13); doc.text(l, margem, y); y += 13 })
+      doc.setFontSize(10); doc.setTextColor(20)
+    }
+
+    y += 14
+    novaLinha(1)
+    doc.setDrawColor(230); doc.line(margem, y, margem + larguraUtil, y)
+    y += 16
+  })
+  rodape()
+
+  doc.save(nomeArquivoBackup('pdf').replace('backup', 'questoes'))
+  notif('✅ PDF gerado!')
+  document.getElementById('modal-backup').classList.remove('open')
 }
 
 // ===== INIT =====
