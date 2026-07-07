@@ -344,9 +344,10 @@
         📌 Cole o SQL abaixo e clique em <strong style="color:var(--green)">Run ▶️</strong>
       </div>
       <div style="position:relative">
-        <pre style="background:var(--surface2);border-radius:8px;padding:12px;font-size:0.7rem;color:var(--text2);overflow-x:auto;line-height:1.5;white-space:pre-wrap">create table if not exists "Questões" (id bigint generated always as identity primary key);
+        <pre id="sql-passo2" style="background:var(--surface2);border-radius:8px;padding:12px;font-size:0.7rem;color:var(--text2);overflow-x:auto;line-height:1.5;white-space:pre-wrap">create table if not exists "Questões" (id bigint generated always as identity primary key);
 create table if not exists "Mapas" (id bigint generated always as identity primary key);
 create table if not exists "Matérias" (id bigint generated always as identity primary key);
+create table if not exists "Configurações" (id bigint generated always as identity primary key);
 alter table "Questões" add column if not exists materia text;
 alter table "Questões" add column if not exists enunciado text;
 alter table "Questões" add column if not exists alternativas text;
@@ -356,6 +357,9 @@ alter table "Questões" add column if not exists video text;
 alter table "Questões" add column if not exists dominada boolean default false;
 alter table "Questões" add column if not exists data text;
 alter table "Questões" add column if not exists tema text;
+alter table "Questões" add column if not exists tentativas int default 0;
+alter table "Questões" add column if not exists acertos int default 0;
+alter table "Questões" add column if not exists favorita boolean default false;
 alter table "Questões" add column if not exists created_at timestamptz default now();
 alter table "Mapas" add column if not exists titulo text;
 alter table "Mapas" add column if not exists materia text;
@@ -364,13 +368,22 @@ alter table "Mapas" add column if not exists data text;
 alter table "Mapas" add column if not exists created_at timestamptz default now();
 alter table "Matérias" add column if not exists nome text;
 alter table "Matérias" add column if not exists created_at timestamptz default now();
+alter table "Configurações" add column if not exists chave text;
+alter table "Configurações" add column if not exists valor text;
+alter table "Configurações" add column if not exists created_at timestamptz default now();
+alter table "Questões" add column if not exists user_id uuid references auth.users(id) on delete cascade default auth.uid();
+alter table "Mapas" add column if not exists user_id uuid references auth.users(id) on delete cascade default auth.uid();
+alter table "Matérias" add column if not exists user_id uuid references auth.users(id) on delete cascade default auth.uid();
+alter table "Configurações" add column if not exists user_id uuid references auth.users(id) on delete cascade default auth.uid();
 alter table "Questões" enable row level security;
 alter table "Mapas" enable row level security;
 alter table "Matérias" enable row level security;
-do $$ begin create policy "acesso autenticado" on "Questões" for all using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
-do $$ begin create policy "acesso autenticado" on "Mapas" for all using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;
-do $$ begin create policy "acesso autenticado" on "Matérias" for all using (auth.role() = 'authenticated'); exception when duplicate_object then null; end $$;</pre>
-        <button onclick="copiarSQL()" style="position:absolute;top:8px;right:8px;background:var(--surface);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer">
+alter table "Configurações" enable row level security;
+do $$ begin create policy "dono dos dados" on "Questões" for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;
+do $$ begin create policy "dono dos dados" on "Mapas" for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;
+do $$ begin create policy "dono dos dados" on "Matérias" for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;
+do $$ begin create policy "dono dos dados" on "Configurações" for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;</pre>
+        <button onclick="copiarSQL('sql-passo2')" style="position:absolute;top:8px;right:8px;background:var(--surface);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer">
           <i class="fas fa-copy"></i> Copiar
         </button>
       </div>
@@ -473,6 +486,48 @@ do $$ begin create policy "acesso autenticado" on "Matérias" for all using (aut
     <button class="btn btn-primary btn-full" onclick="finalizarSetup()" id="btn-setup" style="padding:14px">
       <i class="fas fa-rocket"></i> Finalizar Configuração e Entrar
     </button>
+
+    <!-- ═══ SEGURANÇA EXTRA ═══ -->
+    <div style="font-size:0.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:2px;margin:20px 0 10px;padding-left:4px">
+      ━━━ PARTE 4: TRAVAR SEU SUPABASE (recomendado) ━━━
+    </div>
+
+    <!-- PASSO 7 -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span style="background:var(--green);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0">7</span>
+        <span style="font-weight:700">Impedir que outra pessoa crie conta no seu Supabase</span>
+      </div>
+      <div style="font-size:0.82rem;color:var(--text2);line-height:1.6;margin-bottom:10px">
+        ⚠️ Faça isso <strong style="color:var(--text)">SOMENTE depois</strong> de já ter clicado em "Finalizar Configuração e Entrar" acima e conseguido logar com sucesso.<br><br>
+        📌 Volte no <strong style="color:var(--text)">SQL Editor</strong> do seu Supabase → New query<br>
+        📌 No SQL abaixo, troque <strong style="color:var(--yellow)">SEU-EMAIL-AQUI@gmail.com</strong> pelo e-mail que você acabou de usar no Passo 6<br>
+        📌 Cole e clique em <strong style="color:var(--green)">Run ▶️</strong><br><br>
+        Isso garante que, mesmo que a URL e a chave do seu Supabase vazem ou sejam descobertas por alguém, essa pessoa não consiga criar conta nova ali dentro — só o seu e-mail é aceito.
+      </div>
+      <div style="position:relative">
+        <pre id="sql-passo7" style="background:var(--surface2);border-radius:8px;padding:12px;font-size:0.7rem;color:var(--text2);overflow-x:auto;line-height:1.5;white-space:pre-wrap">create or replace function restringir_cadastro_email()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if lower(new.email) <> lower('SEU-EMAIL-AQUI@gmail.com') then
+    raise exception 'Cadastro não permitido neste projeto. Este Supabase já pertence a outra pessoa.';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists restringir_cadastro_trigger on auth.users;
+create trigger restringir_cadastro_trigger
+before insert on auth.users
+for each row execute function restringir_cadastro_email();</pre>
+        <button onclick="copiarSQL('sql-passo7')" style="position:absolute;top:8px;right:8px;background:var(--surface);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer">
+          <i class="fas fa-copy"></i> Copiar
+        </button>
+      </div>
+    </div>
 
     <div style="text-align:center;margin-top:14px">
       <button onclick="mostrarTelaLogin()" style="background:none;border:none;color:var(--text2);font-size:0.8rem;cursor:pointer;text-decoration:underline">
@@ -1334,8 +1389,9 @@ async function finalizarSetup() {
   }, 1500)
 }
 
-function copiarSQL() {
-  const sql = document.querySelector('#tela-config-supa pre').textContent
+function copiarSQL(id) {
+  const el = id ? document.getElementById(id) : document.querySelector('#tela-config-supa pre')
+  const sql = el.textContent
   navigator.clipboard.writeText(sql).then(() => {
     notif('✅ SQL copiado!')
   }).catch(() => {
