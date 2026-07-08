@@ -1072,7 +1072,7 @@ for each row execute function restringir_cadastro_email();</pre>
       <button onclick="fecharModal()" style="background:rgba(239,68,68,0.7);border:none;color:#fff;width:36px;height:36px;border-radius:8px;font-size:1rem;cursor:pointer">✕</button>
     </div>
   </div>
-  <div id="modal-img-container" style="flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:10px;cursor:grab" onclick="event.stopPropagation()">
+  <div id="modal-img-container" style="flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:10px;cursor:grab;touch-action:none" onclick="event.stopPropagation()">
     <img id="modal-img-src" draggable="false" style="border-radius:8px;transform-origin:center center;transition:transform 0.2s;max-width:100%;user-select:none">
   </div>
   <div style="text-align:center;padding:8px;color:rgba(255,255,255,0.4);font-size:0.75rem">
@@ -2972,25 +2972,30 @@ function abrirImagem(id) {
     }
   }
 
-  // Arrastar para mover
+  // Arrastar para mover (pointer events — mais confiável que mouse events pra isso)
   let isDragging = false, startX, startY, scrollLeft, scrollTop
-  container.onmousedown = (e) => {
+  container.onpointerdown = (e) => {
     e.preventDefault()
     isDragging = true
+    container.setPointerCapture(e.pointerId)
     container.style.cursor = 'grabbing'
-    startX = e.pageX - container.offsetLeft
-    startY = e.pageY - container.offsetTop
+    startX = e.clientX
+    startY = e.clientY
     scrollLeft = container.scrollLeft
     scrollTop = container.scrollTop
   }
-  container.onmousemove = (e) => {
+  container.onpointermove = (e) => {
     if (!isDragging) return
     e.preventDefault()
-    container.scrollLeft = scrollLeft - (e.pageX - container.offsetLeft - startX)
-    container.scrollTop = scrollTop - (e.pageY - container.offsetTop - startY)
+    container.scrollLeft = scrollLeft - (e.clientX - startX)
+    container.scrollTop = scrollTop - (e.clientY - startY)
   }
-  container.onmouseup = () => { isDragging = false; container.style.cursor = 'grab' }
-  container.onmouseleave = () => { isDragging = false; container.style.cursor = 'grab' }
+  container.onpointerup = (e) => {
+    isDragging = false
+    container.style.cursor = 'grab'
+    if (container.hasPointerCapture(e.pointerId)) container.releasePointerCapture(e.pointerId)
+  }
+  container.onpointercancel = () => { isDragging = false; container.style.cursor = 'grab' }
 }
 
 // Calcula em qual % da imagem o mouse está (funciona em qualquer nível de zoom)
