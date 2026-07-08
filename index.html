@@ -282,6 +282,21 @@
   .add-materia-row { display: flex; gap: 8px; margin-top: 12px; }
   .add-materia-row input { flex: 1; }
 
+  /* VERSÃO COMPACTA (chips) — usada em Matérias e Temas */
+  .chips-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+  .item-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 4px 4px 4px 12px; font-size: 0.78rem;
+  }
+  .item-chip .chip-count { color: var(--text2); font-size: 0.68rem; white-space: nowrap; }
+  .item-chip button {
+    background: none; border: none; color: var(--text2); cursor: pointer;
+    padding: 5px 6px; font-size: 0.72rem; border-radius: 50%; line-height: 1;
+  }
+  .item-chip button:hover { color: var(--accent); background: rgba(255,255,255,0.06); }
+  .item-chip button.chip-del:hover { color: var(--red); }
+
   .notif { position: fixed; bottom: 20px; right: 20px; background: var(--green); color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 0.85rem; font-weight: 600; z-index: 9999; transform: translateY(100px); transition: transform 0.3s; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
   .notif.show { transform: translateY(0); }
   .notif.error { background: var(--red); }
@@ -594,6 +609,7 @@ for each row execute function restringir_cadastro_email();</pre>
     <button class="nav-tab" onclick="goPage('questoes')"><i class="fas fa-list"></i> <span>Questões</span></button>
     <button class="nav-tab" onclick="goPage('simulado')"><i class="fas fa-brain"></i> <span>Simulado</span></button>
     <button class="nav-tab" onclick="goPage('mapas')"><i class="fas fa-image"></i> <span>Mapas</span></button>
+    <button class="nav-tab" onclick="goPage('anotacoes')"><i class="fas fa-note-sticky"></i> <span>Anotações</span></button>
     <button class="nav-tab" onclick="goPage('config')"><i class="fas fa-cog"></i> <span>Config</span></button>
     <button class="nav-tab" onclick="fazerLogout()" style="color:var(--red)" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
   </div>
@@ -620,7 +636,10 @@ for each row execute function restringir_cadastro_email();</pre>
 
     <!-- VISÃO GERAL — GRÁFICO DONUT -->
     <div class="card">
-      <div class="card-title">🍩 Visão Geral</div>
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <span>🍩 Visão Geral</span>
+        <select id="donut-filtro-materia" onchange="filtrarDonutMateria(this.value)" style="width:auto;padding:4px 10px;font-size:0.72rem;text-transform:none;letter-spacing:normal;font-weight:400;color:var(--text)"></select>
+      </div>
       <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
         <div style="position:relative;width:160px;height:160px;flex-shrink:0">
           <canvas id="chart-donut" role="img" aria-label="Gráfico de rosca mostrando proporção de questões dominadas e pendentes"></canvas>
@@ -945,6 +964,18 @@ for each row execute function restringir_cadastro_email();</pre>
     <div id="mapas-conteudo"></div>
   </div>
 
+  <!-- ANOTAÇÕES -->
+  <div class="page" id="page-anotacoes">
+    <div class="card">
+      <div class="card-title">📝 Anotações por Matéria</div>
+      <div class="filtros" id="filtros-anotacoes-materias"></div>
+      <button class="btn btn-primary" style="margin-top:12px" onclick="abrirModalAnotacao()">
+        <i class="fas fa-plus"></i> Nova Anotação
+      </button>
+    </div>
+    <div id="lista-anotacoes"></div>
+  </div>
+
   <!-- CONFIG -->
   <div class="page" id="page-config">
     <div class="card">
@@ -1133,6 +1164,29 @@ for each row execute function restringir_cadastro_email();</pre>
   </div>
 </div>
 
+<!-- CRIAR/EDITAR ANOTAÇÃO -->
+<div class="modal-overlay" id="modal-anotacao">
+  <div class="modal">
+    <div class="modal-title" id="modal-anotacao-titulo">📝 Nova Anotação</div>
+    <div class="form-group">
+      <label>Matéria</label>
+      <select id="anotacao-materia"></select>
+    </div>
+    <div class="form-group">
+      <label>Título</label>
+      <input type="text" id="anotacao-titulo-input" placeholder="Ex: Resumo de Controle de Constitucionalidade">
+    </div>
+    <div class="form-group">
+      <label>Anotação</label>
+      <textarea id="anotacao-conteudo" rows="10" placeholder="Escreva sua anotação aqui..."></textarea>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" id="btn-salvar-anotacao" onclick="salvarAnotacao()"><i class="fas fa-save"></i> Salvar</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-anotacao').classList.remove('open')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- CENTRAL DE BACKUP E EXPORTAÇÃO -->
 <div class="modal-overlay" id="modal-backup">
   <div class="modal" style="max-width:520px">
@@ -1301,6 +1355,7 @@ const supa = {
 const TABELA_QUESTOES = 'Questões'
 const TABELA_MAPAS = 'Mapas'
 const TABELA_MATERIAS = 'Matérias'
+const TABELA_ANOTACOES = 'Anotações'
 const TABELA_CONFIG = 'Configurações'
 
 // Renovar token automaticamente a cada 50 minutos (antes de expirar em 60min)
@@ -1578,6 +1633,7 @@ const MATERIAS_PADRAO = [
 let materias = []
 let questoes = []
 let mapas = []
+let anotacoes = []
 
 // ===== LOADING =====
 function mostrarLoading(msg = 'Carregando...') {
@@ -1589,7 +1645,7 @@ function esconderLoading() {
 }
 
 // ===== NAVEGAÇÃO =====
-const PAGES = ['dashboard','cadastro','questoes','simulado','mapas','config']
+const PAGES = ['dashboard','cadastro','questoes','simulado','mapas','anotacoes','config']
 function goPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'))
@@ -1598,8 +1654,9 @@ function goPage(id) {
   if (id === 'dashboard') renderDashboard()
   if (id === 'questoes') renderQuestoes()
   if (id === 'mapas') renderMapas()
+  if (id === 'anotacoes') renderAnotacoes()
   if (id === 'config') renderConfig()
-  if (id === 'cadastro' || id === 'simulado' || id === 'mapas') popularSelects()
+  if (id === 'cadastro' || id === 'simulado' || id === 'mapas' || id === 'anotacoes') popularSelects()
   if (id === 'cadastro') setTimeout(() => renderTemasTags('tema-questao', 'temas-tags'), 100)
 }
 
@@ -1632,7 +1689,35 @@ function notif(msg, tipo = 'ok') {
 function tagMateria(m) { return `<span class="tag">${m || ''}</span>` }
 
 // ===== DASHBOARD =====
+let filtroDonutMateria = 'todas'
+
+function filtrarDonutMateria(v) {
+  filtroDonutMateria = v
+  renderDashboard()
+}
+
 function renderDashboard() {
+  // Popular e preservar a seleção do filtro do gráfico Visão Geral
+  const selDonut = document.getElementById('donut-filtro-materia')
+  if (selDonut) {
+    selDonut.innerHTML = '<option value="todas">Todas as matérias</option>' +
+      materias.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('')
+    if (filtroDonutMateria !== 'todas' && !materias.some(m => m.nome === filtroDonutMateria)) filtroDonutMateria = 'todas'
+    selDonut.value = filtroDonutMateria
+  }
+
+  const questoesDonut = filtroDonutMateria === 'todas' ? questoes : questoes.filter(q => q.materia === filtroDonutMateria)
+  const totalDonut = questoesDonut.length
+  const domDonut = questoesDonut.filter(q => q.dominada).length
+  const pendDonut = totalDonut - domDonut
+  const pctDonut = totalDonut ? Math.round((domDonut / totalDonut) * 100) : 0
+
+  document.getElementById('donut-pct').textContent = pctDonut + '%'
+  document.getElementById('legenda-dom').textContent = domDonut
+  document.getElementById('legenda-pend').textContent = pendDonut
+  document.getElementById('legenda-total').textContent = totalDonut
+  renderDonutChart(domDonut, pendDonut)
+
   const total = questoes.length
   const dom = questoes.filter(q => q.dominada).length
   const pend = total - dom
@@ -1642,12 +1727,6 @@ function renderDashboard() {
   document.getElementById('stat-erros').textContent = pend
   document.getElementById('stat-dom').textContent = dom
   document.getElementById('stat-pct').textContent = pct + '%'
-  document.getElementById('donut-pct').textContent = pct + '%'
-  document.getElementById('legenda-dom').textContent = dom
-  document.getElementById('legenda-pend').textContent = pend
-  document.getElementById('legenda-total').textContent = total
-
-  renderDonutChart(dom, pend)
 
   const h = new Date().getHours()
   const saud = h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
@@ -3045,14 +3124,17 @@ function renderConfig() {
   if (!materias.length) {
     el.innerHTML = '<div style="color:var(--text2);font-size:0.85rem">Nenhuma matéria cadastrada.</div>'
   } else {
-    el.innerHTML = materias.map((m) => `
-      <div class="materia-item">
-        <span style="flex:1">${m.nome}</span>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-ghost btn-sm" onclick="abrirEditarMateria('${m.id}','${m.nome.replace(/'/g,"\\'")}')"><i class="fas fa-edit"></i></button>
-          <button class="btn btn-danger btn-sm" onclick="removerMateria('${m.id}')"><i class="fas fa-trash"></i></button>
-        </div>
-      </div>`).join('')
+    el.className = 'chips-wrap'
+    el.innerHTML = materias.map((m) => {
+      const count = questoes.filter(q => q.materia === m.nome).length
+      return `
+      <div class="item-chip">
+        <span>${m.nome}</span>
+        <span class="chip-count">${count}</span>
+        <button onclick="abrirEditarMateria('${m.id}','${m.nome.replace(/'/g,"\\'")}')" title="Editar"><i class="fas fa-edit"></i></button>
+        <button class="chip-del" onclick="removerMateria('${m.id}')" title="Remover"><i class="fas fa-trash"></i></button>
+      </div>`
+    }).join('')
   }
 
   // Temas
@@ -3156,18 +3238,15 @@ function renderTemasConfig() {
     el.innerHTML = '<div style="color:var(--text2);font-size:0.85rem">Nenhum tema cadastrado ainda. Temas são criados ao cadastrar questões.</div>'
     return
   }
+  el.className = 'chips-wrap'
   el.innerHTML = temas.map(t => {
     const count = questoes.filter(q => q.tema === t).length
     return `
-      <div class="materia-item">
-        <div style="flex:1">
-          <span>${t}</span>
-          <span style="font-size:0.72rem;color:var(--text2);margin-left:8px">${count} questão${count!==1?'ões':''}</span>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-ghost btn-sm" onclick="abrirEditarTema('${t.replace(/'/g,"\\'")}')"><i class="fas fa-edit"></i></button>
-          <button class="btn btn-danger btn-sm" onclick="removerTema('${t.replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i></button>
-        </div>
+      <div class="item-chip">
+        <span>${t}</span>
+        <span class="chip-count">${count}</span>
+        <button onclick="abrirEditarTema('${t.replace(/'/g,"\\'")}')" title="Editar"><i class="fas fa-edit"></i></button>
+        <button class="chip-del" onclick="removerTema('${t.replace(/'/g,"\\'")}')" title="Remover"><i class="fas fa-trash"></i></button>
       </div>`
   }).join('')
 }
@@ -3222,7 +3301,7 @@ async function confirmarEdicaoNome() {
       await supa.update(TABELA_QUESTOES, q.id, { tema: novoNome })
       q.tema = novoNome
     }
-    notif(`✅ Tema renomeado! ${questoesAfetadas.length} questão${questoesAfetadas.length!==1?'ões':''} atualizada${questoesAfetadas.length!==1?'s':''}!`)
+    notif(`✅ Tema renomeado! ${questoesAfetadas.length} ${questoesAfetadas.length !== 1 ? 'questões atualizadas' : 'questão atualizada'}!`)
   } else {
     // Atualizar nome da matéria no Supabase
     await supa.update(TABELA_MATERIAS, _editarMateriaId, { nome: novoNome })
@@ -3254,7 +3333,7 @@ async function removerTema(tema) {
   _materiaParaRemover = null
   const count = questoes.filter(q => q.tema === tema).length
   document.getElementById('confirmar-titulo').textContent = `Remover tema "${tema}"?`
-  document.getElementById('confirmar-texto').textContent = `Isso vai remover o tema de ${count} questão${count!==1?'ões':''}. Não apaga as questões, só o tema delas.`
+  document.getElementById('confirmar-texto').textContent = `Isso vai remover o tema de ${count} ${count !== 1 ? 'questões' : 'questão'}. Não apaga as questões, só o tema delas.`
   document.getElementById('modal-confirmar').classList.add('open')
   document.getElementById('confirmar-sim').onclick = async () => {
     mostrarLoading('Removendo tema...')
@@ -3311,6 +3390,107 @@ function removerMateria(id) {
   }
 }
 
+// ===== ANOTAÇÕES =====
+let filtroAnotacaoMateria = 'todas-materias'
+let _editarAnotacaoId = null
+
+function renderAnotacoes() {
+  document.getElementById('filtros-anotacoes-materias').innerHTML =
+    `<button class="filtro-btn ${filtroAnotacaoMateria === 'todas-materias' ? 'active' : ''}" onclick="filtrarAnotacaoMateria('todas-materias')">Todas</button>` +
+    materias.map(m => `<button class="filtro-btn ${filtroAnotacaoMateria === m.nome ? 'active' : ''}" onclick="filtrarAnotacaoMateria('${String(m.nome).replace(/'/g, "\\'")}')">${m.nome}</button>`).join('')
+
+  let lista = anotacoes
+  if (filtroAnotacaoMateria !== 'todas-materias') lista = lista.filter(a => a.materia === filtroAnotacaoMateria)
+  lista = [...lista].sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0))
+
+  const el = document.getElementById('lista-anotacoes')
+  if (!lista.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📝</div><div class="empty-text">Nenhuma anotação ${filtroAnotacaoMateria !== 'todas-materias' ? 'nessa matéria' : 'ainda'}. Que tal criar a primeira?</div></div>`
+    return
+  }
+
+  el.innerHTML = lista.map(a => `
+    <div class="card" style="cursor:pointer" onclick="abrirModalAnotacao('${a.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.7rem;color:var(--accent);font-weight:700;text-transform:uppercase;margin-bottom:4px">${a.materia || 'Sem matéria'}</div>
+          <div style="font-weight:700;margin-bottom:6px">${a.titulo || '(Sem título)'}</div>
+          <div style="font-size:0.85rem;color:var(--text2);white-space:pre-wrap;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical">${(a.conteudo || '').slice(0, 300)}</div>
+        </div>
+        <button class="btn btn-ghost" style="padding:6px 10px;flex-shrink:0" onclick="event.stopPropagation();deletarAnotacao('${a.id}')"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>
+  `).join('')
+}
+
+function filtrarAnotacaoMateria(m) {
+  filtroAnotacaoMateria = m
+  renderAnotacoes()
+}
+
+function abrirModalAnotacao(id = null) {
+  _editarAnotacaoId = id
+  const sel = document.getElementById('anotacao-materia')
+  sel.innerHTML = materias.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('')
+
+  if (id) {
+    const a = anotacoes.find(x => String(x.id) === String(id))
+    if (!a) return
+    document.getElementById('modal-anotacao-titulo').textContent = '📝 Editar Anotação'
+    sel.value = a.materia || ''
+    document.getElementById('anotacao-titulo-input').value = a.titulo || ''
+    document.getElementById('anotacao-conteudo').value = a.conteudo || ''
+  } else {
+    document.getElementById('modal-anotacao-titulo').textContent = '📝 Nova Anotação'
+    if (filtroAnotacaoMateria !== 'todas-materias') sel.value = filtroAnotacaoMateria
+    document.getElementById('anotacao-titulo-input').value = ''
+    document.getElementById('anotacao-conteudo').value = ''
+  }
+  document.getElementById('modal-anotacao').classList.add('open')
+}
+
+async function salvarAnotacao() {
+  const materia = document.getElementById('anotacao-materia').value
+  const titulo = document.getElementById('anotacao-titulo-input').value.trim()
+  const conteudo = document.getElementById('anotacao-conteudo').value.trim()
+
+  if (!materia) { notif('Selecione uma matéria!', 'error'); return }
+  if (!conteudo) { notif('Escreva alguma coisa na anotação!', 'error'); return }
+
+  const btn = document.getElementById('btn-salvar-anotacao')
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...'
+
+  try {
+    if (_editarAnotacaoId) {
+      const r = await supa.update(TABELA_ANOTACOES, _editarAnotacaoId, { materia, titulo, conteudo, updated_at: new Date().toISOString() })
+      if (r) anotacoes = anotacoes.map(a => String(a.id) === String(_editarAnotacaoId) ? r[0] : a)
+    } else {
+      const r = await supa.insert(TABELA_ANOTACOES, { materia, titulo, conteudo })
+      if (r) anotacoes.push(r[0])
+    }
+    document.getElementById('modal-anotacao').classList.remove('open')
+    renderAnotacoes()
+    notif('✅ Anotação salva!')
+  } catch (e) {
+    notif('❌ Erro ao salvar anotação.', 'error')
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Salvar'
+    _editarAnotacaoId = null
+  }
+}
+
+async function deletarAnotacao(id) {
+  if (!confirm('Apagar essa anotação? Essa ação não pode ser desfeita.')) return
+  const ok = await supa.delete(TABELA_ANOTACOES, id)
+  if (ok) {
+    anotacoes = anotacoes.filter(a => String(a.id) !== String(id))
+    renderAnotacoes()
+    notif('🗑️ Anotação apagada.')
+  } else {
+    notif('❌ Erro ao apagar.', 'error')
+  }
+}
+
 // ===== BACKUP E EXPORTAÇÃO =====
 
 // Nome padronizado com data e hora, pra sempre saber qual é o backup mais recente
@@ -3340,7 +3520,7 @@ function atualizarFiltroMateriaPDF() {
 
 // ----- Exportar backup completo (.json) -----
 function exportarBackup() {
-  const data = { app: 'Estudo Concursos', exportadoEm: new Date().toISOString(), questoes, mapas, materias }
+  const data = { app: 'Estudo Concursos', exportadoEm: new Date().toISOString(), questoes, mapas, materias, anotacoes }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -3360,7 +3540,7 @@ function importarBackup(e) {
     try { data = JSON.parse(ev.target.result) }
     catch { notif('❌ Arquivo inválido — não é um backup do Estudo Concursos.', 'error'); e.target.value = ''; return }
 
-    if (!data || (!Array.isArray(data.questoes) && !Array.isArray(data.mapas) && !Array.isArray(data.materias))) {
+    if (!data || (!Array.isArray(data.questoes) && !Array.isArray(data.mapas) && !Array.isArray(data.materias) && !Array.isArray(data.anotacoes))) {
       notif('❌ Esse arquivo não parece ser um backup válido.', 'error'); e.target.value = ''; return
     }
 
@@ -3368,8 +3548,9 @@ function importarBackup(e) {
     const qtdQ = (data.questoes || []).length
     const qtdM = (data.mapas || []).length
     const qtdMt = (data.materias || []).length
+    const qtdAn = (data.anotacoes || []).length
     document.getElementById('importar-resumo-texto').innerHTML =
-      `Esse backup tem <strong>${qtdQ} questões</strong>, <strong>${qtdM} mapas</strong> e <strong>${qtdMt} matérias</strong>.<br><br>Como você quer importar?`
+      `Esse backup tem <strong>${qtdQ} questões</strong>, <strong>${qtdM} mapas</strong>, <strong>${qtdMt} matérias</strong> e <strong>${qtdAn} anotações</strong>.<br><br>Como você quer importar?`
     document.getElementById('modal-backup').classList.remove('open')
     document.getElementById('modal-importar-modo').classList.add('open')
     e.target.value = ''
@@ -3399,10 +3580,11 @@ async function executarImportacao(modo) {
       await apagarTodosRegistros(TABELA_QUESTOES)
       await apagarTodosRegistros(TABELA_MAPAS)
       await apagarTodosRegistros(TABELA_MATERIAS)
+      await apagarTodosRegistros(TABELA_ANOTACOES)
     }
 
     // Remove campos que o banco preenche sozinho (id, dono, data de criação)
-    const limpar = (arr) => (arr || []).map(({ id, created_at, user_id, ...resto }) => resto)
+    const limpar = (arr) => (arr || []).map(({ id, created_at, updated_at, user_id, ...resto }) => resto)
 
     const materiasBackup = limpar(data.materias)
     if (materiasBackup.length) await supa.insert(TABELA_MATERIAS, materiasBackup)
@@ -3412,6 +3594,9 @@ async function executarImportacao(modo) {
 
     const mapasBackup = limpar(data.mapas)
     if (mapasBackup.length) await supa.insert(TABELA_MAPAS, mapasBackup)
+
+    const anotacoesBackup = limpar(data.anotacoes)
+    if (anotacoesBackup.length) await supa.insert(TABELA_ANOTACOES, anotacoesBackup)
 
     await carregarDados()
     notif('✅ Backup restaurado com sucesso!')
@@ -3576,14 +3761,16 @@ function calcularConsumo() {
 async function carregarDados() {
   mostrarLoading('Carregando seus dados...')
   try {
-    const [q, m, mt] = await Promise.all([
+    const [q, m, mt, an] = await Promise.all([
       supa.get(TABELA_QUESTOES),
       supa.get(TABELA_MAPAS),
       supa.get(TABELA_MATERIAS),
+      supa.get(TABELA_ANOTACOES),
     ])
     questoes = q || []
     mapas = m || []
     materias = mt && mt.length ? mt : []
+    anotacoes = an || []
     if (!materias.length) {
       mostrarLoading('Configurando matérias padrão...')
       for (const nome of MATERIAS_PADRAO) {
