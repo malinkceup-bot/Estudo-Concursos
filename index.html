@@ -1065,18 +1065,18 @@ for each row execute function restringir_cadastro_email();</pre>
   <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;flex-shrink:0" onclick="event.stopPropagation()">
     <div id="modal-img-titulo" style="color:#fff;font-size:0.9rem;font-weight:600"></div>
     <div style="display:flex;gap:8px;align-items:center">
-      <button onclick="zoomOut()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:36px;height:36px;border-radius:8px;font-size:1.1rem;cursor:pointer">−</button>
+      <button onclick="zoomBtn(-1)" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:36px;height:36px;border-radius:8px;font-size:1.1rem;cursor:pointer">−</button>
       <span id="zoom-pct" style="color:#fff;font-size:0.85rem;min-width:45px;text-align:center">100%</span>
-      <button onclick="zoomIn()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:36px;height:36px;border-radius:8px;font-size:1.1rem;cursor:pointer">+</button>
+      <button onclick="zoomBtn(1)" style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:36px;height:36px;border-radius:8px;font-size:1.1rem;cursor:pointer">+</button>
       <button onclick="zoomReset()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;padding:0 12px;height:36px;border-radius:8px;font-size:0.8rem;cursor:pointer">Reset</button>
       <button onclick="fecharModal()" style="background:rgba(239,68,68,0.7);border:none;color:#fff;width:36px;height:36px;border-radius:8px;font-size:1rem;cursor:pointer">✕</button>
     </div>
   </div>
   <div id="modal-img-container" style="flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:10px;cursor:grab" onclick="event.stopPropagation()">
-    <img id="modal-img-src" style="border-radius:8px;transform-origin:top center;transition:transform 0.2s;max-width:100%">
+    <img id="modal-img-src" style="border-radius:8px;transform-origin:center center;transition:transform 0.2s;max-width:100%">
   </div>
   <div style="text-align:center;padding:8px;color:rgba(255,255,255,0.4);font-size:0.75rem">
-    Scroll para zoom · Arraste para mover · Clique fora para fechar
+    Scroll para zoom no ponto do mouse · Duplo clique para dar zoom rápido · Arraste para mover · Clique fora para fechar
   </div>
 </div>
 
@@ -2940,18 +2940,35 @@ function abrirImagem(id) {
   const m = mapas.find(m => String(m.id) === String(id))
   if (!m) return
   zoomLevel = 1
-  document.getElementById('modal-img-src').src = m.img
-  document.getElementById('modal-img-src').style.transform = 'scale(1)'
+  const img = document.getElementById('modal-img-src')
+  img.src = m.img
+  img.style.transformOrigin = 'center center'
+  img.style.transform = 'scale(1)'
   document.getElementById('modal-img-titulo').textContent = m.titulo || ''
   document.getElementById('zoom-pct').textContent = '100%'
   document.getElementById('modal-img').style.display = 'flex'
 
-  // Scroll para zoom
   const container = document.getElementById('modal-img-container')
+
+  // Scroll para zoom — cresce a partir do ponto exato onde está o mouse,
+  // não do centro da imagem, seguindo o cursor
   container.onwheel = (e) => {
     e.preventDefault()
+    definirOrigemPeloMouse(e.clientX, e.clientY)
     if (e.deltaY < 0) zoomIn()
     else zoomOut()
+  }
+
+  // Duplo clique: zoom rápido no ponto clicado (ou volta ao normal se já ampliado)
+  img.ondblclick = (e) => {
+    e.stopPropagation()
+    if (zoomLevel > 1) {
+      zoomReset()
+    } else {
+      definirOrigemPeloMouse(e.clientX, e.clientY)
+      zoomLevel = 2.5
+      aplicarZoom()
+    }
   }
 
   // Arrastar para mover
@@ -2974,6 +2991,17 @@ function abrirImagem(id) {
   container.onmouseleave = () => { isDragging = false; container.style.cursor = 'grab' }
 }
 
+// Calcula em qual % da imagem o mouse está (funciona em qualquer nível de zoom)
+// e usa isso como ponto de origem do próximo zoom
+function definirOrigemPeloMouse(clientX, clientY) {
+  const img = document.getElementById('modal-img-src')
+  const rect = img.getBoundingClientRect()
+  if (!rect.width || !rect.height) return
+  const origemX = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100))
+  const origemY = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100))
+  img.style.transformOrigin = `${origemX}% ${origemY}%`
+}
+
 function zoomIn() {
   zoomLevel = Math.min(zoomLevel + 0.25, 5)
   aplicarZoom()
@@ -2984,8 +3012,15 @@ function zoomOut() {
   aplicarZoom()
 }
 
+// Usado pelos botões +/− da barra: sempre zoom central, previsível, sem depender do mouse
+function zoomBtn(direcao) {
+  document.getElementById('modal-img-src').style.transformOrigin = 'center center'
+  if (direcao > 0) zoomIn(); else zoomOut()
+}
+
 function zoomReset() {
   zoomLevel = 1
+  document.getElementById('modal-img-src').style.transformOrigin = 'center center'
   aplicarZoom()
   document.getElementById('modal-img-container').scrollTo(0, 0)
 }
