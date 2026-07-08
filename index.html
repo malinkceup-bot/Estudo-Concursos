@@ -1073,7 +1073,7 @@ for each row execute function restringir_cadastro_email();</pre>
     </div>
   </div>
   <div id="modal-img-container" style="flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:10px;cursor:grab;touch-action:none" onclick="event.stopPropagation()">
-    <img id="modal-img-src" draggable="false" style="border-radius:8px;transform-origin:center center;transition:transform 0.2s;max-width:100%;user-select:none">
+    <img id="modal-img-src" draggable="false" style="border-radius:8px;transform-origin:0 0;transition:transform 0.2s;max-width:100%;user-select:none">
   </div>
   <div style="text-align:center;padding:8px;color:rgba(255,255,255,0.4);font-size:0.75rem">
     Scroll para zoom no ponto do mouse · Duplo clique para dar zoom rápido · Arraste para mover · Clique fora para fechar
@@ -2942,34 +2942,27 @@ function abrirImagem(id) {
   zoomLevel = 1
   const img = document.getElementById('modal-img-src')
   img.src = m.img
-  img.style.transformOrigin = 'center center'
+  img.style.transformOrigin = '0 0'
   img.style.transform = 'scale(1)'
   document.getElementById('modal-img-titulo').textContent = m.titulo || ''
   document.getElementById('zoom-pct').textContent = '100%'
   document.getElementById('modal-img').style.display = 'flex'
 
   const container = document.getElementById('modal-img-container')
+  container.scrollTo(0, 0)
   img.ondragstart = (e) => { e.preventDefault(); return false }
 
-  // Scroll para zoom — cresce a partir do ponto exato onde está o mouse,
-  // não do centro da imagem, seguindo o cursor
+  // Scroll para zoom, ancorado no ponto exato do mouse (nunca perde acesso ao resto da imagem)
   container.onwheel = (e) => {
     e.preventDefault()
-    definirOrigemPeloMouse(e.clientX, e.clientY)
-    if (e.deltaY < 0) zoomIn()
-    else zoomOut()
+    zoomEmDirecao(e.deltaY < 0 ? 0.25 : -0.25, e.clientX, e.clientY)
   }
 
-  // Duplo clique: zoom rápido no ponto clicado (ou volta ao normal se já ampliado)
+  // Duplo clique: zoom rápido ancorado no ponto clicado (ou volta ao normal se já ampliado)
   img.ondblclick = (e) => {
     e.stopPropagation()
-    if (zoomLevel > 1) {
-      zoomReset()
-    } else {
-      definirOrigemPeloMouse(e.clientX, e.clientY)
-      zoomLevel = 2.5
-      aplicarZoom()
-    }
+    if (zoomLevel > 1) zoomReset()
+    else zoomPara(2.5, e.clientX, e.clientY)
   }
 
   // Arrastar para mover (pointer events — mais confiável que mouse events pra isso)
@@ -2998,36 +2991,43 @@ function abrirImagem(id) {
   container.onpointercancel = () => { isDragging = false; container.style.cursor = 'grab' }
 }
 
-// Calcula em qual % da imagem o mouse está (funciona em qualquer nível de zoom)
-// e usa isso como ponto de origem do próximo zoom
-function definirOrigemPeloMouse(clientX, clientY) {
-  const img = document.getElementById('modal-img-src')
-  const rect = img.getBoundingClientRect()
-  if (!rect.width || !rect.height) return
-  const origemX = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100))
-  const origemY = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100))
-  img.style.transformOrigin = `${origemX}% ${origemY}%`
+// Aplica uma variação de zoom (+0.25/-0.25), mantendo fixo na tela o ponto (clientX, clientY)
+function zoomEmDirecao(delta, clientX, clientY) {
+  const alvo = Math.round((zoomLevel + delta) * 100) / 100
+  zoomPara(Math.min(5, Math.max(0.25, alvo)), clientX, clientY)
 }
 
-function zoomIn() {
-  zoomLevel = Math.min(zoomLevel + 0.25, 5)
+// Define um nível de zoom exato, mantendo o ponto (clientX, clientY) fixo na tela.
+// A imagem sempre cresce a partir do canto superior esquerdo (origem fixa), e quem
+// simula o "zoom seguindo o mouse" é a rolagem calculada aqui — muito mais estável
+// do que mover a origem do zoom, que fazia partes da imagem ficarem inacessíveis.
+function zoomPara(novoZoom, clientX, clientY) {
+  const container = document.getElementById('modal-img-container')
+  const rect = container.getBoundingClientRect()
+  const mouseX = clientX - rect.left
+  const mouseY = clientY - rect.top
+  const oldZoom = zoomLevel
+
+  const contentX = container.scrollLeft + mouseX
+  const contentY = container.scrollTop + mouseY
+
+  zoomLevel = novoZoom
   aplicarZoom()
+
+  const fator = zoomLevel / oldZoom
+  container.scrollLeft = contentX * fator - mouseX
+  container.scrollTop = contentY * fator - mouseY
 }
 
-function zoomOut() {
-  zoomLevel = Math.max(zoomLevel - 0.25, 0.25)
-  aplicarZoom()
-}
-
-// Usado pelos botões +/− da barra: sempre zoom central, previsível, sem depender do mouse
+// Usado pelos botões +/− da barra: ancora no centro da área visível
 function zoomBtn(direcao) {
-  document.getElementById('modal-img-src').style.transformOrigin = 'center center'
-  if (direcao > 0) zoomIn(); else zoomOut()
+  const container = document.getElementById('modal-img-container')
+  const rect = container.getBoundingClientRect()
+  zoomEmDirecao(direcao > 0 ? 0.25 : -0.25, rect.left + rect.width / 2, rect.top + rect.height / 2)
 }
 
 function zoomReset() {
   zoomLevel = 1
-  document.getElementById('modal-img-src').style.transformOrigin = 'center center'
   aplicarZoom()
   document.getElementById('modal-img-container').scrollTo(0, 0)
 }
