@@ -1657,6 +1657,15 @@ function filtrarDonutMateria(v) {
   renderDashboard()
 }
 
+function toggleTemasDashboard(idx) {
+  const el = document.getElementById(`temas-dash-${idx}`)
+  const chevron = document.getElementById(`chevron-dash-${idx}`)
+  if (!el) return
+  const aberto = el.style.display !== 'none'
+  el.style.display = aberto ? 'none' : 'block'
+  if (chevron) chevron.style.transform = aberto ? 'rotate(0deg)' : 'rotate(90deg)'
+}
+
 function renderDashboard() {
   // Popular e preservar a seleção do filtro do gráfico Visão Geral
   const selDonut = document.getElementById('donut-filtro-materia')
@@ -1718,16 +1727,44 @@ function renderDashboard() {
 
   renderBarrasChart(sorted)
 
-  elMat.innerHTML = sorted.map(([m, dados]) => {
+  elMat.innerHTML = sorted.map(([m, dados], idx) => {
     const p = Math.round((dados.dominadas / dados.total) * 100)
     const pend = dados.total - dados.dominadas
     const cor = p >= 70 ? 'var(--green)' : p >= 40 ? 'var(--yellow)' : 'var(--red)'
     const emoji = p >= 70 ? '✅' : p >= 40 ? '⚠️' : '❌'
     const status = p >= 70 ? 'Bom domínio' : p >= 40 ? 'Em progresso' : 'Precisa de atenção'
+
+    // Detalhamento por tema dentro dessa matéria
+    const temasDaMateria = {}
+    questoes.filter(q => (q.materia || 'Sem matéria') === m && q.tema).forEach(q => {
+      const t = q.tema
+      if (!temasDaMateria[t]) temasDaMateria[t] = { total: 0, dominadas: 0 }
+      temasDaMateria[t].total++
+      if (q.dominada) temasDaMateria[t].dominadas++
+    })
+    const temasOrdenados = Object.entries(temasDaMateria).sort((a, b) => (a[1].dominadas / a[1].total) - (b[1].dominadas / b[1].total))
+    const temTemas = temasOrdenados.length > 0
+
+    const temasHtml = temasOrdenados.map(([t, td]) => {
+      const tp = Math.round((td.dominadas / td.total) * 100)
+      const tcor = tp >= 70 ? 'var(--green)' : tp >= 40 ? 'var(--yellow)' : 'var(--red)'
+      return `
+        <div style="margin:8px 0;padding-left:12px;border-left:2px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px">
+            <span style="font-size:0.78rem;color:var(--text2)">${t}</span>
+            <span style="font-size:0.72rem;color:${tcor};font-weight:700;white-space:nowrap">${tp}% · ${td.dominadas}/${td.total}</span>
+          </div>
+          <div style="background:var(--surface2);border-radius:5px;height:6px;overflow:hidden">
+            <div style="background:${tcor};height:6px;border-radius:5px;width:${tp}%"></div>
+          </div>
+        </div>`
+    }).join('')
+
     return `
       <div style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px;${temTemas ? 'cursor:pointer' : ''}" ${temTemas ? `onclick="toggleTemasDashboard(${idx})"` : ''}>
           <div style="display:flex;align-items:center;gap:6px">
+            ${temTemas ? `<i class="fas fa-chevron-right" id="chevron-dash-${idx}" style="font-size:0.65rem;color:var(--text2);transition:transform 0.2s"></i>` : ''}
             <span style="font-size:0.9rem;font-weight:600">${m}</span>
             <span style="font-size:0.7rem;background:var(--surface2);padding:2px 8px;border-radius:20px;color:var(--text2)">${emoji} ${status}</span>
           </div>
@@ -1740,7 +1777,10 @@ function renderDashboard() {
         <div style="background:var(--surface2);border-radius:6px;height:10px;overflow:hidden">
           <div style="background:${cor};height:10px;border-radius:6px;width:${p}%"></div>
         </div>
-        <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">${dados.total} ${dados.total!==1?'questões cadastradas':'questão cadastrada'}</div>
+        <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">
+          ${dados.total} ${dados.total!==1?'questões cadastradas':'questão cadastrada'}${temTemas ? ` · <span style="cursor:pointer;text-decoration:underline" onclick="toggleTemasDashboard(${idx})">${temasOrdenados.length} ${temasOrdenados.length!==1?'temas — ver detalhes':'tema — ver detalhes'}</span>` : ''}
+        </div>
+        ${temTemas ? `<div id="temas-dash-${idx}" style="display:none">${temasHtml}</div>` : ''}
       </div>`
   }).join('')
 
