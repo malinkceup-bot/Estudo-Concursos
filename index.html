@@ -54,8 +54,8 @@
 
   .card-title { font-family: 'Outfit', sans-serif; letter-spacing: 0.8px; }
 
-  #page-dashboard .card { transition: box-shadow 0.18s ease, border-color 0.18s ease; }
-  #page-dashboard .card:hover { border-color: #3a4166; box-shadow: 0 6px 20px rgba(0,0,0,0.22); }
+  .card { transition: box-shadow 0.18s ease, border-color 0.18s ease; }
+  .card:hover { border-color: #3a4166; box-shadow: 0 6px 20px rgba(0,0,0,0.22); }
 
   @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   #page-dashboard.active .dash-hero { animation: fadeInUp 0.35s ease both; }
@@ -625,6 +625,9 @@ for each row execute function restringir_cadastro_email();</pre>
             <i class="fas fa-eye" id="olho-senha"></i>
           </button>
         </div>
+        <div style="text-align:right;margin-top:6px">
+          <button onclick="mostrarTelaRecuperarSenha()" style="background:none;border:none;color:var(--text2);font-size:0.75rem;cursor:pointer;text-decoration:underline">Esqueci minha senha</button>
+        </div>
       </div>
       <div id="login-erro" style="display:none;background:rgba(239,68,68,0.1);border:1px solid var(--red);border-radius:8px;padding:10px;font-size:0.85rem;color:var(--red);margin-bottom:14px">
         <i class="fas fa-exclamation-circle"></i> <span id="login-erro-msg"></span>
@@ -639,6 +642,66 @@ for each row execute function restringir_cadastro_email();</pre>
     <div style="text-align:center;margin-top:12px">
       <button onclick="mostrarTelaSetup()" style="background:none;border:none;color:var(--accent);font-size:0.85rem;cursor:pointer;text-decoration:underline">
         Não tem conta? Cadastre-se aqui
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- RECUPERAR SENHA -->
+<div id="tela-recuperar-senha" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9998;align-items:center;justify-content:center;padding:20px">
+  <div style="width:100%;max-width:380px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:2.5rem;margin-bottom:8px">📧</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--text)">Recuperar senha</div>
+      <div style="font-size:0.85rem;color:var(--text2);margin-top:4px">Digite seu e-mail e enviaremos um link para redefinir sua senha</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px" id="recuperar-form">
+      <div class="form-group">
+        <label><i class="fas fa-envelope" style="margin-right:5px"></i>E-mail</label>
+        <input type="email" id="recuperar-email" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')enviarRecuperacaoSenha()">
+      </div>
+      <div id="recuperar-erro" style="display:none;background:rgba(239,68,68,0.1);border:1px solid var(--red);border-radius:8px;padding:10px;font-size:0.85rem;color:var(--red);margin-bottom:14px">
+        <i class="fas fa-exclamation-circle"></i> <span id="recuperar-erro-msg"></span>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="enviarRecuperacaoSenha()" id="btn-recuperar">
+        <i class="fas fa-paper-plane"></i> Enviar link de recuperação
+      </button>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px;display:none;text-align:center" id="recuperar-sucesso">
+      <div style="font-size:2rem;margin-bottom:10px">✅</div>
+      <div style="font-size:0.9rem;color:var(--text)">Se esse e-mail estiver cadastrado, você vai receber um link para redefinir sua senha em instantes.</div>
+      <div style="font-size:0.78rem;color:var(--text2);margin-top:8px">Não esqueceu de checar a caixa de spam? 😉</div>
+    </div>
+    <div style="text-align:center;margin-top:16px">
+      <button onclick="mostrarTelaLogin()" style="background:none;border:none;color:var(--accent);font-size:0.85rem;cursor:pointer;text-decoration:underline">
+        <i class="fas fa-arrow-left"></i> Voltar para o login
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- DEFINIR NOVA SENHA (chegada via link do e-mail) -->
+<div id="tela-nova-senha" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9998;align-items:center;justify-content:center;padding:20px">
+  <div style="width:100%;max-width:380px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:2.5rem;margin-bottom:8px">🔑</div>
+      <div style="font-size:1.4rem;font-weight:700;color:var(--text)">Definir nova senha</div>
+      <div style="font-size:0.85rem;color:var(--text2);margin-top:4px">Escolha uma nova senha para acessar sua conta</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px">
+      <div class="form-group">
+        <label><i class="fas fa-lock" style="margin-right:5px"></i>Nova senha</label>
+        <input type="password" id="nova-senha-1" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="form-group">
+        <label><i class="fas fa-lock" style="margin-right:5px"></i>Confirmar nova senha</label>
+        <input type="password" id="nova-senha-2" placeholder="Repita a nova senha" onkeydown="if(event.key==='Enter')salvarNovaSenha()">
+      </div>
+      <div id="nova-senha-erro" style="display:none;background:rgba(239,68,68,0.1);border:1px solid var(--red);border-radius:8px;padding:10px;font-size:0.85rem;color:var(--red);margin-bottom:14px">
+        <i class="fas fa-exclamation-circle"></i> <span id="nova-senha-erro-msg"></span>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="salvarNovaSenha()" id="btn-nova-senha">
+        <i class="fas fa-check"></i> Salvar nova senha
       </button>
     </div>
   </div>
@@ -759,7 +822,7 @@ for each row execute function restringir_cadastro_email();</pre>
   <!-- CADASTRO -->
   <div class="page" id="page-cadastro">
     <div class="card">
-      <div class="card-title">📋 Cadastrar Questão Errada</div>
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-clipboard-list"></i></span>Cadastrar Questão Errada</div>
 
       <!-- OCR - UPLOAD DE PRINT -->
       <div class="form-group">
@@ -910,7 +973,7 @@ for each row execute function restringir_cadastro_email();</pre>
   <div class="page" id="page-simulado">
     <div id="simulado-config">
       <div class="card">
-        <div class="card-title">🧠 Configurar Simulado</div>
+        <div class="card-title"><span class="card-title-icon" style="background:rgba(34,197,94,0.15);color:var(--green)"><i class="fas fa-brain"></i></span>Configurar Simulado</div>
 
         <div class="form-group">
           <label>Selecione as Matérias</label>
@@ -1037,7 +1100,7 @@ for each row execute function restringir_cadastro_email();</pre>
   <!-- CONFIG -->
   <div class="page" id="page-config">
     <div class="card">
-      <div class="card-title">⚙️ Gerenciar Matérias</div>
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-layer-group"></i></span>Gerenciar Matérias</div>
       <p style="font-size:0.85rem;color:var(--text2);margin-bottom:16px">Renomear ou remover matérias atualiza automaticamente todas as questões e mapas.</p>
       <div id="lista-materias-config"></div>
       <div class="add-materia-row">
@@ -1047,13 +1110,13 @@ for each row execute function restringir_cadastro_email();</pre>
     </div>
 
     <div class="card">
-      <div class="card-title">🏷️ Gerenciar Temas</div>
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(245,158,11,0.15);color:var(--yellow)"><i class="fas fa-tags"></i></span>Gerenciar Temas</div>
       <p style="font-size:0.85rem;color:var(--text2);margin-bottom:16px">Renomear ou remover temas atualiza automaticamente todas as questões com esse tema.</p>
       <div id="lista-temas-config"></div>
     </div>
 
     <div class="card" id="card-migracao" style="display:none">
-      <div class="card-title">☁️ Migrar Mapas para Cloudinary</div>
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-cloud-arrow-up"></i></span>Migrar Mapas para Cloudinary</div>
       <div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px" id="migracao-info"></div>
       <div id="migracao-progresso" style="display:none;margin-bottom:12px">
         <div style="background:var(--surface2);border-radius:6px;height:10px;overflow:hidden;margin-bottom:6px">
@@ -1067,7 +1130,7 @@ for each row execute function restringir_cadastro_email();</pre>
     </div>
 
     <div class="card">
-      <div class="card-title">💾 Backup e Exportação</div>
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(245,158,11,0.15);color:var(--yellow)"><i class="fas fa-box-archive"></i></span>Backup e Exportação</div>
       <div style="font-size:0.8rem;color:var(--text2);margin-bottom:12px">Baixe um backup completo, restaure um backup anterior, ou exporte suas questões em PDF.</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="abrirModalBackup()"><i class="fas fa-box-archive"></i> Abrir Central de Backup</button>
@@ -1075,14 +1138,14 @@ for each row execute function restringir_cadastro_email();</pre>
     </div>
 
     <div class="card">
-      <div class="card-title">📊 Consumo de Dados</div>
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-database"></i></span>Consumo de Dados</div>
       <div id="monitor-consumo">
         <div style="color:var(--text2);font-size:0.85rem">Calculando...</div>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">🔐 Conta</div>
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(239,68,68,0.15);color:var(--red)"><i class="fas fa-user-shield"></i></span>Conta</div>
       <div class="form-group">
         <label>Seu Nome</label>
         <div style="display:flex;gap:8px">
@@ -1560,6 +1623,8 @@ function copiarSQL(id) {
 function mostrarTelaSetup() {
   document.getElementById('tela-config-supa').style.display = 'flex'
   document.getElementById('tela-login').style.display = 'none'
+  document.getElementById('tela-recuperar-senha').style.display = 'none'
+  document.getElementById('tela-nova-senha').style.display = 'none'
   document.querySelector('nav').style.display = 'none'
   document.querySelector('main').style.display = 'none'
 }
@@ -1567,6 +1632,8 @@ function mostrarTelaSetup() {
 function mostrarTelaLogin() {
   document.getElementById('tela-login').style.display = 'flex'
   document.getElementById('tela-config-supa').style.display = 'none'
+  document.getElementById('tela-recuperar-senha').style.display = 'none'
+  document.getElementById('tela-nova-senha').style.display = 'none'
   document.querySelector('nav').style.display = 'none'
   document.querySelector('main').style.display = 'none'
 }
@@ -1574,8 +1641,124 @@ function mostrarTelaLogin() {
 function esconderTelaLogin() {
   document.getElementById('tela-login').style.display = 'none'
   document.getElementById('tela-config-supa').style.display = 'none'
+  document.getElementById('tela-recuperar-senha').style.display = 'none'
+  document.getElementById('tela-nova-senha').style.display = 'none'
   document.querySelector('nav').style.display = 'flex'
   document.querySelector('main').style.display = 'block'
+}
+
+function mostrarTelaRecuperarSenha() {
+  document.getElementById('tela-login').style.display = 'none'
+  document.getElementById('tela-config-supa').style.display = 'none'
+  document.getElementById('tela-nova-senha').style.display = 'none'
+  document.getElementById('tela-recuperar-senha').style.display = 'flex'
+  document.getElementById('recuperar-form').style.display = 'block'
+  document.getElementById('recuperar-sucesso').style.display = 'none'
+  document.getElementById('recuperar-erro').style.display = 'none'
+  document.getElementById('recuperar-email').value = ''
+}
+
+// ----- Recuperação de senha via e-mail -----
+async function enviarRecuperacaoSenha() {
+  if (!SUPA_URL || SUPA_URL === '') SUPA_URL = SUPA_URL_DEFAULT
+  if (!SUPA_KEY || SUPA_KEY === '') SUPA_KEY = SUPA_KEY_DEFAULT
+
+  const email = document.getElementById('recuperar-email').value.trim()
+  const erroEl = document.getElementById('recuperar-erro')
+  const btn = document.getElementById('btn-recuperar')
+
+  if (!email) {
+    erroEl.style.display = 'block'
+    document.getElementById('recuperar-erro-msg').textContent = 'Digite seu e-mail!'
+    return
+  }
+
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...'
+  btn.disabled = true
+  erroEl.style.display = 'none'
+
+  try {
+    // Link de redefinição volta para esta mesma página (sem hash/query antigos)
+    const urlRetorno = window.location.origin + window.location.pathname
+    await fetch(`${SUPA_URL}/auth/v1/recover`, {
+      method: 'POST',
+      headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, redirectTo: urlRetorno })
+    })
+  } catch (e) {}
+
+  // Por segurança, sempre mostramos a mesma mensagem — existindo ou não uma
+  // conta com esse e-mail, isso evita que alguém descubra quais e-mails
+  // estão cadastrados no sistema
+  document.getElementById('recuperar-form').style.display = 'none'
+  document.getElementById('recuperar-sucesso').style.display = 'block'
+  btn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar link de recuperação'
+  btn.disabled = false
+}
+
+let _tokenRecuperacao = null
+
+function mostrarTelaNovaSenha(accessToken) {
+  _tokenRecuperacao = accessToken
+  document.getElementById('tela-login').style.display = 'none'
+  document.getElementById('tela-config-supa').style.display = 'none'
+  document.getElementById('tela-recuperar-senha').style.display = 'none'
+  document.getElementById('tela-nova-senha').style.display = 'flex'
+  document.querySelector('nav').style.display = 'none'
+  document.querySelector('main').style.display = 'none'
+}
+
+async function salvarNovaSenha() {
+  const senha1 = document.getElementById('nova-senha-1').value
+  const senha2 = document.getElementById('nova-senha-2').value
+  const erroEl = document.getElementById('nova-senha-erro')
+  const btn = document.getElementById('btn-nova-senha')
+
+  if (!senha1 || senha1.length < 6) {
+    erroEl.style.display = 'block'
+    document.getElementById('nova-senha-erro-msg').textContent = 'A senha precisa ter pelo menos 6 caracteres!'
+    return
+  }
+  if (senha1 !== senha2) {
+    erroEl.style.display = 'block'
+    document.getElementById('nova-senha-erro-msg').textContent = 'As senhas não coincidem!'
+    return
+  }
+  if (!_tokenRecuperacao) {
+    erroEl.style.display = 'block'
+    document.getElementById('nova-senha-erro-msg').textContent = 'Link inválido ou expirado. Solicite a recuperação de senha novamente.'
+    return
+  }
+
+  erroEl.style.display = 'none'
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...'
+  btn.disabled = true
+
+  try {
+    const r = await fetch(`${SUPA_URL}/auth/v1/user`, {
+      method: 'PUT',
+      headers: { apikey: SUPA_KEY, Authorization: `Bearer ${_tokenRecuperacao}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: senha1 })
+    })
+
+    if (!r.ok) {
+      erroEl.style.display = 'block'
+      document.getElementById('nova-senha-erro-msg').textContent = 'Link inválido ou expirado. Solicite a recuperação de senha novamente.'
+      btn.innerHTML = '<i class="fas fa-check"></i> Salvar nova senha'
+      btn.disabled = false
+      return
+    }
+
+    _tokenRecuperacao = null
+    history.replaceState(null, '', window.location.pathname)
+    notif('✅ Senha atualizada! Faça login com sua nova senha.')
+    mostrarTelaLogin()
+  } catch (e) {
+    erroEl.style.display = 'block'
+    document.getElementById('nova-senha-erro-msg').textContent = 'Erro de conexão. Tente novamente.'
+    btn.innerHTML = '<i class="fas fa-check"></i> Salvar nova senha'
+    btn.disabled = false
+  }
 }
 
 function toggleSenha() {
@@ -3897,6 +4080,16 @@ async function init() {
     localStorage.removeItem('supa_key')
     SUPA_URL = SUPA_URL_DEFAULT
     SUPA_KEY = SUPA_KEY_DEFAULT
+  }
+
+  // Chegou aqui vindo do link de recuperação de senha por e-mail?
+  if (window.location.hash && window.location.hash.includes('type=recovery')) {
+    const params = new URLSearchParams(window.location.hash.substring(1))
+    const accessToken = params.get('access_token')
+    if (accessToken) {
+      mostrarTelaNovaSenha(accessToken)
+      return
+    }
   }
 
   // Verificar se tem sessão salva
