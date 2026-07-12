@@ -66,6 +66,15 @@
     .stat-box:hover, #page-dashboard .card:hover { transform: none; }
   }
 
+  .card-title-icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 7px; margin-right: 8px; font-size: 0.7rem; vertical-align: -5px; }
+  .legend-row { display: flex; align-items: center; gap: 10px; background: var(--surface2); border-radius: 8px; padding: 9px 12px; }
+  .situacao-item { display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px; border-radius: 8px; background: var(--surface2); margin-bottom: 8px; border-left: 3px solid var(--border); }
+  .qa-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .qa-tile { display: flex; flex-direction: column; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 18px 10px; cursor: pointer; transition: transform 0.15s ease, border-color 0.15s ease; text-align: center; }
+  .qa-tile:hover { transform: translateY(-3px); border-color: var(--accent); }
+  .qa-tile-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; }
+  .qa-tile-label { font-size: 0.8rem; font-weight: 600; }
+
   nav {
     background: var(--surface); border-bottom: 1px solid var(--border);
     padding: 0 20px; display: flex; align-items: center; justify-content: space-between;
@@ -678,7 +687,7 @@ for each row execute function restringir_cadastro_email();</pre>
     <!-- VISÃO GERAL — GRÁFICO DONUT -->
     <div class="card">
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <span>🍩 Visão Geral</span>
+        <span><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-chart-pie"></i></span>Visão Geral</span>
         <select id="donut-filtro-materia" onchange="filtrarDonutMateria(this.value)" style="width:auto;padding:4px 10px;font-size:0.72rem;text-transform:none;letter-spacing:normal;font-weight:400;color:var(--text)"></select>
       </div>
       <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
@@ -689,17 +698,17 @@ for each row execute function restringir_cadastro_email();</pre>
             <div style="font-size:0.65rem;color:var(--text2)">domínio</div>
           </div>
         </div>
-        <div style="flex:1;min-width:150px;display:flex;flex-direction:column;gap:10px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="width:12px;height:12px;border-radius:3px;background:var(--green);flex-shrink:0"></span>
+        <div style="flex:1;min-width:170px;display:flex;flex-direction:column;gap:8px">
+          <div class="legend-row">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0"></span>
             <span style="font-size:0.85rem">Dominadas: <strong id="legenda-dom">0</strong></span>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="width:12px;height:12px;border-radius:3px;background:var(--yellow);flex-shrink:0"></span>
+          <div class="legend-row">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--yellow);flex-shrink:0"></span>
             <span style="font-size:0.85rem">Pendentes: <strong id="legenda-pend">0</strong></span>
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="width:12px;height:12px;border-radius:3px;background:var(--accent);flex-shrink:0"></span>
+          <div class="legend-row">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0"></span>
             <span style="font-size:0.85rem">Total cadastrado: <strong id="legenda-total">0</strong></span>
           </div>
         </div>
@@ -708,7 +717,7 @@ for each row execute function restringir_cadastro_email();</pre>
 
     <!-- GRÁFICO DE BARRAS POR MATÉRIA -->
     <div class="card">
-      <div class="card-title">📈 Aproveitamento por Matéria</div>
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-chart-column"></i></span>Aproveitamento por Matéria</div>
       <div style="position:relative;width:100%;height:260px" id="chart-barras-wrapper">
         <canvas id="chart-barras" role="img" aria-label="Gráfico de barras comparando percentual de aproveitamento entre matérias"></canvas>
       </div>
@@ -716,23 +725,32 @@ for each row execute function restringir_cadastro_email();</pre>
 
     <!-- DESEMPENHO POR MATÉRIA -->
     <div class="card">
-      <div class="card-title">📊 Desempenho por Matéria</div>
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(34,197,94,0.15);color:var(--green)"><i class="fas fa-list-check"></i></span>Desempenho por Matéria</div>
       <div id="desempenho-materias"></div>
     </div>
 
     <!-- SITUAÇÃO GERAL -->
     <div class="card">
-      <div class="card-title">🎯 Situação Geral</div>
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(245,158,11,0.15);color:var(--yellow)"><i class="fas fa-bullseye"></i></span>Situação Geral</div>
       <div id="dash-situacao"></div>
     </div>
 
     <!-- AÇÕES RÁPIDAS -->
     <div class="card">
-      <div class="card-title">⚡ Ações Rápidas</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="goPage('cadastro')"><i class="fas fa-plus"></i> Cadastrar Erro</button>
-        <button class="btn btn-ghost" onclick="iniciarSimulado()"><i class="fas fa-brain"></i> Iniciar Simulado</button>
-        <button class="btn btn-ghost" onclick="abrirModalBackup()"><i class="fas fa-box-archive"></i> Backup e Exportação</button>
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-bolt"></i></span>Ações Rápidas</div>
+      <div class="qa-grid">
+        <div class="qa-tile" onclick="goPage('cadastro')">
+          <div class="qa-tile-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-plus"></i></div>
+          <div class="qa-tile-label">Cadastrar Erro</div>
+        </div>
+        <div class="qa-tile" onclick="iniciarSimulado()">
+          <div class="qa-tile-icon" style="background:rgba(34,197,94,0.15);color:var(--green)"><i class="fas fa-brain"></i></div>
+          <div class="qa-tile-label">Iniciar Simulado</div>
+        </div>
+        <div class="qa-tile" onclick="abrirModalBackup()">
+          <div class="qa-tile-icon" style="background:rgba(245,158,11,0.15);color:var(--yellow)"><i class="fas fa-box-archive"></i></div>
+          <div class="qa-tile-label">Backup e Exportação</div>
+        </div>
       </div>
     </div>
 
@@ -1001,6 +1019,17 @@ for each row execute function restringir_cadastro_email();</pre>
     <button class="btn-add-mapa" onclick="abrirModalAddMapa()">
       <i class="fas fa-plus"></i> Adicionar Novo Mapa Mental
     </button>
+
+    <!-- BUSCA -->
+    <div style="position:relative;margin-bottom:12px">
+      <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:0.85rem"></i>
+      <input type="text" id="busca-mapas" placeholder="Buscar por título ou matéria..."
+        style="padding-left:36px" oninput="renderMapas()">
+      <button id="btn-limpar-busca-mapas" onclick="limparBuscaMapas()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);cursor:pointer;font-size:0.9rem">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
     <div class="mapas-tabs" id="mapas-tabs"></div>
     <div id="mapas-conteudo"></div>
   </div>
@@ -1200,7 +1229,20 @@ for each row execute function restringir_cadastro_email();</pre>
 
     <div style="margin-bottom:22px">
       <div style="font-weight:700;margin-bottom:6px">📦 Backup completo</div>
-      <div style="font-size:0.8rem;color:var(--text2);margin-bottom:12px">Arquivo .json com todas as suas questões, mapas e matérias. Use para restaurar tudo depois, ou trocar de dispositivo.</div>
+      <div style="font-size:0.8rem;color:var(--text2);margin-bottom:12px">Arquivo .json com suas questões, mapas e matérias. Use para restaurar tudo depois, ou trocar de dispositivo.</div>
+
+      <div class="form-group">
+        <label>Quais dados incluir?</label>
+        <select id="backup-filtro-escopo" onchange="atualizarFiltroMateriaBackup()">
+          <option value="todas">Todas as matérias</option>
+          <option value="materia">Só de uma matéria específica</option>
+        </select>
+      </div>
+      <div class="form-group" id="backup-materia-wrap" style="display:none">
+        <label>Matéria</label>
+        <select id="backup-filtro-materia"></select>
+      </div>
+
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button class="btn btn-primary" onclick="exportarBackup()"><i class="fas fa-download"></i> Baixar backup (.json)</button>
         <button class="btn btn-ghost" onclick="document.getElementById('importar-input-modal').click()"><i class="fas fa-upload"></i> Restaurar backup</button>
@@ -1833,9 +1875,9 @@ function renderDashboard() {
   const frases = sorted.map(([m, dados]) => {
     const p = Math.round((dados.dominadas / dados.total) * 100)
     const pend = dados.total - dados.dominadas
-    if (p >= 70) return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px"><span>✅</span><span style="font-size:0.85rem">Você está indo bem em <strong>${m}</strong> — ${p}% de aproveitamento.</span></div>`
-    if (p >= 40) return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px"><span>⚠️</span><span style="font-size:0.85rem">Em <strong>${m}</strong> você acerta cerca de metade — ainda tem ${pend} ${pend!==1?'questões pendentes':'questão pendente'}.</span></div>`
-    return `<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px"><span>❌</span><span style="font-size:0.85rem">Você erra bastante em <strong>${m}</strong> — ainda tem ${pend} ${pend!==1?'questões pendentes':'questão pendente'}. Foque aqui!</span></div>`
+    if (p >= 70) return `<div class="situacao-item" style="border-left-color:var(--green)"><span>✅</span><span style="font-size:0.85rem">Você está indo bem em <strong>${m}</strong> — ${p}% de aproveitamento.</span></div>`
+    if (p >= 40) return `<div class="situacao-item" style="border-left-color:var(--yellow)"><span>⚠️</span><span style="font-size:0.85rem">Em <strong>${m}</strong> você acerta cerca de metade — ainda tem ${pend} ${pend!==1?'questões pendentes':'questão pendente'}.</span></div>`
+    return `<div class="situacao-item" style="border-left-color:var(--red)"><span>❌</span><span style="font-size:0.85rem">Você erra bastante em <strong>${m}</strong> — ainda tem ${pend} ${pend!==1?'questões pendentes':'questão pendente'}. Foque aqui!</span></div>`
   })
 
   const pior = sorted[0]
@@ -2938,43 +2980,65 @@ async function salvarMapa() {
   renderMapas()
 }
 
+function limparBuscaMapas() {
+  document.getElementById('busca-mapas').value = ''
+  renderMapas()
+}
+
 function renderMapas() {
   const materiasCom = [...new Set(mapas.map(m => m.materia).filter(Boolean))]
+
+  const buscaInput = document.getElementById('busca-mapas')
+  const busca = buscaInput ? buscaInput.value.trim().toLowerCase() : ''
+  const btnLimpar = document.getElementById('btn-limpar-busca-mapas')
+  if (btnLimpar) btnLimpar.style.display = busca ? 'block' : 'none'
+
+  const baseMapas = busca
+    ? mapas.filter(m => (m.titulo && m.titulo.toLowerCase().includes(busca)) || (m.materia && m.materia.toLowerCase().includes(busca)))
+    : mapas
+
   const tabsEl = document.getElementById('mapas-tabs')
   if (!mapas.length) {
     tabsEl.innerHTML = ''
     document.getElementById('mapas-conteudo').innerHTML = `<div class="empty"><div class="empty-icon">🗺️</div><div class="empty-text">Nenhum mapa mental ainda.<br>Clique em "Adicionar" para começar!</div></div>`
     return
   }
-  const totalSemMateria = mapas.filter(m => !m.materia).length
+  const totalSemMateria = baseMapas.filter(m => !m.materia).length
   tabsEl.innerHTML =
-    `<button class="mapa-tab-btn ${mapaTabAtiva==='todas'?'active':''}" onclick="setMapaTab('todas')">Todas <span class="count">${mapas.length}</span></button>` +
+    `<button class="mapa-tab-btn ${mapaTabAtiva==='todas'?'active':''}" onclick="setMapaTab('todas')">Todas <span class="count">${baseMapas.length}</span></button>` +
     materiasCom.map(m => {
-      const count = mapas.filter(mp => mp.materia === m).length
+      const count = baseMapas.filter(mp => mp.materia === m).length
       return `<button class="mapa-tab-btn ${mapaTabAtiva===m?'active':''}" onclick="setMapaTab('${m.replace(/'/g,"\\'")}')">
         ${m} <span class="count">${count}</span></button>`
     }).join('') +
     (totalSemMateria ? `<button class="mapa-tab-btn ${mapaTabAtiva==='sem-materia'?'active':''}" onclick="setMapaTab('sem-materia')">Sem matéria <span class="count">${totalSemMateria}</span></button>` : '')
 
-  let lista = mapas
-  if (mapaTabAtiva === 'sem-materia') lista = mapas.filter(m => !m.materia)
-  else if (mapaTabAtiva !== 'todas') lista = mapas.filter(m => m.materia === mapaTabAtiva)
+  let lista = baseMapas
+  if (mapaTabAtiva === 'sem-materia') lista = baseMapas.filter(m => !m.materia)
+  else if (mapaTabAtiva !== 'todas') lista = baseMapas.filter(m => m.materia === mapaTabAtiva)
 
   const conteudo = document.getElementById('mapas-conteudo')
+
+  if (!lista.length) {
+    conteudo.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Nenhum mapa encontrado${busca ? ' para essa busca' : ''}.</div></div>`
+    return
+  }
+
   if (mapaTabAtiva === 'todas' && materiasCom.length > 1) {
     let html = ''
     materiasCom.forEach(mat => {
-      const grupo = mapas.filter(m => m.materia === mat).slice().reverse()
+      const grupo = baseMapas.filter(m => m.materia === mat).slice().reverse()
+      if (!grupo.length) return
       html += `<div style="margin-bottom:28px">
         <div class="mapas-secao-titulo"><i class="fas fa-folder"></i> ${mat} <span style="color:var(--text2);font-weight:400">${grupo.length} mapa${grupo.length>1?'s':''}</span></div>
         <div class="mapas-grid">${grupo.map(m => mapaCardHTML(m)).join('')}</div>
       </div>`
     })
     if (totalSemMateria) {
-      const semMat = mapas.filter(m => !m.materia).slice().reverse()
+      const semMat = baseMapas.filter(m => !m.materia).slice().reverse()
       html += `<div style="margin-bottom:28px"><div class="mapas-secao-titulo"><i class="fas fa-folder-open"></i> Sem matéria</div><div class="mapas-grid">${semMat.map(m => mapaCardHTML(m)).join('')}</div></div>`
     }
-    conteudo.innerHTML = html
+    conteudo.innerHTML = html || `<div class="empty"><div class="empty-icon">🔍</div><div class="empty-text">Nenhum mapa encontrado para essa busca.</div></div>`
   } else {
     conteudo.innerHTML = `<div class="mapas-grid">${lista.slice().reverse().map(m => mapaCardHTML(m)).join('')}</div>`
   }
@@ -3482,17 +3546,35 @@ function removerMateria(id) {
 // ===== BACKUP E EXPORTAÇÃO =====
 
 // Nome padronizado com data e hora, pra sempre saber qual é o backup mais recente
-function nomeArquivoBackup(ext) {
+function nomeArquivoBackup(ext, sufixo = '') {
   const d = new Date()
   const pad = n => String(n).padStart(2, '0')
   const data = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
   const hora = `${pad(d.getHours())}h${pad(d.getMinutes())}`
-  return `estudo-concursos-backup_${data}_${hora}.${ext}`
+  const slug = sufixo
+    ? '-' + sufixo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    : ''
+  return `estudo-concursos-backup${slug}_${data}_${hora}.${ext}`
 }
 
 function abrirModalBackup() {
   popularFiltroMateriaPDF()
+  popularFiltroMateriaBackup()
   document.getElementById('modal-backup').classList.add('open')
+}
+
+function popularFiltroMateriaBackup() {
+  const escopoSel = document.getElementById('backup-filtro-escopo')
+  const sel = document.getElementById('backup-filtro-materia')
+  if (!sel || !escopoSel) return
+  sel.innerHTML = materias.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('')
+  escopoSel.value = 'todas'
+  document.getElementById('backup-materia-wrap').style.display = 'none'
+}
+
+function atualizarFiltroMateriaBackup() {
+  const escopo = document.getElementById('backup-filtro-escopo').value
+  document.getElementById('backup-materia-wrap').style.display = escopo === 'materia' ? 'block' : 'none'
 }
 
 function popularFiltroMateriaPDF() {
@@ -3508,13 +3590,38 @@ function atualizarFiltroMateriaPDF() {
 
 // ----- Exportar backup completo (.json) -----
 function exportarBackup() {
-  const data = { app: 'Estudo Concursos', exportadoEm: new Date().toISOString(), questoes, mapas, materias }
+  const escopoSel = document.getElementById('backup-filtro-escopo')
+  const escopo = escopoSel ? escopoSel.value : 'todas'
+  const materiaFiltro = document.getElementById('backup-filtro-materia') ? document.getElementById('backup-filtro-materia').value : ''
+
+  let questoesBackup = questoes
+  let mapasBackup = mapas
+  let materiasBackup = materias
+
+  if (escopo === 'materia' && materiaFiltro) {
+    questoesBackup = questoes.filter(q => q.materia === materiaFiltro)
+    mapasBackup = mapas.filter(m => m.materia === materiaFiltro)
+    materiasBackup = materias.filter(m => m.nome === materiaFiltro)
+
+    if (!questoesBackup.length && !mapasBackup.length) {
+      notif(`❌ "${materiaFiltro}" não tem questões nem mapas cadastrados.`, 'error')
+      return
+    }
+  }
+
+  const data = {
+    app: 'Estudo Concursos',
+    exportadoEm: new Date().toISOString(),
+    escopo: escopo === 'materia' ? materiaFiltro : 'todas as matérias',
+    questoes: questoesBackup, mapas: mapasBackup, materias: materiasBackup
+  }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.href = url; a.download = nomeArquivoBackup('json'); a.click()
+  a.href = url; a.download = nomeArquivoBackup('json', escopo === 'materia' ? materiaFiltro : '')
+  a.click()
   URL.revokeObjectURL(url)
-  notif('✅ Backup exportado!')
+  notif(escopo === 'materia' ? `✅ Backup de "${materiaFiltro}" exportado!` : '✅ Backup exportado!')
 }
 
 // ----- Restaurar backup (.json) -----
