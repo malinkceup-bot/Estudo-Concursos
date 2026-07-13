@@ -1680,10 +1680,12 @@ async function enviarRecuperacaoSenha() {
   try {
     // Link de redefinição volta para esta mesma página (sem hash/query antigos)
     const urlRetorno = window.location.origin + window.location.pathname
-    await fetch(`${SUPA_URL}/auth/v1/recover`, {
+    // IMPORTANTE: o endpoint /recover do Supabase só reconhece o redirect
+    // como parâmetro de URL (query string), não dentro do corpo da requisição
+    await fetch(`${SUPA_URL}/auth/v1/recover?redirect_to=${encodeURIComponent(urlRetorno)}`, {
       method: 'POST',
       headers: { apikey: SUPA_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, redirectTo: urlRetorno })
+      body: JSON.stringify({ email })
     })
   } catch (e) {}
 
