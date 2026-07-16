@@ -354,6 +354,7 @@
   @media (max-width: 500px) {
     .nav-tab span { display: none; }
   }
+  .enunciado-expandido { min-height: 420px !important; }
 </style>
 </head>
 <body>
@@ -866,7 +867,12 @@ for each row execute function restringir_cadastro_email();</pre>
       <!-- ENUNCIADO -->
       <div class="form-group">
         <label><i class="fas fa-align-left" style="margin-right:5px"></i>Enunciado da Questão <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional — cole o enunciado resumido)</span></label>
-        <textarea id="enunciado-questao" placeholder="Cole aqui o enunciado da questão ou um resumo do que ela pede..." style="min-height:80px"></textarea>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <button type="button" onclick="aplicarFormatoTexto('enunciado-questao','**','**')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+          <button type="button" onclick="aplicarFormatoTexto('enunciado-questao','__','__')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+          <span style="font-size:0.72rem;color:var(--text2);align-self:center">selecione o texto e clique</span>
+        </div>
+        <textarea id="enunciado-questao" placeholder="Cole aqui o enunciado da questão ou um resumo do que ela pede..." style="min-height:120px;resize:vertical"></textarea>
       </div>
 
       <!-- ALTERNATIVAS -->
@@ -1252,7 +1258,16 @@ for each row execute function restringir_cadastro_email();</pre>
   <div class="modal">
     <div class="modal-title">Editar Questão</div>
     <input type="hidden" id="edit-id">
-    <div class="form-group"><label>Número</label><input type="text" id="edit-num"></div>
+    <div class="form-group">
+      <label><i class="fas fa-align-left" style="margin-right:5px"></i>Enunciado
+        <button type="button" onclick="toggleExpandirEnunciado()" id="btn-expandir-enunciado" style="float:right;background:none;border:none;color:var(--accent);font-size:0.75rem;cursor:pointer;text-decoration:underline">Expandir</button>
+      </label>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <button type="button" onclick="aplicarFormatoTexto('edit-enunciado','**','**')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+        <button type="button" onclick="aplicarFormatoTexto('edit-enunciado','__','__')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+      </div>
+      <textarea id="edit-enunciado" style="min-height:130px;resize:vertical"></textarea>
+    </div>
     <div class="form-group"><label>Matéria</label><select id="edit-materia"></select></div>
     <div class="form-group">
       <label>Tema</label>
@@ -2321,7 +2336,7 @@ function renderQuestoes() {
               ${q.tema ? `<span style="font-size:0.72rem;color:var(--accent)"><i class="fas fa-tag" style="margin-right:3px"></i>${q.tema}</span>` : ''}
               ${q.favorita ? `<span style="font-size:0.75rem">⭐</span>` : ''}
             </div>
-            ${q.enunciado ? `<div style="font-size:0.8rem;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px">${q.enunciado}</div>` : ''}
+            ${q.enunciado ? `<div style="font-size:0.8rem;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px">${formatarEnunciado(q.enunciado)}</div>` : ''}
             ${tentativas > 0 ? `<div style="margin-top:4px"><span class="tentativas-badge"><i class="fas fa-redo" style="font-size:0.6rem"></i>${tentativas} tentativa${tentativas!==1?'s':''} · <span style="color:${corTaxa}">${taxaAcerto}% acerto</span></span></div>` : ''}
           </div>
         </div>
@@ -2334,7 +2349,7 @@ function renderQuestoes() {
 
       <!-- DETALHES EXPANDIDOS -->
       <div id="qdetail-${q.id}" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)" onclick="event.stopPropagation()">
-        ${q.enunciado ? `<div style="font-size:0.85rem;color:var(--text);margin-bottom:10px;line-height:1.6;padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);white-space:pre-wrap">${q.enunciado}</div>` : ''}
+        ${q.enunciado ? `<div style="font-size:0.85rem;color:var(--text);margin-bottom:10px;line-height:1.6;padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);white-space:pre-wrap">${formatarEnunciado(q.enunciado)}</div>` : ''}
         ${temAlts ? `<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
           ${['A','B','C','D','E'].filter(l=>alts[l]).map(l=>`
             <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 10px;border-radius:6px;${q.gabarito===l?'background:rgba(34,197,94,0.15);border:1px solid var(--green)':'background:var(--surface2)'}">
@@ -2454,7 +2469,9 @@ function abrirEditar(id) {
   const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
   popularSelects()
   document.getElementById('edit-id').value = id
-  document.getElementById('edit-num').value = q.enunciado || ''
+  document.getElementById('edit-enunciado').value = q.enunciado || ''
+  document.getElementById('edit-enunciado').classList.remove('enunciado-expandido')
+  document.getElementById('btn-expandir-enunciado').textContent = 'Expandir'
   document.getElementById('edit-materia').value = q.materia
   document.getElementById('edit-tema').value = q.tema || ''
   document.getElementById('edit-gabarito').value = q.gabarito
@@ -2464,10 +2481,38 @@ function abrirEditar(id) {
   setTimeout(() => renderTemasTags('edit-tema', 'edit-temas-tags'), 100)
 }
 function fecharEditar() { document.getElementById('modal-editar').classList.remove('open') }
+function toggleExpandirEnunciado() {
+  const ta = document.getElementById('edit-enunciado')
+  const btn = document.getElementById('btn-expandir-enunciado')
+  ta.classList.toggle('enunciado-expandido')
+  btn.textContent = ta.classList.contains('enunciado-expandido') ? 'Recolher' : 'Expandir'
+}
+// Envolve o texto selecionado numa textarea com marcadores (**negrito**, __sublinhado__)
+function aplicarFormatoTexto(textareaId, prefixo, sufixo) {
+  const ta = document.getElementById(textareaId)
+  const start = ta.selectionStart
+  const end = ta.selectionEnd
+  if (start === end) { notif('Selecione o trecho do texto que deseja formatar', 'error'); return }
+  const texto = ta.value
+  const selecionado = texto.slice(start, end)
+  ta.value = texto.slice(0, start) + prefixo + selecionado + sufixo + texto.slice(end)
+  const novoStart = start + prefixo.length
+  const novoEnd = novoStart + selecionado.length
+  ta.focus()
+  ta.setSelectionRange(novoStart, novoEnd)
+}
+// Converte **negrito** e __sublinhado__ em HTML, escapando o resto pra evitar HTML indevido
+function formatarEnunciado(texto) {
+  if (!texto) return ''
+  let t = escHtml(texto)
+  t = t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+  t = t.replace(/__(.+?)__/g, '<u>$1</u>')
+  return t
+}
 async function salvarEdicao() {
   const id = document.getElementById('edit-id').value
   const dados = {
-    enunciado: document.getElementById('edit-num').value.trim(),
+    enunciado: document.getElementById('edit-enunciado').value.trim(),
     materia: document.getElementById('edit-materia').value,
     tema: document.getElementById('edit-tema').value.trim(),
     gabarito: document.getElementById('edit-gabarito').value.trim(),
@@ -2654,7 +2699,7 @@ function renderSimuladoQuestao() {
         <span style="font-size:0.75rem;color:var(--text2)">${q.data || ''}</span>
       </div>
       ${q.tema ? `<div style="font-size:0.78rem;color:var(--accent);margin-bottom:10px"><i class="fas fa-tag" style="margin-right:4px"></i>${q.tema}</div>` : ''}
-      ${q.enunciado ? `<div style="font-size:0.95rem;color:var(--text);line-height:1.6;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);white-space:pre-wrap">${q.enunciado}</div>` : '<div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px;font-style:italic">Selecione sua resposta:</div>'}
+      ${q.enunciado ? `<div style="font-size:0.95rem;color:var(--text);line-height:1.6;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);white-space:pre-wrap">${formatarEnunciado(q.enunciado)}</div>` : '<div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px;font-style:italic">Selecione sua resposta:</div>'}
       ${alternativasHTML}
     </div>`
 }
@@ -3965,7 +4010,8 @@ function exportarQuestoesPDF() {
     y += 14
 
     doc.setFontSize(11); doc.setTextColor(20)
-    const enunciado = doc.splitTextToSize(`${i + 1}. ${q.enunciado || ''}`, larguraUtil)
+    const enunciadoLimpo = (q.enunciado || '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1')
+    const enunciado = doc.splitTextToSize(`${i + 1}. ${enunciadoLimpo}`, larguraUtil)
     enunciado.forEach(linha => { novaLinha(15); doc.text(linha, margem, y); y += 15 })
     y += 4
 
