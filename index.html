@@ -355,6 +355,14 @@
     .nav-tab span { display: none; }
   }
   .enunciado-expandido { min-height: 420px !important; }
+  .rich-editable {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); padding: 10px 12px; font-size: 0.9rem;
+    font-family: inherit; transition: border-color 0.2s; outline: none;
+    white-space: pre-wrap; word-wrap: break-word; overflow-y: auto;
+  }
+  .rich-editable:focus { border-color: var(--accent); }
+  .rich-editable:empty:before { content: attr(data-placeholder); color: var(--text2); }
 </style>
 </head>
 <body>
@@ -868,11 +876,11 @@ for each row execute function restringir_cadastro_email();</pre>
       <div class="form-group">
         <label><i class="fas fa-align-left" style="margin-right:5px"></i>Enunciado da Questão <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional — cole o enunciado resumido)</span></label>
         <div style="display:flex;gap:6px;margin-bottom:6px">
-          <button type="button" onclick="aplicarFormatoTexto('enunciado-questao','**','**')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
-          <button type="button" onclick="aplicarFormatoTexto('enunciado-questao','__','__')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+          <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('enunciado-questao','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+          <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('enunciado-questao','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
           <span style="font-size:0.72rem;color:var(--text2);align-self:center">selecione o texto e clique</span>
         </div>
-        <textarea id="enunciado-questao" placeholder="Cole aqui o enunciado da questão ou um resumo do que ela pede..." style="min-height:120px;resize:vertical"></textarea>
+        <div id="enunciado-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o enunciado da questão ou um resumo do que ela pede..." style="min-height:120px"></div>
       </div>
 
       <!-- ALTERNATIVAS -->
@@ -1263,10 +1271,10 @@ for each row execute function restringir_cadastro_email();</pre>
         <button type="button" onclick="toggleExpandirEnunciado()" id="btn-expandir-enunciado" style="float:right;background:none;border:none;color:var(--accent);font-size:0.75rem;cursor:pointer;text-decoration:underline">Expandir</button>
       </label>
       <div style="display:flex;gap:6px;margin-bottom:6px">
-        <button type="button" onclick="aplicarFormatoTexto('edit-enunciado','**','**')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
-        <button type="button" onclick="aplicarFormatoTexto('edit-enunciado','__','__')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+        <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('edit-enunciado','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+        <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('edit-enunciado','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
       </div>
-      <textarea id="edit-enunciado" style="min-height:130px;resize:vertical"></textarea>
+      <div id="edit-enunciado" class="rich-editable" contenteditable="true" data-placeholder="Enunciado da questão..." style="min-height:130px"></div>
     </div>
     <div class="form-group"><label>Matéria</label><select id="edit-materia"></select></div>
     <div class="form-group">
@@ -2219,7 +2227,7 @@ function selecionarGabarito(val) {
 async function salvarQuestao() {
   const materia = document.getElementById('materia-questao').value
   const tema = document.getElementById('tema-questao').value.trim()
-  const enunciado = document.getElementById('enunciado-questao').value.trim()
+  const enunciado = htmlParaMarkdown(document.getElementById('enunciado-questao')).trim()
   const altA = document.getElementById('alt-a').value.trim()
   const altB = document.getElementById('alt-b').value.trim()
   const altC = document.getElementById('alt-c').value.trim()
@@ -2246,7 +2254,7 @@ async function salvarQuestao() {
 
   document.getElementById('materia-questao').value = ''
   document.getElementById('tema-questao').value = ''
-  document.getElementById('enunciado-questao').value = ''
+  document.getElementById('enunciado-questao').innerHTML = ''
   document.getElementById('alt-a').value = ''
   document.getElementById('alt-b').value = ''
   document.getElementById('alt-c').value = ''
@@ -2469,7 +2477,7 @@ function abrirEditar(id) {
   const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
   popularSelects()
   document.getElementById('edit-id').value = id
-  document.getElementById('edit-enunciado').value = q.enunciado || ''
+  document.getElementById('edit-enunciado').innerHTML = formatarEnunciado(q.enunciado || '')
   document.getElementById('edit-enunciado').classList.remove('enunciado-expandido')
   document.getElementById('btn-expandir-enunciado').textContent = 'Expandir'
   document.getElementById('edit-materia').value = q.materia
@@ -2487,19 +2495,39 @@ function toggleExpandirEnunciado() {
   ta.classList.toggle('enunciado-expandido')
   btn.textContent = ta.classList.contains('enunciado-expandido') ? 'Recolher' : 'Expandir'
 }
-// Envolve o texto selecionado numa textarea com marcadores (**negrito**, __sublinhado__)
-function aplicarFormatoTexto(textareaId, prefixo, sufixo) {
-  const ta = document.getElementById(textareaId)
-  const start = ta.selectionStart
-  const end = ta.selectionEnd
-  if (start === end) { notif('Selecione o trecho do texto que deseja formatar', 'error'); return }
-  const texto = ta.value
-  const selecionado = texto.slice(start, end)
-  ta.value = texto.slice(0, start) + prefixo + selecionado + sufixo + texto.slice(end)
-  const novoStart = start + prefixo.length
-  const novoEnd = novoStart + selecionado.length
-  ta.focus()
-  ta.setSelectionRange(novoStart, novoEnd)
+// Aplica negrito/sublinhado em tempo real na seleção (a caixa é "contenteditable")
+function formatarSelecao(id, comando) {
+  const el = document.getElementById(id)
+  const sel = window.getSelection()
+  if (!sel || sel.isCollapsed || !el.contains(sel.anchorNode)) {
+    notif('Selecione o trecho do texto que deseja formatar', 'error')
+    return
+  }
+  document.execCommand(comando, false, null)
+}
+// Converte o conteúdo digitado (com <b>/<u>/<br>/<div>) de volta para texto simples
+// com marcadores **negrito** e __sublinhado__, que é o formato salvo no banco
+function htmlParaMarkdown(el) {
+  function walk(node) {
+    let out = ''
+    node.childNodes.forEach(child => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        out += child.textContent
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        const tag = child.tagName.toLowerCase()
+        if (tag === 'br') out += '\n'
+        else if (tag === 'b' || tag === 'strong') out += '**' + walk(child) + '**'
+        else if (tag === 'u') out += '__' + walk(child) + '__'
+        else if (tag === 'div' || tag === 'p') {
+          if (out.length > 0 && !out.endsWith('\n')) out += '\n'
+          out += walk(child) + '\n'
+        }
+        else out += walk(child)
+      }
+    })
+    return out
+  }
+  return walk(el).replace(/\n+$/, '')
 }
 // Converte **negrito** e __sublinhado__ em HTML, escapando o resto pra evitar HTML indevido
 function formatarEnunciado(texto) {
@@ -2512,7 +2540,7 @@ function formatarEnunciado(texto) {
 async function salvarEdicao() {
   const id = document.getElementById('edit-id').value
   const dados = {
-    enunciado: document.getElementById('edit-enunciado').value.trim(),
+    enunciado: htmlParaMarkdown(document.getElementById('edit-enunciado')).trim(),
     materia: document.getElementById('edit-materia').value,
     tema: document.getElementById('edit-tema').value.trim(),
     gabarito: document.getElementById('edit-gabarito').value.trim(),
@@ -3059,7 +3087,7 @@ function ocrProcessarTexto(texto) {
 
   // PREENCHER ENUNCIADO
   const enunciado = enunciadoLinhas.join(' ').replace(/\s{2,}/g, ' ').trim()
-  if (enunciado) document.getElementById('enunciado-questao').value = enunciado
+  if (enunciado) document.getElementById('enunciado-questao').textContent = enunciado
 
   // PREENCHER ALTERNATIVAS
   const temAlts = Object.values(alternativas).some(v => v)
