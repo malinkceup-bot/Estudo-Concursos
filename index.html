@@ -1892,7 +1892,7 @@ function goPage(id) {
 
 // ===== POPULAR SELECTS =====
 function popularSelects() {
-  const opts = `<option value="">Selecione a matéria</option>` + materias.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('')
+  const opts = `<option value="">Selecione a matéria</option>` + materias.map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}</option>`).join('')
   const ids = ['materia-questao','mapa-materia','edit-materia']
   ids.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = opts })
 
@@ -1900,11 +1900,38 @@ function popularSelects() {
   const checkboxEl = document.getElementById('simulado-materias-checkboxes')
   if (checkboxEl) {
     checkboxEl.innerHTML = materias.map(m => `
-      <button type="button" class="filtro-btn simulado-mat-btn" onclick="toggleSimuladoMateria(this, '${m.nome.replace(/'/g,"\\'")}')">
+      <button type="button" class="filtro-btn simulado-mat-btn" onclick="toggleSimuladoMateria(this, '${escAttr(m.nome)}')">
         ${m.nome}
       </button>`).join('')
   }
   renderSimuladoTemas()
+}
+
+// ===== ESCAPE SEGURO PARA onclick ("..." + JS string '...') =====
+// Bug corrigido: títulos/temas/matérias com aspas duplas (ex: Funções "SE")
+// quebravam o atributo onclick="..." e faziam o botão parar de responder.
+// Esta função escapa primeiro para string JS (\ e ') e depois para atributo HTML (" < > &).
+function escAttr(str) {
+  if (str === null || str === undefined) return ''
+  return String(str)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+// ===== ESCAPE PARA ATRIBUTOS HTML COMUNS (title, value, etc — sem JS) =====
+function escHtml(str) {
+  if (str === null || str === undefined) return ''
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
 }
 
 // ===== NOTIF =====
@@ -1940,7 +1967,7 @@ function renderDashboard() {
   const selDonut = document.getElementById('donut-filtro-materia')
   if (selDonut) {
     selDonut.innerHTML = '<option value="todas">Todas as matérias</option>' +
-      materias.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('')
+      materias.map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}</option>`).join('')
     if (filtroDonutMateria !== 'todas' && !materias.some(m => m.nome === filtroDonutMateria)) filtroDonutMateria = 'todas'
     selDonut.value = filtroDonutMateria
   }
@@ -2489,7 +2516,7 @@ function renderSimuladoTemas() {
   }
   el.innerHTML = temas.map(t => `
     <button type="button" class="filtro-btn simulado-tema-btn ${simuladoTemasSelecionados.includes(t) ? 'active' : ''}"
-      onclick="toggleSimuladoTema(this, '${t.replace(/'/g,"\\'")}')">
+      onclick="toggleSimuladoTema(this, '${escAttr(t)}')">
       ${t}
     </button>`).join('')
 }
@@ -2782,7 +2809,7 @@ function renderTemasTags(inputId, tagsId) {
   const valorAtual = document.getElementById(inputId)?.value || ''
   tagsEl.innerHTML = temas.map(t => `
     <span class="tema-tag ${valorAtual === t ? 'selecionada' : ''}"
-      onclick="selecionarTema('${t.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}')">
+      onclick="selecionarTema('${escAttr(t)}', '${inputId}', '${tagsId}')">
       <i class="fas fa-tag" style="font-size:0.65rem"></i>${t}
     </span>`).join('')
 }
@@ -2817,13 +2844,13 @@ function filtrarTemas(valor, inputId, dropdownId) {
 
   let html = filtrados.map(t => `
     <div class="tema-dropdown-item"
-      onclick="selecionarTema('${t.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}');event.stopPropagation()">
+      onclick="selecionarTema('${escAttr(t)}', '${inputId}', '${tagsId}');event.stopPropagation()">
       <i class="fas fa-tag" style="font-size:0.7rem;margin-right:6px;color:var(--accent)"></i>${t}
     </div>`).join('')
 
   if (valor && !temas.find(t => t.toLowerCase() === valor.toLowerCase())) {
     html += `<div class="tema-dropdown-novo"
-      onclick="selecionarTema('${valor.replace(/'/g,"\\'")}', '${inputId}', '${tagsId}');event.stopPropagation()">
+      onclick="selecionarTema('${escAttr(valor)}', '${inputId}', '${tagsId}');event.stopPropagation()">
       <i class="fas fa-plus" style="margin-right:6px"></i>Criar tema: <strong>${valor}</strong>
     </div>`
   }
@@ -3193,7 +3220,7 @@ function renderMapas() {
     `<button class="mapa-tab-btn ${mapaTabAtiva==='todas'?'active':''}" onclick="setMapaTab('todas')">Todas <span class="count">${baseMapas.length}</span></button>` +
     materiasCom.map(m => {
       const count = baseMapas.filter(mp => mp.materia === m).length
-      return `<button class="mapa-tab-btn ${mapaTabAtiva===m?'active':''}" onclick="setMapaTab('${m.replace(/'/g,"\\'")}')">
+      return `<button class="mapa-tab-btn ${mapaTabAtiva===m?'active':''}" onclick="setMapaTab('${escAttr(m)}')">
         ${m} <span class="count">${count}</span></button>`
     }).join('') +
     (totalSemMateria ? `<button class="mapa-tab-btn ${mapaTabAtiva==='sem-materia'?'active':''}" onclick="setMapaTab('sem-materia')">Sem matéria <span class="count">${totalSemMateria}</span></button>` : '')
@@ -3232,14 +3259,14 @@ function renderMapas() {
 function mapaCardHTML(m) {
   return `
     <div class="mapa-grid-card">
-      <img class="mapa-grid-img" src="${m.img}" onclick="abrirImagem('${m.id}')" title="${m.titulo}">
+      <img class="mapa-grid-img" src="${m.img}" onclick="abrirImagem('${m.id}')" title="${escHtml(m.titulo)}">
       <div class="mapa-grid-info">
         <div style="flex:1;min-width:0">
           <div class="mapa-grid-titulo" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.titulo}</div>
           <div class="mapa-grid-data">${m.data||''}</div>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
-          <button class="btn btn-ghost btn-sm" onclick="editarTituloMapa('${m.id}','${m.titulo.replace(/'/g,"\\'")}')"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="editarTituloMapa('${m.id}','${escAttr(m.titulo)}')"><i class="fas fa-edit"></i></button>
           <button class="btn btn-danger btn-sm" onclick="deletarMapa('${m.id}')"><i class="fas fa-trash"></i></button>
         </div>
       </div>
@@ -3469,7 +3496,7 @@ function renderConfig() {
       <div class="item-chip">
         <span>${m.nome}</span>
         <span class="chip-count">${count}</span>
-        <button onclick="abrirEditarMateria('${m.id}','${m.nome.replace(/'/g,"\\'")}')" title="Editar"><i class="fas fa-edit"></i></button>
+        <button onclick="abrirEditarMateria('${m.id}','${escAttr(m.nome)}')" title="Editar"><i class="fas fa-edit"></i></button>
         <button class="chip-del" onclick="removerMateria('${m.id}')" title="Remover"><i class="fas fa-trash"></i></button>
       </div>`
     }).join('')
@@ -3583,8 +3610,8 @@ function renderTemasConfig() {
       <div class="item-chip">
         <span>${t}</span>
         <span class="chip-count">${count}</span>
-        <button onclick="abrirEditarTema('${t.replace(/'/g,"\\'")}')" title="Editar"><i class="fas fa-edit"></i></button>
-        <button class="chip-del" onclick="removerTema('${t.replace(/'/g,"\\'")}')" title="Remover"><i class="fas fa-trash"></i></button>
+        <button onclick="abrirEditarTema('${escAttr(t)}')" title="Editar"><i class="fas fa-edit"></i></button>
+        <button class="chip-del" onclick="removerTema('${escAttr(t)}')" title="Remover"><i class="fas fa-trash"></i></button>
       </div>`
   }).join('')
 }
@@ -3752,7 +3779,7 @@ function popularFiltroMateriaBackup() {
   const escopoSel = document.getElementById('backup-filtro-escopo')
   const sel = document.getElementById('backup-filtro-materia')
   if (!sel || !escopoSel) return
-  sel.innerHTML = materias.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('')
+  sel.innerHTML = materias.map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}</option>`).join('')
   escopoSel.value = 'todas'
   document.getElementById('backup-materia-wrap').style.display = 'none'
 }
@@ -3765,7 +3792,7 @@ function atualizarFiltroMateriaBackup() {
 function popularFiltroMateriaPDF() {
   const sel = document.getElementById('pdf-filtro-materia')
   if (!sel) return
-  sel.innerHTML = materias.map(m => `<option value="${m.nome}">${m.nome}</option>`).join('')
+  sel.innerHTML = materias.map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}</option>`).join('')
 }
 
 function atualizarFiltroMateriaPDF() {
