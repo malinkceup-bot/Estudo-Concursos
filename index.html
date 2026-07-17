@@ -731,6 +731,7 @@ for each row execute function restringir_cadastro_email();</pre>
     <button class="nav-tab" onclick="goPage('questoes')"><i class="fas fa-list"></i> <span>Questões</span></button>
     <button class="nav-tab" onclick="goPage('simulado')"><i class="fas fa-brain"></i> <span>Simulado</span></button>
     <button class="nav-tab" onclick="goPage('mapas')"><i class="fas fa-image"></i> <span>Mapas</span></button>
+    <button class="nav-tab" onclick="goPage('edital')"><i class="fas fa-book-open"></i> <span>Edital</span></button>
     <button class="nav-tab" onclick="goPage('config')"><i class="fas fa-cog"></i> <span>Config</span></button>
     <button class="nav-tab" onclick="fazerLogout()" style="color:var(--red)" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
   </div>
@@ -1128,6 +1129,29 @@ for each row execute function restringir_cadastro_email();</pre>
     <div id="mapas-conteudo"></div>
   </div>
 
+  <!-- EDITAL -->
+  <div class="page" id="page-edital">
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-book-open"></i></span>Adicionar tópico ao edital</div>
+      <div class="form-group">
+        <label>Matéria</label>
+        <select id="edital-materia-form"></select>
+      </div>
+      <div class="form-group">
+        <label>Tópico</label>
+        <textarea id="edital-topico-input" rows="2" placeholder="Ex: Atas: finalidade, estrutura, linguagem e formalidades"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="adicionarTopicoEdital()"><i class="fas fa-plus"></i> Adicionar tópico</button>
+    </div>
+
+    <div style="position:relative;margin:16px 0 12px">
+      <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:0.85rem"></i>
+      <input type="text" id="busca-edital" placeholder="Buscar tópico ou matéria..." style="padding-left:36px" oninput="renderEdital()">
+    </div>
+
+    <div id="edital-conteudo"></div>
+  </div>
+
   <!-- CONFIG -->
   <div class="page" id="page-config">
     <div class="card">
@@ -1221,6 +1245,25 @@ for each row execute function restringir_cadastro_email();</pre>
     <div style="display:flex;gap:10px">
       <button class="btn btn-primary" onclick="confirmarEdicaoNome()"><i class="fas fa-save"></i> Salvar</button>
       <button class="btn btn-ghost" onclick="document.getElementById('modal-editar-nome').classList.remove('open')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR TÓPICO DO EDITAL -->
+<div class="modal-overlay" id="modal-editar-topico-edital">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-title">Editar Tópico do Edital</div>
+    <div class="form-group">
+      <label>Matéria</label>
+      <select id="editar-topico-edital-materia"></select>
+    </div>
+    <div class="form-group">
+      <label>Tópico</label>
+      <textarea id="editar-topico-edital-texto" rows="3"></textarea>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="salvarEdicaoTopicoEdital()"><i class="fas fa-save"></i> Salvar</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-editar-topico-edital').classList.remove('open')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1943,7 +1986,7 @@ function esconderLoading() {
 }
 
 // ===== NAVEGAÇÃO =====
-const PAGES = ['dashboard','cadastro','questoes','simulado','mapas','config']
+const PAGES = ['dashboard','cadastro','questoes','simulado','mapas','edital','config']
 function goPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'))
@@ -1953,14 +1996,15 @@ function goPage(id) {
   if (id === 'questoes') renderQuestoes()
   if (id === 'mapas') renderMapas()
   if (id === 'config') renderConfig()
-  if (id === 'cadastro' || id === 'simulado' || id === 'mapas') popularSelects()
+  if (id === 'edital') renderEdital()
+  if (id === 'cadastro' || id === 'simulado' || id === 'mapas' || id === 'edital') popularSelects()
   if (id === 'cadastro') setTimeout(() => renderTemasTags('tema-questao', 'temas-tags'), 100)
 }
 
 // ===== POPULAR SELECTS =====
 function popularSelects() {
   const opts = `<option value="">Selecione a matéria</option>` + materias.map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}</option>`).join('')
-  const ids = ['materia-questao','mapa-materia','edit-materia']
+  const ids = ['materia-questao','mapa-materia','edit-materia','edital-materia-form']
   ids.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = opts })
 
   // Checkboxes de matéria para o simulado
@@ -2268,6 +2312,117 @@ function selecionarGabarito(val) {
 }
 
 // ===== CADASTRAR =====
+// ===== ABA EDITAL (visualização/gestão do conteúdo) =====
+function renderEdital() {
+  const cont = document.getElementById('edital-conteudo')
+  const busca = (document.getElementById('busca-edital')?.value || '').toLowerCase().trim()
+
+  if (editalTopicos.length === 0) {
+    cont.innerHTML = `<div class="card" style="text-align:center;color:var(--text2);padding:30px">
+      <i class="fas fa-book-open" style="font-size:1.6rem;margin-bottom:8px;display:block"></i>
+      Nenhum tópico de edital cadastrado ainda. Use o formulário acima para adicionar.
+    </div>`
+    return
+  }
+
+  // agrupa por matéria
+  const porMateria = {}
+  editalTopicos.forEach(t => {
+    if (!porMateria[t.materia]) porMateria[t.materia] = []
+    porMateria[t.materia].push(t)
+  })
+
+  const materiasOrdenadas = Object.keys(porMateria).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+
+  let html = ''
+  materiasOrdenadas.forEach(materia => {
+    let topicos = porMateria[materia].sort((a, b) => (a.ordem || 0) - (b.ordem || 0))
+    if (busca) {
+      topicos = topicos.filter(t => t.topico.toLowerCase().includes(busca) || materia.toLowerCase().includes(busca))
+    }
+    if (topicos.length === 0) return
+
+    html += `
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-layer-group"></i></span>${escHtml(materia)} <span style="color:var(--text2);font-weight:400;font-size:0.8rem;margin-left:6px">(${topicos.length} tópico${topicos.length > 1 ? 's' : ''})</span></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${topicos.map(t => `
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+              <div style="flex:1;font-size:0.85rem;line-height:1.5;color:var(--text)">${escHtml(t.topico)}</div>
+              <div style="display:flex;gap:6px;flex-shrink:0">
+                <button class="btn-icon" title="Editar" onclick="abrirEdicaoTopicoEdital('${t.id}')" style="background:none;border:none;color:var(--text2);cursor:pointer;padding:4px"><i class="fas fa-pen"></i></button>
+                <button class="btn-icon" title="Excluir" onclick="excluirTopicoEdital('${t.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px"><i class="fas fa-trash"></i></button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>`
+  })
+
+  cont.innerHTML = html || `<div class="card" style="text-align:center;color:var(--text2);padding:30px">Nenhum tópico encontrado para essa busca.</div>`
+}
+
+async function adicionarTopicoEdital() {
+  const materia = document.getElementById('edital-materia-form').value
+  const topico = document.getElementById('edital-topico-input').value.trim()
+
+  if (!materia) { notif('Selecione a matéria!', 'error'); return }
+  if (!topico) { notif('Descreva o tópico!', 'error'); return }
+
+  const maiorOrdem = editalTopicos.filter(t => t.materia === materia).reduce((max, t) => Math.max(max, t.ordem || 0), 0)
+
+  mostrarLoading('Salvando tópico...')
+  const resultado = await supa.insert(TABELA_EDITAL, { materia, topico, ordem: maiorOrdem + 1 })
+  esconderLoading()
+
+  if (!resultado) { notif('Erro ao salvar! Verifique sua conexão.', 'error'); return }
+
+  editalTopicos.push(resultado[0])
+  document.getElementById('edital-topico-input').value = ''
+  notif('✅ Tópico adicionado ao edital!')
+  renderEdital()
+}
+
+function abrirEdicaoTopicoEdital(id) {
+  const t = editalTopicos.find(t => String(t.id) === String(id))
+  if (!t) return
+  window._editandoTopicoEditalId = id
+  const sel = document.getElementById('editar-topico-edital-materia')
+  sel.innerHTML = materias.map(m => `<option value="${escHtml(m.nome)}" ${m.nome === t.materia ? 'selected' : ''}>${escHtml(m.nome)}</option>`).join('')
+  document.getElementById('editar-topico-edital-texto').value = t.topico
+  document.getElementById('modal-editar-topico-edital').classList.add('open')
+}
+
+async function salvarEdicaoTopicoEdital() {
+  const id = window._editandoTopicoEditalId
+  const materia = document.getElementById('editar-topico-edital-materia').value
+  const topico = document.getElementById('editar-topico-edital-texto').value.trim()
+  if (!topico) { notif('O tópico não pode ficar vazio!', 'error'); return }
+
+  mostrarLoading('Salvando alterações...')
+  const resultado = await supa.update(TABELA_EDITAL, id, { materia, topico })
+  esconderLoading()
+
+  if (!resultado) { notif('Erro ao salvar! Verifique sua conexão.', 'error'); return }
+
+  const idx = editalTopicos.findIndex(t => String(t.id) === String(id))
+  if (idx !== -1) editalTopicos[idx] = resultado[0]
+
+  document.getElementById('modal-editar-topico-edital').classList.remove('open')
+  notif('✅ Tópico atualizado!')
+  renderEdital()
+}
+
+async function excluirTopicoEdital(id) {
+  if (!confirm('Excluir este tópico do edital?')) return
+  mostrarLoading('Excluindo...')
+  await supa.delete(TABELA_EDITAL, id)
+  esconderLoading()
+  editalTopicos = editalTopicos.filter(t => String(t.id) !== String(id))
+  notif('🗑️ Tópico excluído!')
+  renderEdital()
+}
+
 // ===== ANALISADOR DE EDITAL =====
 async function analisarRelevanciaEdital() {
   const materia = document.getElementById('materia-questao').value
