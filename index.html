@@ -977,10 +977,19 @@ for each row execute function restringir_cadastro_email();</pre>
       <button class="filtro-btn" id="filtro-pendentes" onclick="filtrarStatus('pendentes')">Pendentes</button>
       <button class="filtro-btn" id="filtro-dominadas" onclick="filtrarStatus('dominadas')">Dominadas</button>
       <button class="filtro-btn" id="filtro-favoritas" onclick="filtrarStatus('favoritas')">⭐ Favoritas</button>
+      <button class="filtro-btn" id="btn-modo-selecao" onclick="toggleModoSelecao()" style="margin-left:auto"><i class="fas fa-arrows-alt"></i> Migrar matéria</button>
       <span id="busca-resultado" style="font-size:0.8rem;color:var(--text2);align-self:center;margin-left:4px"></span>
     </div>
 
     <div id="lista-questoes"></div>
+  </div>
+
+  <!-- BARRA FLUTUANTE DE SELEÇÃO (migrar questões em lote) -->
+  <div id="barra-selecao-questoes" style="display:none;position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--border);padding:12px 16px;z-index:998;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:0 -4px 20px rgba(0,0,0,0.3)">
+    <span id="selecao-contador" style="font-size:0.85rem;font-weight:600;color:var(--text)">0 selecionadas</span>
+    <button class="btn btn-ghost btn-sm" onclick="selecionarTodasVisiveis()"><i class="fas fa-check-double"></i> Marcar todas</button>
+    <button class="btn btn-primary btn-sm" onclick="abrirModalMigrar()" style="margin-left:auto"><i class="fas fa-exchange-alt"></i> Migrar para matéria</button>
+    <button class="btn btn-ghost btn-sm" onclick="toggleModoSelecao()">Cancelar</button>
   </div>
 
   <!-- SIMULADO -->
@@ -1308,6 +1317,22 @@ for each row execute function restringir_cadastro_email();</pre>
   </div>
 </div>
 
+<!-- MODAL MIGRAR QUESTÕES PARA OUTRA MATÉRIA -->
+<div class="modal-overlay" id="modal-migrar">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title"><i class="fas fa-exchange-alt" style="margin-right:6px"></i>Migrar questões</div>
+    <div style="font-size:0.85rem;color:var(--text2);margin-bottom:14px" id="migrar-resumo"></div>
+    <div class="form-group">
+      <label>Nova matéria</label>
+      <select id="migrar-materia-destino"></select>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-migrar').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarMigracao()"><i class="fas fa-check"></i> Confirmar migração</button>
+    </div>
+  </div>
+</div>
+
 <!-- CENTRAL DE BACKUP E EXPORTAÇÃO -->
 <div class="modal-overlay" id="modal-backup">
   <div class="modal" style="max-width:520px">
@@ -1474,6 +1499,14 @@ const supa = {
   },
   async update(tabela, id, dados) {
     const r = await fetchComRenovacao(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=eq.${id}`, {
+      method: 'PATCH', headers: getHeaders({ Prefer: 'return=representation' }), body: JSON.stringify(dados)
+    })
+    return r.ok ? r.json() : null
+  },
+  // Atualiza várias linhas de uma vez (ex: migrar várias questões para outra matéria)
+  async updateMany(tabela, ids, dados) {
+    const filtro = ids.map(id => encodeURIComponent(id)).join(',')
+    const r = await fetchComRenovacao(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=in.(${filtro})`, {
       method: 'PATCH', headers: getHeaders({ Prefer: 'return=representation' }), body: JSON.stringify(dados)
     })
     return r.ok ? r.json() : null
@@ -2283,6 +2316,8 @@ async function salvarQuestao() {
 // ===== QUESTÕES =====
 let filtroMateria = 'todas-materias'
 let filtroStatus = 'todas'
+let modoSelecaoQuestoes = false
+let questoesSelecionadas = []
 
 function renderQuestoes() {
   const materiasList = [...new Set(questoes.map(q => q.materia))].filter(Boolean)
@@ -2332,11 +2367,16 @@ function renderQuestoes() {
     const taxaAcerto = tentativas > 0 ? Math.round((acertos / tentativas) * 100) : null
     const corTaxa = taxaAcerto === null ? '' : taxaAcerto >= 70 ? 'var(--green)' : taxaAcerto >= 40 ? 'var(--yellow)' : 'var(--red)'
 
+    const selecionada = questoesSelecionadas.includes(String(q.id))
+    const cardOnclick = modoSelecaoQuestoes ? `toggleSelecaoQuestao('${q.id}')` : `toggleQuestao('${q.id}')`
+    const estiloBorda = selecionada ? 'border:2px solid var(--accent);background:rgba(79,142,247,0.08)' : (q.favorita ? 'border-left:3px solid var(--yellow)' : '')
+
     return `
-    <div class="questao-mini ${q.favorita ? 'border-left:3px solid var(--yellow)' : ''}" id="qmini-${q.id}" onclick="toggleQuestao('${q.id}')" style="${q.favorita ? 'border-left:3px solid var(--yellow)' : ''}">
+    <div class="questao-mini" id="qmini-${q.id}" onclick="${cardOnclick}" style="${estiloBorda}">
       <!-- LINHA MINIMALISTA -->
       <div style="display:flex;align-items:center;gap:10px;justify-content:space-between">
         <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+          ${modoSelecaoQuestoes ? `<input type="checkbox" onclick="event.stopPropagation();toggleSelecaoQuestao('${q.id}')" ${selecionada ? 'checked' : ''} style="width:18px;height:18px;flex-shrink:0;cursor:pointer;accent-color:var(--accent)">` : ''}
           <span style="font-size:1rem;flex-shrink:0">${statusIcon}</span>
           <div style="min-width:0">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -2378,6 +2418,64 @@ function renderQuestoes() {
       </div>
     </div>`
   }).join('')
+}
+
+// ===== MIGRAR QUESTÕES ENTRE MATÉRIAS =====
+function toggleModoSelecao() {
+  modoSelecaoQuestoes = !modoSelecaoQuestoes
+  questoesSelecionadas = []
+  document.getElementById('btn-modo-selecao').classList.toggle('active', modoSelecaoQuestoes)
+  renderQuestoes()
+  atualizarBarraSelecao()
+}
+
+function toggleSelecaoQuestao(id) {
+  id = String(id)
+  if (questoesSelecionadas.includes(id)) {
+    questoesSelecionadas = questoesSelecionadas.filter(i => i !== id)
+  } else {
+    questoesSelecionadas.push(id)
+  }
+  renderQuestoes()
+  atualizarBarraSelecao()
+}
+
+function selecionarTodasVisiveis() {
+  const cards = document.querySelectorAll('#lista-questoes .questao-mini')
+  const idsVisiveis = Array.from(cards).map(c => c.id.replace('qmini-', ''))
+  const todasJaMarcadas = idsVisiveis.every(id => questoesSelecionadas.includes(id))
+  questoesSelecionadas = todasJaMarcadas ? [] : [...new Set([...questoesSelecionadas, ...idsVisiveis])]
+  renderQuestoes()
+  atualizarBarraSelecao()
+}
+
+function atualizarBarraSelecao() {
+  const barra = document.getElementById('barra-selecao-questoes')
+  if (!modoSelecaoQuestoes) { barra.style.display = 'none'; return }
+  barra.style.display = 'flex'
+  const n = questoesSelecionadas.length
+  document.getElementById('selecao-contador').textContent = `${n} selecionada${n !== 1 ? 's' : ''}`
+}
+
+function abrirModalMigrar() {
+  if (questoesSelecionadas.length === 0) { notif('Selecione ao menos uma questão', 'error'); return }
+  const sel = document.getElementById('migrar-materia-destino')
+  sel.innerHTML = materias.map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}</option>`).join('')
+  document.getElementById('migrar-resumo').textContent =
+    `${questoesSelecionadas.length} questão${questoesSelecionadas.length !== 1 ? 'ões' : ''} selecionada${questoesSelecionadas.length !== 1 ? 's' : ''} será${questoesSelecionadas.length !== 1 ? 'ão' : ''} movida${questoesSelecionadas.length !== 1 ? 's' : ''} para a matéria escolhida abaixo.`
+  document.getElementById('modal-migrar').classList.add('open')
+}
+
+async function confirmarMigracao() {
+  const novaMateria = document.getElementById('migrar-materia-destino').value
+  if (!novaMateria) { notif('Escolha uma matéria de destino', 'error'); return }
+  mostrarLoading('Migrando questões...')
+  await supa.updateMany(TABELA_QUESTOES, questoesSelecionadas, { materia: novaMateria })
+  questoes = questoes.map(q => questoesSelecionadas.includes(String(q.id)) ? { ...q, materia: novaMateria } : q)
+  esconderLoading()
+  document.getElementById('modal-migrar').classList.remove('open')
+  notif(`✅ ${questoesSelecionadas.length} questão(ões) migrada(s) para ${novaMateria}!`)
+  toggleModoSelecao()
 }
 
 async function toggleFavorita(id) {
