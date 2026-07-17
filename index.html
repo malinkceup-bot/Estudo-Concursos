@@ -872,6 +872,14 @@ for each row execute function restringir_cadastro_email();</pre>
         <div id="temas-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
       </div>
 
+      <!-- ANALISADOR DE EDITAL -->
+      <div class="form-group">
+        <button type="button" class="btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:100%" onclick="analisarRelevanciaEdital()">
+          <i class="fas fa-magnifying-glass-chart"></i> Verificar relevância no edital
+        </button>
+        <div id="edital-analise-resultado" style="display:none;margin-top:10px;padding:12px 14px;border-radius:8px;font-size:0.85rem;line-height:1.5"></div>
+      </div>
+
       <!-- ENUNCIADO -->
       <div class="form-group">
         <label><i class="fas fa-align-left" style="margin-right:5px"></i>Enunciado da Questão <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional — cole o enunciado resumido)</span></label>
@@ -1522,6 +1530,7 @@ const supa = {
 const TABELA_QUESTOES = 'Questões'
 const TABELA_MAPAS = 'Mapas'
 const TABELA_MATERIAS = 'Matérias'
+const TABELA_EDITAL = 'Edital'
 const TABELA_CONFIG = 'Configurações'
 
 // Renovar token automaticamente a cada 50 minutos (antes de expirar em 60min)
@@ -1921,6 +1930,8 @@ const MATERIAS_PADRAO = [
 let materias = []
 let questoes = []
 let mapas = []
+let editalTopicos = []
+let ultimaAnaliseEdital = null
 
 // ===== LOADING =====
 function mostrarLoading(msg = 'Carregando...') {
@@ -2257,6 +2268,59 @@ function selecionarGabarito(val) {
 }
 
 // ===== CADASTRAR =====
+// ===== ANALISADOR DE EDITAL =====
+async function analisarRelevanciaEdital() {
+  const materia = document.getElementById('materia-questao').value
+  const tema = document.getElementById('tema-questao').value.trim()
+  const enunciado = htmlParaMarkdown(document.getElementById('enunciado-questao')).trim()
+  const box = document.getElementById('edital-analise-resultado')
+
+  if (!materia) { notif('Selecione a matéria antes de analisar!', 'error'); return }
+  if (!tema && !enunciado) { notif('Preencha o tema ou o enunciado antes de analisar!', 'error'); return }
+
+  const topicosDaMateria = editalTopicos.filter(t => t.materia === materia).map(t => t.topico)
+  if (topicosDaMateria.length === 0) {
+    box.style.display = 'block'
+    box.style.border = '1px solid var(--yellow)'
+    box.innerHTML = `<span style="color:var(--yellow)"><i class="fas fa-triangle-exclamation"></i> Não há tópicos de edital cadastrados para "${escHtml(materia)}" ainda. Cadastre o conteúdo do edital dessa matéria para poder analisar.</span>`
+    return
+  }
+
+  box.style.display = 'block'
+  box.style.background = 'var(--surface2)'
+  box.style.border = '1px solid var(--border)'
+  box.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analisando relevância no edital...'
+  ultimaAnaliseEdital = null
+
+  try {
+    const r = await fetchComRenovacao(`${SUPA_URL}/functions/v1/analisar-edital`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ materia, tema, enunciado, topicos: topicosDaMateria })
+    })
+    const resultado = await r.json()
+    if (!r.ok || resultado.erro) throw new Error(resultado.erro || 'Falha na análise')
+
+    ultimaAnaliseEdital = resultado
+
+    const cor = resultado.relevante === true ? 'var(--green)' : resultado.relevante === false ? 'var(--red)' : 'var(--yellow)'
+    const icone = resultado.relevante === true ? 'fa-circle-check' : resultado.relevante === false ? 'fa-triangle-exclamation' : 'fa-circle-question'
+    const titulo = resultado.relevante === true ? 'Relevante para o edital' : resultado.relevante === false ? 'Não parece estar no edital' : 'Não foi possível confirmar'
+
+    box.style.border = `1px solid ${cor}`
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;color:${cor};font-weight:700;margin-bottom:6px">
+        <i class="fas ${icone}"></i> ${titulo}${resultado.confianca != null ? ` (${resultado.confianca}% de confiança)` : ''}
+      </div>
+      ${resultado.topico_correspondente ? `<div style="color:var(--text2);margin-bottom:4px"><strong style="color:var(--text)">Tópico do edital:</strong> ${escHtml(resultado.topico_correspondente)}</div>` : ''}
+      <div style="color:var(--text2)">${escHtml(resultado.motivo || '')}</div>
+    `
+  } catch (e) {
+    box.style.border = '1px solid var(--red)'
+    box.innerHTML = `<span style="color:var(--red)"><i class="fas fa-triangle-exclamation"></i> Erro ao analisar: ${escHtml(e.message)}</span>`
+  }
+}
+
 async function salvarQuestao() {
   const materia = document.getElementById('materia-questao').value
   const tema = document.getElementById('tema-questao').value.trim()
@@ -2277,13 +2341,19 @@ async function salvarQuestao() {
     materia, tema, enunciado,
     alternativas: JSON.stringify({ A: altA, B: altB, C: altC, D: altD, E: altE }),
     gabarito, anotacao, video, dominada: false,
-    data: new Date().toLocaleDateString('pt-BR')
+    data: new Date().toLocaleDateString('pt-BR'),
+    relevancia_edital: ultimaAnaliseEdital ? ultimaAnaliseEdital.confianca : null,
+    edital_topico: ultimaAnaliseEdital ? ultimaAnaliseEdital.topico_correspondente : null,
+    edital_motivo: ultimaAnaliseEdital ? ultimaAnaliseEdital.motivo : null,
+    edital_analisado: !!ultimaAnaliseEdital
   })
   esconderLoading()
 
   if (!resultado) { notif('Erro ao salvar! Verifique sua conexão.', 'error'); return }
 
   questoes.push(resultado[0])
+  ultimaAnaliseEdital = null
+  document.getElementById('edital-analise-resultado').style.display = 'none'
 
   document.getElementById('materia-questao').value = ''
   document.getElementById('tema-questao').value = ''
@@ -4235,14 +4305,16 @@ function calcularConsumo() {
 async function carregarDados() {
   mostrarLoading('Carregando seus dados...')
   try {
-    const [q, m, mt] = await Promise.all([
+    const [q, m, mt, ed] = await Promise.all([
       supa.get(TABELA_QUESTOES),
       supa.get(TABELA_MAPAS),
       supa.get(TABELA_MATERIAS),
+      supa.get(TABELA_EDITAL),
     ])
     questoes = q || []
     mapas = m || []
     materias = mt && mt.length ? mt : []
+    editalTopicos = ed || []
     if (!materias.length) {
       mostrarLoading('Configurando matérias padrão...')
       for (const nome of MATERIAS_PADRAO) {
