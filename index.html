@@ -2428,6 +2428,13 @@ async function analisarRelevanciaEdital() {
   const materia = document.getElementById('materia-questao').value
   const tema = document.getElementById('tema-questao').value.trim()
   const enunciado = htmlParaMarkdown(document.getElementById('enunciado-questao')).trim()
+  const altA = document.getElementById('alt-a').value.trim()
+  const altB = document.getElementById('alt-b').value.trim()
+  const altC = document.getElementById('alt-c').value.trim()
+  const altD = document.getElementById('alt-d').value.trim()
+  const altE = document.getElementById('alt-e').value.trim()
+  const gabarito = document.getElementById('gabarito-questao').value
+  const anotacao = document.getElementById('anotacao-questao').value.trim()
   const box = document.getElementById('edital-analise-resultado')
 
   if (!materia) { notif('Selecione a matéria antes de analisar!', 'error'); return }
@@ -2451,7 +2458,12 @@ async function analisarRelevanciaEdital() {
     const r = await fetchComRenovacao(`${SUPA_URL}/functions/v1/analisar-edital`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ materia, tema, enunciado, topicos: topicosDaMateria })
+      body: JSON.stringify({
+        materia, tema, enunciado,
+        alternativas: { A: altA, B: altB, C: altC, D: altD, E: altE },
+        gabarito, anotacao,
+        topicos: topicosDaMateria
+      })
     })
     const resultado = await r.json()
     if (!r.ok || resultado.erro) throw new Error(resultado.erro || 'Falha na análise')
