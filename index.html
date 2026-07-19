@@ -2441,10 +2441,21 @@ async function analisarRelevanciaEdital() {
   if (!tema && !enunciado) { notif('Preencha o tema ou o enunciado antes de analisar!', 'error'); return }
 
   const topicosDaMateria = editalTopicos.filter(t => t.materia === materia).map(t => t.topico)
-  if (topicosDaMateria.length === 0) {
+
+  // Tópicos das OUTRAS matérias, para a IA conseguir sugerir "isso parece mais
+  // com tal matéria" quando não bater com a matéria selecionada
+  const topicosOutrasMaterias = {}
+  editalTopicos.forEach(t => {
+    if (t.materia === materia) return
+    if (!topicosOutrasMaterias[t.materia]) topicosOutrasMaterias[t.materia] = []
+    topicosOutrasMaterias[t.materia].push(t.topico)
+  })
+
+  // Só bloqueia de verdade se NÃO existir tópico cadastrado em lugar nenhum do edital
+  if (topicosDaMateria.length === 0 && Object.keys(topicosOutrasMaterias).length === 0) {
     box.style.display = 'block'
     box.style.border = '1px solid var(--yellow)'
-    box.innerHTML = `<span style="color:var(--yellow)"><i class="fas fa-triangle-exclamation"></i> Não há tópicos de edital cadastrados para "${escHtml(materia)}" ainda. Cadastre o conteúdo do edital dessa matéria para poder analisar.</span>`
+    box.innerHTML = `<span style="color:var(--yellow)"><i class="fas fa-triangle-exclamation"></i> Você ainda não cadastrou nenhum tópico de edital (em nenhuma matéria). Vá na aba "Edital" e cadastre o conteúdo oficial primeiro.</span>`
     return
   }
 
@@ -2462,7 +2473,8 @@ async function analisarRelevanciaEdital() {
         materia, tema, enunciado,
         alternativas: { A: altA, B: altB, C: altC, D: altD, E: altE },
         gabarito, anotacao,
-        topicos: topicosDaMateria
+        topicos: topicosDaMateria,
+        topicos_outras_materias: topicosOutrasMaterias
       })
     })
     const resultado = await r.json()
@@ -2480,7 +2492,13 @@ async function analisarRelevanciaEdital() {
         <i class="fas ${icone}"></i> ${titulo}${resultado.confianca != null ? ` (${resultado.confianca}% de confiança)` : ''}
       </div>
       ${resultado.topico_correspondente ? `<div style="color:var(--text2);margin-bottom:4px"><strong style="color:var(--text)">Tópico do edital:</strong> ${escHtml(resultado.topico_correspondente)}</div>` : ''}
-      <div style="color:var(--text2)">${escHtml(resultado.motivo || '')}</div>
+      ${resultado.assunto_identificado ? `<div style="color:var(--text2);margin-bottom:6px"><strong style="color:var(--text)">Do que essa questão trata:</strong> ${escHtml(resultado.assunto_identificado)}</div>` : ''}
+      <div style="color:var(--text2);white-space:pre-wrap;line-height:1.5;margin-bottom:${resultado.materia_sugerida ? '8px' : '0'}">${escHtml(resultado.motivo || '')}</div>
+      ${resultado.materia_sugerida ? `
+        <div style="margin-top:8px;padding:10px 12px;background:rgba(79,142,247,0.1);border:1px solid var(--accent);border-radius:8px">
+          <div style="color:var(--accent);font-weight:700;font-size:0.82rem;margin-bottom:2px"><i class="fas fa-lightbulb"></i> Pode ser que isso se encaixe melhor em "${escHtml(resultado.materia_sugerida)}"</div>
+          ${resultado.topico_sugerido_outra_materia ? `<div style="color:var(--text2);font-size:0.82rem">Tópico: ${escHtml(resultado.topico_sugerido_outra_materia)}</div>` : ''}
+        </div>` : ''}
     `
   } catch (e) {
     box.style.border = '1px solid var(--red)'
