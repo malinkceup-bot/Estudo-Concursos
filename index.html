@@ -271,6 +271,27 @@
   .mapa-grid-titulo { font-size: 0.85rem; font-weight: 600; color: var(--text); }
   .mapa-grid-data { font-size: 0.7rem; color: var(--text2); margin-top: 2px; }
 
+  /* ===== MURAL DE REDAÇÃO ===== */
+  .nota-grid { column-count: 2; column-gap: 14px; }
+  @media (max-width: 600px) { .nota-grid { column-count: 1; } }
+  .nota-card {
+    break-inside: avoid; margin-bottom: 14px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; cursor: pointer; transition: border-color 0.2s;
+  }
+  .nota-card:hover { border-color: var(--accent); }
+  .nota-card-titulo { font-weight: 700; font-size: 0.9rem; color: var(--text); margin-bottom: 4px; }
+  .nota-card-conteudo { font-size: 0.82rem; color: var(--text2); line-height: 1.5; white-space: pre-wrap; max-height: 180px; overflow: hidden; }
+  .nota-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+  .nota-cor-amarelo { background: #3d3418 !important; border-color: #665a24 !important; }
+  .nota-cor-verde   { background: #17301f !important; border-color: #235c37 !important; }
+  .nota-cor-azul    { background: #16233d !important; border-color: #24447a !important; }
+  .nota-cor-rosa    { background: #33182b !important; border-color: #5c2447 !important; }
+  .nota-cor-roxo    { background: #241a3d !important; border-color: #40277a !important; }
+  .nota-cor-laranja { background: #3d2416 !important; border-color: #6b3d1f !important; }
+  .cor-swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; transition: transform 0.15s, border-color 0.15s; }
+  .cor-swatch:hover { transform: scale(1.1); }
+  .cor-swatch.selecionada { border-color: var(--accent); transform: scale(1.12); }
+
   .mapas-secao-titulo {
     font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: 1px; color: var(--accent); margin-bottom: 12px;
@@ -732,6 +753,7 @@ for each row execute function restringir_cadastro_email();</pre>
     <button class="nav-tab" onclick="goPage('simulado')"><i class="fas fa-brain"></i> <span>Simulado</span></button>
     <button class="nav-tab" onclick="goPage('mapas')"><i class="fas fa-image"></i> <span>Mapas</span></button>
     <button class="nav-tab" onclick="goPage('edital')"><i class="fas fa-book-open"></i> <span>Edital</span></button>
+    <button class="nav-tab" onclick="goPage('redacao')"><i class="fas fa-feather-alt"></i> <span>Redação</span></button>
     <button class="nav-tab" onclick="goPage('config')"><i class="fas fa-cog"></i> <span>Config</span></button>
     <button class="nav-tab" onclick="fazerLogout()" style="color:var(--red)" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
   </div>
@@ -1152,6 +1174,56 @@ for each row execute function restringir_cadastro_email();</pre>
     <div id="edital-conteudo"></div>
   </div>
 
+  <!-- REDAÇÃO -->
+  <div class="page" id="page-redacao">
+
+    <!-- MODELO CURINGA -->
+    <div class="card" id="card-modelo-curinga" style="border:1px solid var(--accent);background:linear-gradient(135deg, rgba(79,142,247,0.08), var(--surface))">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+        <div class="card-title" style="margin:0"><i class="fas fa-thumbtack" style="margin-right:6px"></i>Modelo Curinga</div>
+        <div style="display:flex;gap:8px" id="modelo-acoes-view">
+          <button class="btn btn-ghost btn-sm" onclick="toggleEditarModelo()"><i class="fas fa-edit"></i> Editar</button>
+          <button class="btn btn-primary btn-sm" onclick="abrirModalDuplicar(null)"><i class="fas fa-clone"></i> Duplicar p/ novo tema</button>
+        </div>
+      </div>
+
+      <div id="modelo-vazio" style="display:none;text-align:center;padding:20px 0">
+        <div style="font-size:2rem;margin-bottom:10px">📌</div>
+        <div style="color:var(--text2);margin-bottom:14px;font-size:0.85rem">Você ainda não tem um modelo curinga salvo.</div>
+        <button class="btn btn-primary" onclick="criarModeloCuringa()"><i class="fas fa-plus"></i> Criar meu modelo curinga</button>
+      </div>
+
+      <div id="modelo-view" style="display:none;font-size:0.9rem;line-height:1.7;white-space:pre-wrap;color:var(--text)"></div>
+
+      <div id="modelo-edit" style="display:none">
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+          <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+        </div>
+        <div id="modelo-editavel" class="rich-editable" contenteditable="true" data-placeholder="Escreva aqui seu modelo curinga de redação..." style="min-height:220px"></div>
+        <div style="display:flex;gap:10px;margin-top:10px;justify-content:flex-end">
+          <button class="btn btn-ghost btn-sm" onclick="cancelarEdicaoModelo()">Cancelar</button>
+          <button class="btn btn-primary btn-sm" onclick="salvarModelo()"><i class="fas fa-save"></i> Salvar modelo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MURAL DE NOTAS -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:22px 0 12px;flex-wrap:wrap;gap:8px">
+      <div class="card-title" style="margin:0">Mural de Anotações</div>
+      <button class="btn btn-primary btn-sm" onclick="abrirModalNovaNota()"><i class="fas fa-plus"></i> Nova nota</button>
+    </div>
+
+    <div style="position:relative;margin-bottom:12px">
+      <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:0.85rem"></i>
+      <input type="text" id="busca-redacao" placeholder="Buscar por título, tema ou conteúdo..." style="padding-left:36px" oninput="renderRedacao()">
+    </div>
+
+    <div class="mapas-tabs" id="redacao-temas-tabs"></div>
+
+    <div id="redacao-grid"></div>
+  </div>
+
   <!-- CONFIG -->
   <div class="page" id="page-config">
     <div class="card">
@@ -1384,7 +1456,60 @@ for each row execute function restringir_cadastro_email();</pre>
   </div>
 </div>
 
-<!-- CENTRAL DE BACKUP E EXPORTAÇÃO -->
+<!-- MODAL NOTA (nova / editar) -->
+<div class="modal-overlay" id="modal-nota">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title" id="modal-nota-titulo"><i class="fas fa-sticky-note" style="margin-right:6px"></i>Nova nota</div>
+    <input type="hidden" id="nota-id">
+    <div class="form-group">
+      <label>Título</label>
+      <input type="text" id="nota-titulo" placeholder="Ex: Repertório sobre desigualdade social">
+    </div>
+    <div class="form-group">
+      <label>Tema</label>
+      <input type="text" id="nota-tema" placeholder="Ex: Educação, Tecnologia, Meio ambiente..." list="lista-temas-redacao">
+      <datalist id="lista-temas-redacao"></datalist>
+    </div>
+    <div class="form-group">
+      <label>Cor</label>
+      <div id="nota-cores" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+    </div>
+    <div class="form-group">
+      <label>Conteúdo</label>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('nota-conteudo','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+        <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('nota-conteudo','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+      </div>
+      <div id="nota-conteudo" class="rich-editable" contenteditable="true" data-placeholder="Escreva sua anotação..." style="min-height:150px"></div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:space-between;margin-top:16px;align-items:center">
+      <button class="btn btn-danger btn-sm" id="btn-deletar-nota" onclick="confirmarDeletarNota()" style="display:none"><i class="fas fa-trash"></i></button>
+      <div style="display:flex;gap:10px;margin-left:auto">
+        <button class="btn btn-ghost" onclick="document.getElementById('modal-nota').classList.remove('open')">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarNota()"><i class="fas fa-save"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DUPLICAR CARD PARA NOVO TEMA -->
+<div class="modal-overlay" id="modal-duplicar">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title"><i class="fas fa-clone" style="margin-right:6px"></i>Duplicar para novo tema</div>
+    <div class="form-group">
+      <label>Título da nova nota</label>
+      <input type="text" id="duplicar-titulo" placeholder="Ex: Redação sobre Educação">
+    </div>
+    <div class="form-group">
+      <label>Tema</label>
+      <input type="text" id="duplicar-tema" placeholder="Ex: Educação" list="lista-temas-redacao">
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-duplicar').classList.remove('open')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarDuplicar()"><i class="fas fa-check"></i> Duplicar</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-backup">
   <div class="modal" style="max-width:520px">
     <div class="modal-title">💾 Central de Backup e Exportação</div>
@@ -1574,6 +1699,7 @@ const TABELA_QUESTOES = 'Questões'
 const TABELA_MAPAS = 'Mapas'
 const TABELA_MATERIAS = 'Matérias'
 const TABELA_EDITAL = 'Edital'
+const TABELA_REDACAO = 'Redação'
 const TABELA_CONFIG = 'Configurações'
 
 // Renovar token automaticamente a cada 50 minutos (antes de expirar em 60min)
@@ -1975,6 +2101,11 @@ let questoes = []
 let mapas = []
 let editalTopicos = []
 let ultimaAnaliseEdital = null
+let redacoes = []
+let filtroTemaRedacao = 'todos'
+let _duplicarOrigemId = null // id do card sendo duplicado (null = duplicando o modelo)
+let _corSelecionadaNota = ''
+const CORES_NOTA = ['amarelo', 'verde', 'azul', 'rosa', 'roxo', 'laranja']
 
 // ===== LOADING =====
 function mostrarLoading(msg = 'Carregando...') {
@@ -1986,7 +2117,7 @@ function esconderLoading() {
 }
 
 // ===== NAVEGAÇÃO =====
-const PAGES = ['dashboard','cadastro','questoes','simulado','mapas','edital','config']
+const PAGES = ['dashboard','cadastro','questoes','simulado','mapas','edital','redacao','config']
 function goPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'))
@@ -1997,6 +2128,7 @@ function goPage(id) {
   if (id === 'mapas') renderMapas()
   if (id === 'config') renderConfig()
   if (id === 'edital') renderEdital()
+  if (id === 'redacao') renderRedacao()
   if (id === 'cadastro' || id === 'simulado' || id === 'mapas' || id === 'edital') popularSelects()
   if (id === 'cadastro') setTimeout(() => renderTemasTags('tema-questao', 'temas-tags'), 100)
 }
@@ -2360,6 +2492,212 @@ function renderEdital() {
   })
 
   cont.innerHTML = html || `<div class="card" style="text-align:center;color:var(--text2);padding:30px">Nenhum tópico encontrado para essa busca.</div>`
+}
+
+// ===== REDAÇÃO (modelo curinga + mural de notas) =====
+function renderRedacao() {
+  const modelo = redacoes.find(r => r.tipo === 'modelo')
+
+  document.getElementById('modelo-vazio').style.display = modelo ? 'none' : 'block'
+  document.getElementById('modelo-acoes-view').style.display = modelo ? 'flex' : 'none'
+  document.getElementById('modelo-edit').style.display = 'none'
+  document.getElementById('modelo-view').style.display = modelo ? 'block' : 'none'
+  if (modelo) document.getElementById('modelo-view').innerHTML = formatarEnunciado(modelo.conteudo || '')
+
+  let notas = redacoes.filter(r => r.tipo !== 'modelo')
+
+  // Chips de tema
+  const temas = [...new Set(notas.map(n => n.tema).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  document.getElementById('redacao-temas-tabs').innerHTML =
+    `<button class="mapa-tab-btn ${filtroTemaRedacao === 'todos' ? 'active' : ''}" onclick="filtrarTemaRedacao('todos')">Todos <span class="count">${notas.length}</span></button>` +
+    temas.map(t => `<button class="mapa-tab-btn ${filtroTemaRedacao === t ? 'active' : ''}" onclick="filtrarTemaRedacao('${escAttr(t)}')">${escHtml(t)} <span class="count">${notas.filter(n => n.tema === t).length}</span></button>`).join('')
+
+  if (filtroTemaRedacao !== 'todos') notas = notas.filter(n => n.tema === filtroTemaRedacao)
+
+  const busca = (document.getElementById('busca-redacao')?.value || '').trim().toLowerCase()
+  if (busca) {
+    notas = notas.filter(n =>
+      (n.titulo && n.titulo.toLowerCase().includes(busca)) ||
+      (n.tema && n.tema.toLowerCase().includes(busca)) ||
+      (n.conteudo && n.conteudo.toLowerCase().includes(busca))
+    )
+  }
+
+  // Datalist de temas (reaproveitado nos modais de nota/duplicar)
+  document.getElementById('lista-temas-redacao').innerHTML = temas.map(t => `<option value="${escAttr(t)}">`).join('')
+
+  const grid = document.getElementById('redacao-grid')
+  if (!notas.length) {
+    grid.innerHTML = '<div class="empty"><div class="empty-icon">🗒️</div><div class="empty-text">Nenhuma anotação encontrada.</div></div>'
+    return
+  }
+
+  grid.innerHTML = `<div class="nota-grid">` + notas.slice().reverse().map(n => `
+    <div class="nota-card ${n.cor ? 'nota-cor-' + n.cor : ''}" onclick="abrirEditarNota('${n.id}')">
+      <div class="nota-card-titulo">${escHtml(n.titulo || 'Sem título')}</div>
+      ${n.tema ? `<span style="font-size:0.7rem;color:var(--accent)"><i class="fas fa-tag" style="margin-right:3px"></i>${escHtml(n.tema)}</span>` : ''}
+      <div class="nota-card-conteudo" style="margin-top:6px">${formatarEnunciado(n.conteudo || '')}</div>
+      <div class="nota-card-footer">
+        <span style="font-size:0.68rem;color:var(--text2)">${n.created_at ? new Date(n.created_at).toLocaleDateString('pt-BR') : ''}</span>
+        <div style="display:flex;gap:6px" onclick="event.stopPropagation()">
+          <button class="btn-favorita" onclick="abrirModalDuplicar('${n.id}')" title="Duplicar"><i class="fas fa-clone"></i></button>
+          <button class="btn-favorita" onclick="deletarNotaDireto('${n.id}')" title="Excluir"><i class="fas fa-trash" style="color:var(--red)"></i></button>
+        </div>
+      </div>
+    </div>`).join('') + `</div>`
+}
+
+function filtrarTemaRedacao(tema) {
+  filtroTemaRedacao = tema
+  renderRedacao()
+}
+
+// --- Modelo curinga ---
+async function criarModeloCuringa() {
+  mostrarLoading('Criando modelo curinga...')
+  const r = await supa.insert(TABELA_REDACAO, { tipo: 'modelo', titulo: 'Modelo Curinga', conteudo: '' })
+  esconderLoading()
+  if (r && r[0]) { redacoes.push(r[0]); renderRedacao(); toggleEditarModelo() }
+  else notif('Erro ao criar modelo!', 'error')
+}
+
+function toggleEditarModelo() {
+  const modelo = redacoes.find(r => r.tipo === 'modelo')
+  if (!modelo) return
+  document.getElementById('modelo-view').style.display = 'none'
+  document.getElementById('modelo-acoes-view').style.display = 'none'
+  document.getElementById('modelo-edit').style.display = 'block'
+  document.getElementById('modelo-editavel').innerHTML = formatarEnunciado(modelo.conteudo || '')
+}
+
+function cancelarEdicaoModelo() {
+  document.getElementById('modelo-edit').style.display = 'none'
+  document.getElementById('modelo-acoes-view').style.display = 'flex'
+  document.getElementById('modelo-view').style.display = 'block'
+}
+
+async function salvarModelo() {
+  const modelo = redacoes.find(r => r.tipo === 'modelo')
+  if (!modelo) return
+  const conteudo = htmlParaMarkdown(document.getElementById('modelo-editavel')).trim()
+  mostrarLoading('Salvando modelo...')
+  await supa.update(TABELA_REDACAO, modelo.id, { conteudo })
+  esconderLoading()
+  modelo.conteudo = conteudo
+  cancelarEdicaoModelo()
+  notif('✅ Modelo curinga salvo!')
+  renderRedacao()
+}
+
+// --- Notas do mural ---
+function renderCoresNota() {
+  const el = document.getElementById('nota-cores')
+  const opcoes = [{ chave: '', label: 'Padrão' }, ...CORES_NOTA.map(c => ({ chave: c, label: c }))]
+  el.innerHTML = opcoes.map(o => `
+    <div class="cor-swatch ${o.chave ? 'nota-cor-' + o.chave : ''} ${_corSelecionadaNota === o.chave ? 'selecionada' : ''}"
+      title="${escAttr(o.label)}" onclick="selecionarCorNota('${o.chave}')"
+      style="${!o.chave ? 'background:var(--surface2)' : ''}"></div>
+  `).join('')
+}
+function selecionarCorNota(cor) {
+  _corSelecionadaNota = cor
+  renderCoresNota()
+}
+
+function abrirModalNovaNota() {
+  document.getElementById('modal-nota-titulo').innerHTML = '<i class="fas fa-sticky-note" style="margin-right:6px"></i>Nova nota'
+  document.getElementById('nota-id').value = ''
+  document.getElementById('nota-titulo').value = ''
+  document.getElementById('nota-tema').value = filtroTemaRedacao !== 'todos' ? filtroTemaRedacao : ''
+  document.getElementById('nota-conteudo').innerHTML = ''
+  document.getElementById('btn-deletar-nota').style.display = 'none'
+  _corSelecionadaNota = ''
+  renderCoresNota()
+  document.getElementById('modal-nota').classList.add('open')
+}
+
+function abrirEditarNota(id) {
+  const n = redacoes.find(r => String(r.id) === String(id))
+  if (!n) return
+  document.getElementById('modal-nota-titulo').innerHTML = '<i class="fas fa-sticky-note" style="margin-right:6px"></i>Editar nota'
+  document.getElementById('nota-id').value = n.id
+  document.getElementById('nota-titulo').value = n.titulo || ''
+  document.getElementById('nota-tema').value = n.tema || ''
+  document.getElementById('nota-conteudo').innerHTML = formatarEnunciado(n.conteudo || '')
+  document.getElementById('btn-deletar-nota').style.display = 'inline-flex'
+  _corSelecionadaNota = n.cor || ''
+  renderCoresNota()
+  document.getElementById('modal-nota').classList.add('open')
+}
+
+async function salvarNota() {
+  const id = document.getElementById('nota-id').value
+  const dados = {
+    titulo: document.getElementById('nota-titulo').value.trim(),
+    tema: document.getElementById('nota-tema').value.trim(),
+    conteudo: htmlParaMarkdown(document.getElementById('nota-conteudo')).trim(),
+    cor: _corSelecionadaNota,
+  }
+  if (!dados.titulo) { notif('Dê um título para a nota', 'error'); return }
+  mostrarLoading('Salvando nota...')
+  if (id) {
+    await supa.update(TABELA_REDACAO, id, dados)
+    redacoes = redacoes.map(r => String(r.id) === String(id) ? { ...r, ...dados } : r)
+  } else {
+    const r = await supa.insert(TABELA_REDACAO, { tipo: 'nota', ...dados })
+    if (r && r[0]) redacoes.push(r[0])
+  }
+  esconderLoading()
+  document.getElementById('modal-nota').classList.remove('open')
+  notif('✅ Nota salva!')
+  renderRedacao()
+}
+
+function confirmarDeletarNota() {
+  const id = document.getElementById('nota-id').value
+  if (!id) return
+  document.getElementById('modal-nota').classList.remove('open')
+  deletarNotaDireto(id)
+}
+
+async function deletarNotaDireto(id) {
+  document.getElementById('confirmar-titulo').textContent = 'Excluir esta nota?'
+  document.getElementById('confirmar-texto').textContent = 'Essa ação não pode ser desfeita.'
+  document.getElementById('modal-confirmar').classList.add('open')
+  document.getElementById('confirmar-sim').onclick = async () => {
+    mostrarLoading('Excluindo...')
+    await supa.delete(TABELA_REDACAO, id)
+    redacoes = redacoes.filter(r => String(r.id) !== String(id))
+    esconderLoading()
+    document.getElementById('modal-confirmar').classList.remove('open')
+    notif('🗑️ Nota excluída!')
+    renderRedacao()
+  }
+}
+
+// --- Duplicar (modelo ou nota) para um novo tema ---
+function abrirModalDuplicar(id) {
+  _duplicarOrigemId = id // null = duplicando o modelo curinga
+  const origem = id ? redacoes.find(r => String(r.id) === String(id)) : redacoes.find(r => r.tipo === 'modelo')
+  if (!origem) { notif('Crie o modelo curinga primeiro', 'error'); return }
+  document.getElementById('duplicar-titulo').value = id ? `${origem.titulo || ''} (cópia)` : 'Redação sobre '
+  document.getElementById('duplicar-tema').value = id ? (origem.tema || '') : ''
+  document.getElementById('modal-duplicar').classList.add('open')
+}
+
+async function confirmarDuplicar() {
+  const origem = _duplicarOrigemId ? redacoes.find(r => String(r.id) === String(_duplicarOrigemId)) : redacoes.find(r => r.tipo === 'modelo')
+  if (!origem) return
+  const titulo = document.getElementById('duplicar-titulo').value.trim()
+  const tema = document.getElementById('duplicar-tema').value.trim()
+  if (!titulo) { notif('Dê um título para a nova nota', 'error'); return }
+  mostrarLoading('Duplicando...')
+  const r = await supa.insert(TABELA_REDACAO, { tipo: 'nota', titulo, tema, conteudo: origem.conteudo || '', cor: origem.tipo === 'modelo' ? '' : (origem.cor || '') })
+  esconderLoading()
+  if (r && r[0]) redacoes.push(r[0])
+  document.getElementById('modal-duplicar').classList.remove('open')
+  notif('✅ Duplicado! Já pode adaptar pro novo tema.')
+  renderRedacao()
 }
 
 async function adicionarTopicoEdital() {
@@ -4490,16 +4828,18 @@ function calcularConsumo() {
 async function carregarDados() {
   mostrarLoading('Carregando seus dados...')
   try {
-    const [q, m, mt, ed] = await Promise.all([
+    const [q, m, mt, ed, rd] = await Promise.all([
       supa.get(TABELA_QUESTOES),
       supa.get(TABELA_MAPAS),
       supa.get(TABELA_MATERIAS),
       supa.get(TABELA_EDITAL),
+      supa.get(TABELA_REDACAO),
     ])
     questoes = q || []
     mapas = m || []
     materias = mt && mt.length ? mt : []
     editalTopicos = ed || []
+    redacoes = rd || []
     if (!materias.length) {
       mostrarLoading('Configurando matérias padrão...')
       for (const nome of MATERIAS_PADRAO) {
