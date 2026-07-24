@@ -355,6 +355,12 @@
 
   /* VERSÃO COMPACTA (chips) — usada em Matérias e Temas */
   .chips-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+  .grupo-colapsavel { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+  .grupo-cabecalho { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--surface2); cursor: pointer; user-select: none; }
+  .grupo-cabecalho:hover { background: #232a4a; }
+  .grupo-titulo { font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .grupo-count { font-size: 0.72rem; color: var(--text2); background: var(--surface); padding: 2px 9px; border-radius: 20px; }
+  .grupo-corpo { padding: 10px 14px; }
   .item-chip {
     display: inline-flex; align-items: center; gap: 6px;
     background: var(--surface2); border: 1px solid var(--border);
@@ -754,6 +760,7 @@ for each row execute function restringir_cadastro_email();</pre>
     <button class="nav-tab" onclick="goPage('mapas')"><i class="fas fa-image"></i> <span>Mapas</span></button>
     <button class="nav-tab" onclick="goPage('edital')"><i class="fas fa-book-open"></i> <span>Edital</span></button>
     <button class="nav-tab" onclick="goPage('redacao')"><i class="fas fa-feather-alt"></i> <span>Redação</span></button>
+    <button class="nav-tab" onclick="goPage('concurso')"><i class="fas fa-graduation-cap"></i> <span>Concurso</span></button>
     <button class="nav-tab" onclick="goPage('config')"><i class="fas fa-cog"></i> <span>Config</span></button>
     <button class="nav-tab" onclick="fazerLogout()" style="color:var(--red)" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
   </div>
@@ -770,6 +777,8 @@ for each row execute function restringir_cadastro_email();</pre>
       <div class="dash-hero-titulo" id="dash-saudacao"></div>
       <div class="dash-hero-sub" id="dash-subtitulo"></div>
     </div>
+
+    <div id="dash-concurso-banner"></div>
 
     <!-- STATS GERAIS -->
     <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
@@ -1224,11 +1233,20 @@ for each row execute function restringir_cadastro_email();</pre>
     <div id="redacao-grid"></div>
   </div>
 
+  <!-- CONCURSO -->
+  <div class="page" id="page-concurso">
+    <div id="concurso-conteudo"></div>
+  </div>
+
   <!-- CONFIG -->
   <div class="page" id="page-config">
     <div class="card">
       <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-layer-group"></i></span>Gerenciar Matérias</div>
       <p style="font-size:0.85rem;color:var(--text2);margin-bottom:16px">Renomear ou remover matérias atualiza automaticamente todas as questões e mapas.</p>
+      <div style="position:relative;margin-bottom:12px">
+        <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:0.85rem"></i>
+        <input type="text" id="busca-materias-config" placeholder="Buscar matéria..." style="padding-left:36px" oninput="renderConfig()">
+      </div>
       <div id="lista-materias-config"></div>
       <div class="add-materia-row">
         <input type="text" id="nova-materia-input" placeholder="Nome da nova matéria..." onkeydown="if(event.key==='Enter') adicionarMateria()">
@@ -1239,6 +1257,14 @@ for each row execute function restringir_cadastro_email();</pre>
     <div class="card">
       <div class="card-title"><span class="card-title-icon" style="background:rgba(245,158,11,0.15);color:var(--yellow)"><i class="fas fa-tags"></i></span>Gerenciar Temas</div>
       <p style="font-size:0.85rem;color:var(--text2);margin-bottom:16px">Renomear ou remover temas atualiza automaticamente todas as questões com esse tema.</p>
+      <div style="position:relative;margin-bottom:12px">
+        <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:0.85rem"></i>
+        <input type="text" id="busca-temas-config" placeholder="Buscar tema ou matéria..." style="padding-left:36px" oninput="renderTemasConfig()">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button class="btn btn-ghost" style="padding:5px 12px;font-size:0.75rem" onclick="expandirTodosGruposTemas()">Expandir tudo</button>
+        <button class="btn btn-ghost" style="padding:5px 12px;font-size:0.75rem" onclick="recolherTodosGruposTemas()">Recolher tudo</button>
+      </div>
       <div id="lista-temas-config"></div>
     </div>
 
@@ -1305,6 +1331,49 @@ for each row execute function restringir_cadastro_email();</pre>
   </div>
 
 </main>
+
+<!-- MODAL CADASTRAR/EDITAR CONCURSO -->
+<div class="modal-overlay" id="modal-concurso">
+  <div class="modal" style="max-width:520px;max-height:88vh;overflow-y:auto">
+    <div class="modal-title" id="modal-concurso-titulo">🎓 Meu Concurso</div>
+
+    <div class="form-group">
+      <label>Cargo</label>
+      <input type="text" id="concurso-cargo" placeholder="Ex: Técnico Legislativo">
+    </div>
+
+    <div class="form-group">
+      <label>Data de divulgação dos locais de prova</label>
+      <input type="date" id="concurso-data-locais">
+    </div>
+
+    <div class="form-group">
+      <label>Data da realização da prova</label>
+      <input type="date" id="concurso-data-prova">
+    </div>
+
+    <div class="form-group" style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" id="concurso-tem-redacao" style="width:auto">
+      <label style="margin:0">Terá prova de redação/discursiva</label>
+    </div>
+
+    <div class="form-group">
+      <label>Questões por matéria</label>
+      <div id="concurso-materias-linhas" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+      <button type="button" class="btn btn-ghost" style="width:100%" onclick="adicionarLinhaConcursoMateria()"><i class="fas fa-plus"></i> Adicionar matéria</button>
+      <div style="text-align:right;font-size:0.8rem;color:var(--text2);margin-top:8px">Total: <strong id="concurso-total-questoes" style="color:var(--text)">0</strong> questões</div>
+    </div>
+
+    <div id="concurso-erro" style="display:none;background:rgba(239,68,68,0.1);border:1px solid var(--red);border-radius:8px;padding:10px;font-size:0.85rem;color:var(--red);margin-bottom:14px">
+      <i class="fas fa-exclamation-circle"></i> <span id="concurso-erro-msg"></span>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" id="btn-salvar-concurso" onclick="salvarConcurso()"><i class="fas fa-save"></i> Salvar</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-concurso').classList.remove('open')">Cancelar</button>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL EDITAR MATÉRIA/TEMA -->
 <div class="modal-overlay" id="modal-editar-nome">
@@ -1701,6 +1770,7 @@ const TABELA_MATERIAS = 'Matérias'
 const TABELA_EDITAL = 'Edital'
 const TABELA_REDACAO = 'Redação'
 const TABELA_CONFIG = 'Configurações'
+const TABELA_CONCURSO = 'Concurso'
 
 // Renovar token automaticamente a cada 50 minutos (antes de expirar em 60min)
 setInterval(() => {
@@ -2103,6 +2173,7 @@ let editalTopicos = []
 let ultimaAnaliseEdital = null
 let redacoes = []
 let filtroTemaRedacao = 'todos'
+let meuConcurso = null
 let _duplicarOrigemId = null // id do card sendo duplicado (null = duplicando o modelo)
 let _corSelecionadaNota = ''
 const CORES_NOTA = ['amarelo', 'verde', 'azul', 'rosa', 'roxo', 'laranja']
@@ -2117,7 +2188,7 @@ function esconderLoading() {
 }
 
 // ===== NAVEGAÇÃO =====
-const PAGES = ['dashboard','cadastro','questoes','simulado','mapas','edital','redacao','config']
+const PAGES = ['dashboard','cadastro','questoes','simulado','mapas','edital','redacao','concurso','config']
 function goPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'))
@@ -2129,6 +2200,7 @@ function goPage(id) {
   if (id === 'config') renderConfig()
   if (id === 'edital') renderEdital()
   if (id === 'redacao') renderRedacao()
+  if (id === 'concurso') renderConcurso()
   if (id === 'cadastro' || id === 'simulado' || id === 'mapas' || id === 'edital') popularSelects()
   if (id === 'cadastro') setTimeout(() => renderTemasTags('tema-questao', 'temas-tags'), 100)
 }
@@ -2206,6 +2278,37 @@ function toggleTemasDashboard(idx) {
 }
 
 function renderDashboard() {
+  // Banner de contagem regressiva do concurso (só aparece quando faz sentido avisar)
+  const bannerEl = document.getElementById('dash-concurso-banner')
+  if (bannerEl) {
+    if (meuConcurso && (meuConcurso.data_prova || meuConcurso.data_locais)) {
+      const diasProva = diasRestantes(meuConcurso.data_prova)
+      const diasLocais = diasRestantes(meuConcurso.data_locais)
+      let alvo = null, rotulo = ''
+      if (diasProva !== null && diasProva >= 0) { alvo = diasProva; rotulo = 'para a prova' }
+      else if (diasLocais !== null && diasLocais >= 0) { alvo = diasLocais; rotulo = 'para a divulgação dos locais' }
+
+      if (alvo !== null && alvo <= 30) {
+        const cor = corUrgenciaConcurso(alvo)
+        const texto = alvo === 0 ? `É hoje! ${rotulo === 'para a prova' ? 'Boa prova' : 'Fica de olho'} 🍀`
+          : alvo === 1 ? `Falta 1 dia ${rotulo}!`
+          : `Faltam ${alvo} dias ${rotulo}!`
+        bannerEl.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.15);border:1px solid ${cor};border-left:4px solid ${cor};border-radius:10px;padding:12px 16px;margin-bottom:16px;cursor:pointer" onclick="goPage('concurso')">
+            <i class="fas fa-bell" style="color:${cor};font-size:1.1rem"></i>
+            <div>
+              <div style="font-weight:700;color:${cor};font-size:0.9rem">${texto}</div>
+              <div style="font-size:0.75rem;color:var(--text2)">${escHtml(meuConcurso.cargo || '')} — clique pra ver os detalhes</div>
+            </div>
+          </div>`
+      } else {
+        bannerEl.innerHTML = ''
+      }
+    } else {
+      bannerEl.innerHTML = ''
+    }
+  }
+
   // Popular e preservar a seleção do filtro do gráfico Visão Geral
   const selDonut = document.getElementById('donut-filtro-materia')
   if (selDonut) {
@@ -4250,11 +4353,16 @@ function resetarConfig() {
 function renderConfig() {
   // Matérias
   const el = document.getElementById('lista-materias-config')
+  const buscaMat = (document.getElementById('busca-materias-config')?.value || '').trim().toLowerCase()
+  const materiasFiltradas = buscaMat ? materias.filter(m => m.nome.toLowerCase().includes(buscaMat)) : materias
+
   if (!materias.length) {
     el.innerHTML = '<div style="color:var(--text2);font-size:0.85rem">Nenhuma matéria cadastrada.</div>'
+  } else if (!materiasFiltradas.length) {
+    el.innerHTML = '<div style="color:var(--text2);font-size:0.85rem">Nenhuma matéria encontrada para essa busca.</div>'
   } else {
     el.className = 'chips-wrap'
-    el.innerHTML = materias.map((m) => {
+    el.innerHTML = materiasFiltradas.map((m) => {
       const count = questoes.filter(q => q.materia === m.nome).length
       return `
       <div class="item-chip">
@@ -4359,6 +4467,25 @@ function base64ParaBlob(base64) {
   return new Blob([array], { type: tipo })
 }
 
+let temasGruposAbertos = new Set()
+
+function toggleGrupoTemas(materiaKey) {
+  if (temasGruposAbertos.has(materiaKey)) temasGruposAbertos.delete(materiaKey)
+  else temasGruposAbertos.add(materiaKey)
+  renderTemasConfig()
+}
+
+function expandirTodosGruposTemas() {
+  const nomesGrupos = [...new Set(questoes.map(q => q.materia || 'Sem matéria'))]
+  nomesGrupos.forEach(n => temasGruposAbertos.add(n))
+  renderTemasConfig()
+}
+
+function recolherTodosGruposTemas() {
+  temasGruposAbertos.clear()
+  renderTemasConfig()
+}
+
 function renderTemasConfig() {
   const el = document.getElementById('lista-temas-config')
   if (!el) return
@@ -4367,17 +4494,61 @@ function renderTemasConfig() {
     el.innerHTML = '<div style="color:var(--text2);font-size:0.85rem">Nenhum tema cadastrado ainda. Temas são criados ao cadastrar questões.</div>'
     return
   }
-  el.className = 'chips-wrap'
-  el.innerHTML = temas.map(t => {
-    const count = questoes.filter(q => q.tema === t).length
+
+  const busca = (document.getElementById('busca-temas-config')?.value || '').trim().toLowerCase()
+  const buscaAtiva = busca.length > 0
+
+  // Agrupa cada tema pela matéria mais usada entre as questões que o utilizam
+  const grupos = {}
+  temas.forEach(t => {
+    const questoesDoTema = questoes.filter(q => q.tema === t)
+    const contagemMateria = {}
+    questoesDoTema.forEach(q => {
+      const m = q.materia || 'Sem matéria'
+      contagemMateria[m] = (contagemMateria[m] || 0) + 1
+    })
+    const materiaPrincipal = Object.entries(contagemMateria).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Sem matéria'
+    if (!grupos[materiaPrincipal]) grupos[materiaPrincipal] = []
+    grupos[materiaPrincipal].push({ tema: t, count: questoesDoTema.length })
+  })
+
+  const ordemMaterias = materias.map(m => m.nome)
+  const nomesGrupos = Object.keys(grupos).sort((a, b) => {
+    if (a === 'Sem matéria') return 1
+    if (b === 'Sem matéria') return -1
+    const ia = ordemMaterias.indexOf(a), ib = ordemMaterias.indexOf(b)
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib)
+  })
+
+  let html = nomesGrupos.map(materiaNome => {
+    let itensGrupo = grupos[materiaNome].sort((a, b) => b.count - a.count)
+    if (buscaAtiva) {
+      itensGrupo = itensGrupo.filter(it => it.tema.toLowerCase().includes(busca) || materiaNome.toLowerCase().includes(busca))
+    }
+    if (!itensGrupo.length) return ''
+
+    const aberto = buscaAtiva || temasGruposAbertos.has(materiaNome)
+
     return `
-      <div class="item-chip">
-        <span>${t}</span>
-        <span class="chip-count">${count}</span>
-        <button onclick="abrirEditarTema('${escAttr(t)}')" title="Editar"><i class="fas fa-edit"></i></button>
-        <button class="chip-del" onclick="removerTema('${escAttr(t)}')" title="Remover"><i class="fas fa-trash"></i></button>
+      <div class="grupo-colapsavel">
+        <div class="grupo-cabecalho" onclick="toggleGrupoTemas('${escAttr(materiaNome)}')">
+          <span class="grupo-titulo"><i class="fas fa-chevron-${aberto ? 'down' : 'right'}" style="width:12px;font-size:0.7rem;color:var(--text2)"></i> ${materiaNome}</span>
+          <span class="grupo-count">${itensGrupo.length} ${itensGrupo.length !== 1 ? 'temas' : 'tema'}</span>
+        </div>
+        <div class="grupo-corpo chips-wrap" style="display:${aberto ? 'flex' : 'none'}">
+          ${itensGrupo.map(it => `
+            <div class="item-chip">
+              <span>${it.tema}</span>
+              <span class="chip-count">${it.count}</span>
+              <button onclick="event.stopPropagation();abrirEditarTema('${escAttr(it.tema)}')" title="Editar"><i class="fas fa-edit"></i></button>
+              <button class="chip-del" onclick="event.stopPropagation();removerTema('${escAttr(it.tema)}')" title="Remover"><i class="fas fa-trash"></i></button>
+            </div>`).join('')}
+        </div>
       </div>`
   }).join('')
+
+  el.className = ''
+  el.innerHTML = html || '<div style="color:var(--text2);font-size:0.85rem">Nenhum tema encontrado para essa busca.</div>'
 }
 
 // ===== EDITAR MATÉRIA =====
@@ -4824,22 +4995,241 @@ function calcularConsumo() {
     </div>`
 }
 
+// ===== CONCURSO (acompanhamento) =====
+
+function formatarDataBR(iso) {
+  if (!iso) return ''
+  const [ano, mes, dia] = iso.split('-')
+  return `${dia}/${mes}/${ano}`
+}
+
+function diasRestantes(iso) {
+  if (!iso) return null
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  const alvo = new Date(iso + 'T00:00:00')
+  return Math.round((alvo - hoje) / (1000 * 60 * 60 * 24))
+}
+
+function corUrgenciaConcurso(dias) {
+  if (dias === null || dias < 0) return 'var(--text2)'
+  if (dias <= 7) return 'var(--red)'
+  if (dias <= 30) return 'var(--yellow)'
+  return 'var(--green)'
+}
+
+function textoContagemConcurso(dias, rotulo) {
+  if (dias === null) return `${rotulo} não definida`
+  if (dias < 0) return `${rotulo} já passou`
+  if (dias === 0) return `${rotulo} é hoje!`
+  if (dias === 1) return `Falta 1 dia`
+  return `Faltam ${dias} dias`
+}
+
+function renderConcurso() {
+  const el = document.getElementById('concurso-conteudo')
+  if (!el) return
+
+  if (!meuConcurso) {
+    el.innerHTML = `
+      <div class="card" style="text-align:center;padding:40px 20px">
+        <div style="font-size:2.5rem;margin-bottom:12px">🎓</div>
+        <div style="font-weight:700;font-size:1.1rem;margin-bottom:6px">Nenhum concurso cadastrado ainda</div>
+        <div style="color:var(--text2);font-size:0.85rem;margin-bottom:20px;max-width:420px;margin-left:auto;margin-right:auto">Cadastre o cargo, as datas e a composição da prova pra acompanhar tudo num só lugar — e ser avisado assim que a data estiver chegando.</div>
+        <button class="btn btn-primary" onclick="abrirModalConcurso()"><i class="fas fa-plus"></i> Cadastrar meu concurso</button>
+      </div>`
+    return
+  }
+
+  const diasLocais = diasRestantes(meuConcurso.data_locais)
+  const diasProva = diasRestantes(meuConcurso.data_prova)
+  const materiasArr = Array.isArray(meuConcurso.materias) ? meuConcurso.materias : []
+  const totalQuestoes = materiasArr.reduce((s, m) => s + (Number(m.questoes) || 0), 0)
+
+  el.innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+        <div class="card-title" style="margin-bottom:0"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-graduation-cap"></i></span>${escHtml(meuConcurso.cargo || 'Meu concurso')}</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" style="padding:6px 12px;font-size:0.8rem" onclick="abrirModalConcurso()"><i class="fas fa-edit"></i> Editar</button>
+          <button class="btn btn-danger" style="padding:6px 12px;font-size:0.8rem" onclick="excluirConcurso()"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:16px">
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;border-left:3px solid ${corUrgenciaConcurso(diasLocais)}">
+          <div style="font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Divulgação dos locais</div>
+          <div style="font-weight:700">${meuConcurso.data_locais ? formatarDataBR(meuConcurso.data_locais) : 'Não definida'}</div>
+          <div style="font-size:0.78rem;color:${corUrgenciaConcurso(diasLocais)};margin-top:2px;font-weight:600">${textoContagemConcurso(diasLocais, 'Data')}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;border-left:3px solid ${corUrgenciaConcurso(diasProva)}">
+          <div style="font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Dia da prova</div>
+          <div style="font-weight:700">${meuConcurso.data_prova ? formatarDataBR(meuConcurso.data_prova) : 'Não definida'}</div>
+          <div style="font-size:0.78rem;color:${corUrgenciaConcurso(diasProva)};margin-top:2px;font-weight:600">${textoContagemConcurso(diasProva, 'Data')}</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+        <span style="background:var(--surface2);padding:6px 12px;border-radius:20px;font-size:0.8rem">
+          <i class="fas ${meuConcurso.tem_redacao ? 'fa-check-circle' : 'fa-circle-xmark'}" style="color:${meuConcurso.tem_redacao ? 'var(--green)' : 'var(--text2)'};margin-right:5px"></i>
+          ${meuConcurso.tem_redacao ? 'Terá redação/discursiva' : 'Sem redação/discursiva'}
+        </span>
+        <span style="background:var(--surface2);padding:6px 12px;border-radius:20px;font-size:0.8rem">
+          <i class="fas fa-list-ol" style="margin-right:5px;color:var(--accent)"></i> ${totalQuestoes} questões no total
+        </span>
+      </div>
+
+      ${materiasArr.length ? `
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:10px">Composição da prova</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${materiasArr.map(m => {
+            const pct = totalQuestoes ? Math.round((Number(m.questoes) || 0) / totalQuestoes * 100) : 0
+            return `
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:3px">
+                <span>${escHtml(m.materia)}</span>
+                <span style="color:var(--text2)">${m.questoes} questões</span>
+              </div>
+              <div style="background:var(--surface2);border-radius:5px;height:7px;overflow:hidden">
+                <div style="background:var(--accent);height:7px;border-radius:5px;width:${pct}%"></div>
+              </div>
+            </div>`
+          }).join('')}
+        </div>` : `<div style="color:var(--text2);font-size:0.85rem">Nenhuma matéria detalhada ainda.</div>`}
+    </div>`
+}
+
+let _concursoLinhaId = 0
+
+function abrirModalConcurso() {
+  document.getElementById('modal-concurso-titulo').textContent = meuConcurso ? '🎓 Editar Concurso' : '🎓 Cadastrar Concurso'
+  document.getElementById('concurso-cargo').value = meuConcurso?.cargo || ''
+  document.getElementById('concurso-data-locais').value = meuConcurso?.data_locais || ''
+  document.getElementById('concurso-data-prova').value = meuConcurso?.data_prova || ''
+  document.getElementById('concurso-tem-redacao').checked = !!meuConcurso?.tem_redacao
+  document.getElementById('concurso-erro').style.display = 'none'
+
+  const linhasEl = document.getElementById('concurso-materias-linhas')
+  linhasEl.innerHTML = ''
+  _concursoLinhaId = 0
+  const materiasExistentes = (meuConcurso && Array.isArray(meuConcurso.materias) && meuConcurso.materias.length)
+    ? meuConcurso.materias
+    : [{ materia: '', questoes: '' }]
+  materiasExistentes.forEach(m => adicionarLinhaConcursoMateria(m.materia, m.questoes))
+
+  document.getElementById('modal-concurso').classList.add('open')
+}
+
+function adicionarLinhaConcursoMateria(materiaSelecionada = '', qtd = '') {
+  const id = 'concurso-linha-' + (_concursoLinhaId++)
+  const linhasEl = document.getElementById('concurso-materias-linhas')
+  const optsMateria = materias.map(m => `<option value="${escAttr(m.nome)}" ${m.nome === materiaSelecionada ? 'selected' : ''}>${escHtml(m.nome)}</option>`).join('')
+  const div = document.createElement('div')
+  div.id = id
+  div.style.cssText = 'display:flex;gap:8px;align-items:center'
+  div.innerHTML = `
+    <select style="flex:2" onchange="atualizarTotalConcursoQuestoes()">
+      <option value="">Selecione a matéria</option>
+      ${optsMateria}
+    </select>
+    <input type="number" min="0" placeholder="Nº questões" value="${qtd}" style="flex:1" oninput="atualizarTotalConcursoQuestoes()">
+    <button type="button" onclick="document.getElementById('${id}').remove(); atualizarTotalConcursoQuestoes()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:0.9rem;padding:4px 8px"><i class="fas fa-trash"></i></button>
+  `
+  linhasEl.appendChild(div)
+  atualizarTotalConcursoQuestoes()
+}
+
+function atualizarTotalConcursoQuestoes() {
+  const linhas = document.querySelectorAll('#concurso-materias-linhas > div')
+  let total = 0
+  linhas.forEach(l => { total += Number(l.querySelector('input[type=number]')?.value) || 0 })
+  const totalEl = document.getElementById('concurso-total-questoes')
+  if (totalEl) totalEl.textContent = total
+}
+
+async function salvarConcurso() {
+  const cargo = document.getElementById('concurso-cargo').value.trim()
+  const dataLocais = document.getElementById('concurso-data-locais').value
+  const dataProva = document.getElementById('concurso-data-prova').value
+  const temRedacao = document.getElementById('concurso-tem-redacao').checked
+  const erroEl = document.getElementById('concurso-erro')
+  const btn = document.getElementById('btn-salvar-concurso')
+
+  if (!cargo) {
+    erroEl.style.display = 'block'
+    document.getElementById('concurso-erro-msg').textContent = 'Preencha o nome do cargo!'
+    return
+  }
+
+  const linhas = document.querySelectorAll('#concurso-materias-linhas > div')
+  const materiasArr = []
+  linhas.forEach(l => {
+    const select = l.querySelector('select')
+    const input = l.querySelector('input[type=number]')
+    if (select.value && Number(input.value) > 0) materiasArr.push({ materia: select.value, questoes: Number(input.value) })
+  })
+
+  erroEl.style.display = 'none'
+  btn.disabled = true
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...'
+
+  const dados = {
+    cargo, data_locais: dataLocais || null, data_prova: dataProva || null,
+    tem_redacao: temRedacao, materias: materiasArr, updated_at: new Date().toISOString()
+  }
+
+  try {
+    if (meuConcurso && meuConcurso.id) {
+      const r = await supa.update(TABELA_CONCURSO, meuConcurso.id, dados)
+      if (r) meuConcurso = r[0]
+    } else {
+      const r = await supa.insert(TABELA_CONCURSO, dados)
+      if (r) meuConcurso = r[0]
+    }
+    document.getElementById('modal-concurso').classList.remove('open')
+    renderConcurso()
+    renderDashboard()
+    notif('✅ Concurso salvo!')
+  } catch (e) {
+    erroEl.style.display = 'block'
+    document.getElementById('concurso-erro-msg').textContent = 'Erro ao salvar. Tente novamente.'
+  } finally {
+    btn.disabled = false
+    btn.innerHTML = '<i class="fas fa-save"></i> Salvar'
+  }
+}
+
+async function excluirConcurso() {
+  if (!meuConcurso || !confirm('Apagar as informações desse concurso? Essa ação não pode ser desfeita.')) return
+  const ok = await supa.delete(TABELA_CONCURSO, meuConcurso.id)
+  if (ok) {
+    meuConcurso = null
+    renderConcurso()
+    renderDashboard()
+    notif('🗑️ Concurso removido.')
+  } else {
+    notif('❌ Erro ao remover.', 'error')
+  }
+}
+
 // ===== CARREGAR DADOS =====
 async function carregarDados() {
   mostrarLoading('Carregando seus dados...')
   try {
-    const [q, m, mt, ed, rd] = await Promise.all([
+    const [q, m, mt, ed, rd, cc] = await Promise.all([
       supa.get(TABELA_QUESTOES),
       supa.get(TABELA_MAPAS),
       supa.get(TABELA_MATERIAS),
       supa.get(TABELA_EDITAL),
       supa.get(TABELA_REDACAO),
+      supa.get(TABELA_CONCURSO),
     ])
     questoes = q || []
     mapas = m || []
     materias = mt && mt.length ? mt : []
     editalTopicos = ed || []
     redacoes = rd || []
+    meuConcurso = (cc && cc.length) ? cc[0] : null
     if (!materias.length) {
       mostrarLoading('Configurando matérias padrão...')
       for (const nome of MATERIAS_PADRAO) {
