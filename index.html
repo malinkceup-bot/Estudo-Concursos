@@ -5086,12 +5086,13 @@ function renderConcurso() {
     return `
     <div style="display:flex;flex-direction:column;gap:8px">
       ${lista.map(m => {
-        const pct = totalGrupo ? Math.round((Number(m.questoes) || 0) / totalGrupo * 100) : 0
+        const temQtd = m.questoes !== null && m.questoes !== undefined && m.questoes !== ''
+        const pct = temQtd && totalGrupo ? Math.round((Number(m.questoes) || 0) / totalGrupo * 100) : 0
         return `
         <div>
           <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:3px">
             <span>${escHtml(m.materia)}</span>
-            <span style="color:var(--text2)">${m.questoes} questões</span>
+            <span style="color:var(--text2)">${temQtd ? `${m.questoes} questões` : 'quantidade não definida'}</span>
           </div>
           <div style="background:var(--surface2);border-radius:5px;height:7px;overflow:hidden">
             <div style="background:var(--accent);height:7px;border-radius:5px;width:${pct}%"></div>
@@ -5153,12 +5154,13 @@ function renderConcurso() {
         <div style="font-size:0.85rem;font-weight:600;margin-bottom:10px">Detalhamento por matéria</div>
         <div style="display:flex;flex-direction:column;gap:16px">
           ${areasOrdenadas.map(area => {
-            const qtdArea = grupos[area].reduce((s, m) => s + (Number(m.questoes) || 0), 0)
+            const itensComQtd = grupos[area].filter(m => m.questoes !== null && m.questoes !== undefined && m.questoes !== '')
+            const qtdArea = itensComQtd.reduce((s, m) => s + (Number(m.questoes) || 0), 0)
             return `
             <div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
                 <span style="font-size:0.75rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px">${escHtml(area)}</span>
-                <span style="font-size:0.75rem;color:var(--text2)">${qtdArea} questões</span>
+                ${itensComQtd.length ? `<span style="font-size:0.75rem;color:var(--text2)">${qtdArea} questões</span>` : ''}
               </div>
               ${renderGrupoMaterias(grupos[area])}
             </div>`
@@ -5253,8 +5255,9 @@ async function salvarConcurso() {
     const areaSelect = l.querySelector('.linha-area-select')
     const materiaSelect = l.querySelector('.linha-materia-select')
     const qtdInput = l.querySelector('.linha-qtd-input')
-    if (materiaSelect.value && Number(qtdInput.value) > 0) {
-      materiasArr.push({ area: areaSelect.value || '', materia: materiaSelect.value, questoes: Number(qtdInput.value) })
+    if (materiaSelect.value) {
+      const qtd = qtdInput.value !== '' ? Number(qtdInput.value) : null
+      materiasArr.push({ area: areaSelect.value || '', materia: materiaSelect.value, questoes: qtd })
     }
   })
 
