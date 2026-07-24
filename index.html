@@ -1363,11 +1363,25 @@ for each row execute function restringir_cadastro_email();</pre>
     </div>
 
     <div class="form-group">
-      <label>Composição da prova</label>
-      <div style="font-size:0.75rem;color:var(--text2);margin-top:-4px;margin-bottom:6px">Para cada matéria, escolha a área (Conhecimentos Gerais ou Específicos) e o nº de questões</div>
+      <label>Questões por área (como consta no edital)</label>
+      <div style="display:flex;gap:10px">
+        <div style="flex:1">
+          <label style="font-size:0.72rem;color:var(--text2);font-weight:400">Conhecimentos Gerais</label>
+          <input type="number" min="0" id="concurso-qtd-gerais" placeholder="Ex: 20" oninput="atualizarTotalConcursoQuestoes()">
+        </div>
+        <div style="flex:1">
+          <label style="font-size:0.72rem;color:var(--text2);font-weight:400">Conhecimentos Específicos</label>
+          <input type="number" min="0" id="concurso-qtd-especificos" placeholder="Ex: 30" oninput="atualizarTotalConcursoQuestoes()">
+        </div>
+      </div>
+      <div style="text-align:right;font-size:0.8rem;color:var(--text2);margin-top:8px">Total: <strong id="concurso-total-questoes" style="color:var(--text)">0</strong> questões</div>
+    </div>
+
+    <div class="form-group">
+      <label>Detalhar matérias <span style="font-weight:400;color:var(--text2)">(opcional)</span></label>
+      <div style="font-size:0.75rem;color:var(--text2);margin-top:-4px;margin-bottom:6px">Útil pra saber quanto estudar de cada matéria. Não precisa preencher tudo nem bater com o total acima — o edital geralmente não detalha "conhecimentos específicos" matéria por matéria.</div>
       <div id="concurso-materias-linhas" style="display:flex;flex-direction:column;gap:10px;margin-bottom:8px"></div>
       <button type="button" class="btn btn-ghost" style="width:100%" onclick="adicionarLinhaConcursoMateria()"><i class="fas fa-plus"></i> Adicionar matéria</button>
-      <div style="text-align:right;font-size:0.8rem;color:var(--text2);margin-top:8px">Total: <strong id="concurso-total-questoes" style="color:var(--text)">0</strong> questões</div>
     </div>
 
     <div id="concurso-erro" style="display:none;background:rgba(239,68,68,0.1);border:1px solid var(--red);border-radius:8px;padding:10px;font-size:0.85rem;color:var(--red);margin-bottom:14px">
@@ -5050,7 +5064,6 @@ function renderConcurso() {
   const diasLocais = diasRestantes(meuConcurso.data_locais)
   const diasProva = diasRestantes(meuConcurso.data_prova)
   const materiasArr = Array.isArray(meuConcurso.materias) ? meuConcurso.materias : []
-  const totalQuestoes = materiasArr.reduce((s, m) => s + (Number(m.questoes) || 0), 0)
 
   const AREA_ORDEM = ['Conhecimentos Gerais', 'Conhecimentos Específicos']
   const grupos = {}
@@ -5063,10 +5076,17 @@ function renderConcurso() {
     ...AREA_ORDEM.filter(a => grupos[a]),
     ...Object.keys(grupos).filter(a => !AREA_ORDEM.includes(a))
   ]
-  const renderGrupoMaterias = (lista) => `
+
+  const qtdGerais = meuConcurso.questoes_gerais ?? null
+  const qtdEspecificos = meuConcurso.questoes_especificos ?? null
+  const totalQuestoes = (Number(qtdGerais) || 0) + (Number(qtdEspecificos) || 0)
+
+  const renderGrupoMaterias = (lista) => {
+    const totalGrupo = lista.reduce((s, m) => s + (Number(m.questoes) || 0), 0)
+    return `
     <div style="display:flex;flex-direction:column;gap:8px">
       ${lista.map(m => {
-        const pct = totalQuestoes ? Math.round((Number(m.questoes) || 0) / totalQuestoes * 100) : 0
+        const pct = totalGrupo ? Math.round((Number(m.questoes) || 0) / totalGrupo * 100) : 0
         return `
         <div>
           <div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:3px">
@@ -5079,6 +5099,7 @@ function renderConcurso() {
         </div>`
       }).join('')}
     </div>`
+  }
 
   el.innerHTML = `
     <div class="card">
@@ -5106,18 +5127,30 @@ function renderConcurso() {
         </div>
       </div>
 
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Conhecimentos Gerais</div>
+          <div style="font-weight:700;font-size:1.3rem">${qtdGerais !== null ? qtdGerais : '—'}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Conhecimentos Específicos</div>
+          <div style="font-weight:700;font-size:1.3rem">${qtdEspecificos !== null ? qtdEspecificos : '—'}</div>
+        </div>
+        <div style="background:rgba(79,142,247,0.12);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Total</div>
+          <div style="font-weight:700;font-size:1.3rem;color:var(--accent)">${totalQuestoes}</div>
+        </div>
+      </div>
+
       <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap">
         <span style="background:var(--surface2);padding:6px 12px;border-radius:20px;font-size:0.8rem">
           <i class="fas ${meuConcurso.tem_redacao ? 'fa-check-circle' : 'fa-circle-xmark'}" style="color:${meuConcurso.tem_redacao ? 'var(--green)' : 'var(--text2)'};margin-right:5px"></i>
           ${meuConcurso.tem_redacao ? 'Terá redação/discursiva' : 'Sem redação/discursiva'}
         </span>
-        <span style="background:var(--surface2);padding:6px 12px;border-radius:20px;font-size:0.8rem">
-          <i class="fas fa-list-ol" style="margin-right:5px;color:var(--accent)"></i> ${totalQuestoes} questões no total
-        </span>
       </div>
 
       ${materiasArr.length ? `
-        <div style="font-size:0.85rem;font-weight:600;margin-bottom:10px">Composição da prova</div>
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:10px">Detalhamento por matéria</div>
         <div style="display:flex;flex-direction:column;gap:16px">
           ${areasOrdenadas.map(area => {
             const qtdArea = grupos[area].reduce((s, m) => s + (Number(m.questoes) || 0), 0)
@@ -5145,13 +5178,19 @@ function abrirModalConcurso() {
   document.getElementById('concurso-tem-redacao').checked = !!meuConcurso?.tem_redacao
   document.getElementById('concurso-erro').style.display = 'none'
 
+  const materiasExistentes = (meuConcurso && Array.isArray(meuConcurso.materias)) ? meuConcurso.materias : []
+  const somaPorArea = (area) => materiasExistentes.filter(m => m.area === area).reduce((s, m) => s + (Number(m.questoes) || 0), 0)
+  const qtdGeraisInicial = meuConcurso?.questoes_gerais ?? (somaPorArea('Conhecimentos Gerais') || '')
+  const qtdEspecificosInicial = meuConcurso?.questoes_especificos ?? (somaPorArea('Conhecimentos Específicos') || '')
+  document.getElementById('concurso-qtd-gerais').value = qtdGeraisInicial
+  document.getElementById('concurso-qtd-especificos').value = qtdEspecificosInicial
+
   const linhasEl = document.getElementById('concurso-materias-linhas')
   linhasEl.innerHTML = ''
   _concursoLinhaId = 0
-  const materiasExistentes = (meuConcurso && Array.isArray(meuConcurso.materias) && meuConcurso.materias.length)
-    ? meuConcurso.materias
-    : [{ materia: '', questoes: '', area: '' }]
-  materiasExistentes.forEach(m => adicionarLinhaConcursoMateria(m.materia, m.questoes, m.area || ''))
+  const linhasIniciais = materiasExistentes.length ? materiasExistentes : []
+  linhasIniciais.forEach(m => adicionarLinhaConcursoMateria(m.materia, m.questoes, m.area || ''))
+  atualizarTotalConcursoQuestoes()
 
   document.getElementById('modal-concurso').classList.add('open')
 }
@@ -5185,11 +5224,10 @@ function adicionarLinhaConcursoMateria(materiaSelecionada = '', qtd = '', areaSe
 }
 
 function atualizarTotalConcursoQuestoes() {
-  const linhas = document.querySelectorAll('#concurso-materias-linhas > div')
-  let total = 0
-  linhas.forEach(l => { total += Number(l.querySelector('.linha-qtd-input')?.value) || 0 })
+  const gerais = Number(document.getElementById('concurso-qtd-gerais')?.value) || 0
+  const especificos = Number(document.getElementById('concurso-qtd-especificos')?.value) || 0
   const totalEl = document.getElementById('concurso-total-questoes')
-  if (totalEl) totalEl.textContent = total
+  if (totalEl) totalEl.textContent = gerais + especificos
 }
 
 async function salvarConcurso() {
@@ -5198,6 +5236,8 @@ async function salvarConcurso() {
   const dataLocais = document.getElementById('concurso-data-locais').value
   const dataProva = document.getElementById('concurso-data-prova').value
   const temRedacao = document.getElementById('concurso-tem-redacao').checked
+  const qtdGeraisVal = document.getElementById('concurso-qtd-gerais').value
+  const qtdEspecificosVal = document.getElementById('concurso-qtd-especificos').value
   const erroEl = document.getElementById('concurso-erro')
   const btn = document.getElementById('btn-salvar-concurso')
 
@@ -5224,7 +5264,10 @@ async function salvarConcurso() {
 
   const dados = {
     cargo, banca: banca || null, data_locais: dataLocais || null, data_prova: dataProva || null,
-    tem_redacao: temRedacao, materias: materiasArr, updated_at: new Date().toISOString()
+    tem_redacao: temRedacao,
+    questoes_gerais: qtdGeraisVal !== '' ? Number(qtdGeraisVal) : null,
+    questoes_especificos: qtdEspecificosVal !== '' ? Number(qtdEspecificosVal) : null,
+    materias: materiasArr, updated_at: new Date().toISOString()
   }
 
   try {
