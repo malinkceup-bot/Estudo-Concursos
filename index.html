@@ -1357,6 +1357,20 @@ for each row execute function restringir_cadastro_email();</pre>
       <input type="date" id="concurso-data-prova">
     </div>
 
+    <div class="form-group">
+      <label>Horário da prova</label>
+      <div style="display:flex;gap:10px">
+        <div style="flex:1">
+          <label style="font-size:0.72rem;color:var(--text2);font-weight:400">Início</label>
+          <input type="time" id="concurso-hora-inicio">
+        </div>
+        <div style="flex:1">
+          <label style="font-size:0.72rem;color:var(--text2);font-weight:400">Término</label>
+          <input type="time" id="concurso-hora-fim">
+        </div>
+      </div>
+    </div>
+
     <div class="form-group" style="display:flex;align-items:center;gap:8px">
       <input type="checkbox" id="concurso-tem-redacao" style="width:auto">
       <label style="margin:0">Terá prova de redação/discursiva</label>
@@ -4177,10 +4191,48 @@ function setMapaTab(tab) { mapaTabAtiva = tab; renderMapas() }
 async function deletarMapa(id) {
   if(!confirm('Deletar este mapa?')) return
   mostrarLoading('Deletando...')
+  const mapa = mapas.find(m => String(m.id) === String(id))
+  if (mapa?.img) {
+    try { await excluirImagemCloudinary(mapa.img) }
+    catch(e) { console.warn('Não foi possível excluir a imagem no Cloudinary:', e) }
+  }
   await supa.delete(TABELA_MAPAS, id)
   esconderLoading()
   mapas = mapas.filter(m => String(m.id) !== String(id))
   notif('🗑️ Mapa deletado!'); renderMapas()
+}
+
+// Extrai o public_id de uma URL do Cloudinary
+// Ex: https://res.cloudinary.com/xxx/image/upload/v123456/estudo-concursos/abc123.jpg
+//  -> estudo-concursos/abc123
+function extrairPublicIdCloudinary(url) {
+  try {
+    const semQuery = url.split('?')[0]
+    const partes = semQuery.split('/upload/')
+    if (partes.length < 2) return null
+    let caminho = partes[1]
+    caminho = caminho.replace(/^v\d+\//, '')      // remove o prefixo de versão (v123456/)
+    caminho = caminho.replace(/\.[^/.]+$/, '')     // remove a extensão do arquivo
+    return caminho || null
+  } catch(e) {
+    return null
+  }
+}
+
+// Chama a Edge Function que apaga a imagem no Cloudinary com segurança
+// (a API Secret do Cloudinary fica só no servidor, nunca no navegador)
+async function excluirImagemCloudinary(imgUrl) {
+  const publicId = extrairPublicIdCloudinary(imgUrl)
+  if (!publicId) return
+  const r = await fetchComRenovacao(`${SUPA_URL}/functions/v1/deletar-imagem-cloudinary`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ public_id: publicId })
+  })
+  if (!r.ok) {
+    const resultado = await r.json().catch(() => ({}))
+    throw new Error(resultado.erro || 'Falha ao excluir imagem no Cloudinary')
+  }
 }
 // ===== MODAL IMAGEM COM ZOOM =====
 let zoomLevel = 1
@@ -5124,6 +5176,7 @@ function renderConcurso() {
         <div style="background:var(--surface2);border-radius:10px;padding:14px;border-left:3px solid ${corUrgenciaConcurso(diasProva)}">
           <div style="font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Dia da prova</div>
           <div style="font-weight:700">${meuConcurso.data_prova ? formatarDataBR(meuConcurso.data_prova) : 'Não definida'}</div>
+          ${(meuConcurso.hora_inicio_prova || meuConcurso.hora_fim_prova) ? `<div style="font-size:0.78rem;color:var(--text2);margin-top:2px">${meuConcurso.hora_inicio_prova ? meuConcurso.hora_inicio_prova.slice(0,5) : '?'} às ${meuConcurso.hora_fim_prova ? meuConcurso.hora_fim_prova.slice(0,5) : '?'}</div>` : ''}
           <div style="font-size:0.78rem;color:${corUrgenciaConcurso(diasProva)};margin-top:2px;font-weight:600">${textoContagemConcurso(diasProva, 'Data')}</div>
         </div>
       </div>
@@ -5177,6 +5230,8 @@ function abrirModalConcurso() {
   document.getElementById('concurso-banca').value = meuConcurso?.banca || ''
   document.getElementById('concurso-data-locais').value = meuConcurso?.data_locais || ''
   document.getElementById('concurso-data-prova').value = meuConcurso?.data_prova || ''
+  document.getElementById('concurso-hora-inicio').value = meuConcurso?.hora_inicio_prova || ''
+  document.getElementById('concurso-hora-fim').value = meuConcurso?.hora_fim_prova || ''
   document.getElementById('concurso-tem-redacao').checked = !!meuConcurso?.tem_redacao
   document.getElementById('concurso-erro').style.display = 'none'
 
@@ -5237,6 +5292,8 @@ async function salvarConcurso() {
   const banca = document.getElementById('concurso-banca').value.trim()
   const dataLocais = document.getElementById('concurso-data-locais').value
   const dataProva = document.getElementById('concurso-data-prova').value
+  const horaInicio = document.getElementById('concurso-hora-inicio').value
+  const horaFim = document.getElementById('concurso-hora-fim').value
   const temRedacao = document.getElementById('concurso-tem-redacao').checked
   const qtdGeraisVal = document.getElementById('concurso-qtd-gerais').value
   const qtdEspecificosVal = document.getElementById('concurso-qtd-especificos').value
@@ -5267,6 +5324,7 @@ async function salvarConcurso() {
 
   const dados = {
     cargo, banca: banca || null, data_locais: dataLocais || null, data_prova: dataProva || null,
+    hora_inicio_prova: horaInicio || null, hora_fim_prova: horaFim || null,
     tem_redacao: temRedacao,
     questoes_gerais: qtdGeraisVal !== '' ? Number(qtdGeraisVal) : null,
     questoes_especificos: qtdEspecificosVal !== '' ? Number(qtdEspecificosVal) : null,
