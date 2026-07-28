@@ -1863,9 +1863,13 @@ async function finalizarSetup() {
   localStorage.setItem('cloud_name', cloudName)
   localStorage.setItem('cloud_preset', cloudPreset)
   try {
-    const teste = await fetch(`${url}/rest/v1/`, {
+    // Testa contra uma tabela de verdade (com limit=0), não contra a raiz "/rest/v1/",
+    // pois a raiz sempre exige service_role e retornaria 401 mesmo com a chave anon correta.
+    const teste = await fetch(`${url}/rest/v1/Questões?select=id&limit=0`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` }
     })
+    // 200/206 = ok. 404 = tabela ainda não existe (ok, o SQL pode não ter rodado ainda, não é erro de conexão).
+    // Qualquer outra coisa (401, 403, erro de rede) indica URL ou chave erradas de fato.
     if (!teste.ok && teste.status !== 404) throw new Error('Conexão falhou')
   } catch(e) {
     erroEl.style.display = 'block'
