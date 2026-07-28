@@ -1937,6 +1937,8 @@ async function finalizarSetup() {
       await salvarConfiguracaoSupabase('usuario_nome', nome)
       // Registrar Cloudinary no registro compartilhado
       await registrarCloudinary(cloudName, cloudPreset, url)
+      // Registrar no diretório central: permite logar de qualquer dispositivo depois
+      await registrarConfiguracaoUsuario(email, url, key, cloudName, cloudPreset)
       authToken = null
     }
   } catch(e) {}
@@ -2118,10 +2120,6 @@ function toggleSenha() {
 }
 
 async function fazerLogin() {
-  // Garantir que SUPA_URL e SUPA_KEY nunca estejam vazios
-  if (!SUPA_URL || SUPA_URL === '') SUPA_URL = SUPA_URL_DEFAULT
-  if (!SUPA_KEY || SUPA_KEY === '') SUPA_KEY = SUPA_KEY_DEFAULT
-
   const email = document.getElementById('login-email').value.trim()
   const senha = document.getElementById('login-senha').value
   const erroEl = document.getElementById('login-erro')
@@ -2136,6 +2134,31 @@ async function fazerLogin() {
   btnLogin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...'
   btnLogin.disabled = true
   erroEl.style.display = 'none'
+
+  // Se este navegador/dispositivo ainda não tem uma configuração salva
+  // (primeiro acesso aqui), busca automaticamente no diretório central
+  // qual é o Supabase/Cloudinary desse e-mail, antes de tentar logar.
+  // Assim, quem já tem conta só precisa digitar e-mail/senha em qualquer lugar.
+  const jaTemConfigNesteNavegador = !!localStorage.getItem('supa_url')
+  if (!jaTemConfigNesteNavegador) {
+    btnLogin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Localizando sua conta...'
+    const config = await buscarConfiguracaoUsuario(email)
+    if (config && config.supa_url && config.supa_key) {
+      SUPA_URL = config.supa_url
+      SUPA_KEY = config.supa_key
+      localStorage.setItem('supa_url', SUPA_URL)
+      localStorage.setItem('supa_key', SUPA_KEY)
+      if (config.cloud_name) localStorage.setItem('cloud_name', config.cloud_name)
+      if (config.cloud_preset) localStorage.setItem('cloud_preset', config.cloud_preset)
+    }
+    // Se não encontrou nada, segue com o padrão (cobre o caso do dono do
+    // projeto principal, que nunca passou pelo assistente de configuração)
+    btnLogin.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...'
+  }
+
+  // Garantir que SUPA_URL e SUPA_KEY nunca estejam vazios
+  if (!SUPA_URL || SUPA_URL === '') SUPA_URL = SUPA_URL_DEFAULT
+  if (!SUPA_KEY || SUPA_KEY === '') SUPA_KEY = SUPA_KEY_DEFAULT
 
   try {
     const r = await fetch(`${SUPA_URL}/auth/v1/token?grant_type=password`, {
@@ -4025,6 +4048,22 @@ async function verificarSupabaseEmUso(supaUrl) {
 async function registrarCloudinary(cloudName, preset, supaUrl) {
   await chamarRpcRegistro('registrar_credenciais', {
     p_cloud_name: cloudName, p_preset: preset, p_supa_url: supaUrl
+  })
+}
+
+// Busca no diretório central qual Supabase/Cloudinary pertence a um e-mail.
+// Usado no login, quando o navegador ainda não tem nenhuma configuração salva.
+async function buscarConfiguracaoUsuario(email) {
+  const resultado = await chamarRpcRegistro('buscar_configuracao_usuario', { p_email: email })
+  if (Array.isArray(resultado) && resultado.length > 0) return resultado[0]
+  return null
+}
+
+// Registra no diretório central qual Supabase/Cloudinary pertence a um e-mail.
+// Usado ao final do assistente de configuração, quando a conta é criada.
+async function registrarConfiguracaoUsuario(email, supaUrl, supaKey, cloudName, cloudPreset) {
+  await chamarRpcRegistro('registrar_configuracao_usuario', {
+    p_email: email, p_supa_url: supaUrl, p_supa_key: supaKey, p_cloud_name: cloudName, p_cloud_preset: cloudPreset
   })
 }
 
