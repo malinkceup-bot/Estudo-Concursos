@@ -2957,9 +2957,10 @@ async function analisarRelevanciaEdital() {
 
     ultimaAnaliseEdital = resultado
 
-    const cor = resultado.relevante === true ? 'var(--green)' : resultado.relevante === false ? 'var(--red)' : 'var(--yellow)'
-    const icone = resultado.relevante === true ? 'fa-circle-check' : resultado.relevante === false ? 'fa-triangle-exclamation' : 'fa-circle-question'
-    const titulo = resultado.relevante === true ? 'Relevante para o edital' : resultado.relevante === false ? 'Não parece estar no edital' : 'Não foi possível confirmar'
+    const emOutraMateria = resultado.relevante === true && !!resultado.materia_sugerida
+    const cor = resultado.relevante === false ? 'var(--red)' : emOutraMateria ? 'var(--accent)' : resultado.relevante === true ? 'var(--green)' : 'var(--yellow)'
+    const icone = resultado.relevante === false ? 'fa-triangle-exclamation' : emOutraMateria ? 'fa-arrows-turn-to-dots' : resultado.relevante === true ? 'fa-circle-check' : 'fa-circle-question'
+    const titulo = resultado.relevante === false ? 'Não parece estar no edital' : emOutraMateria ? 'Está no edital (em outra matéria)' : resultado.relevante === true ? 'Relevante para o edital' : 'Não foi possível confirmar'
 
     box.style.border = `1px solid ${cor}`
     box.innerHTML = `
