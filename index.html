@@ -3707,16 +3707,37 @@ function getTemasCadastrados() {
   return Object.entries(temas).sort((a,b) => b[1]-a[1]).map(([t]) => t)
 }
 
+// Igual getTemasCadastrados, mas junto com a matéria mais usada por esse tema
+// (um tema pode ter sido usado em mais de uma matéria; aqui mostramos a predominante)
+function getTemasComMateria() {
+  const mapa = {}
+  questoes.forEach(q => {
+    const tema = q.tema && q.tema.trim()
+    if (!tema) return
+    if (!mapa[tema]) mapa[tema] = { tema, count: 0, materias: {} }
+    mapa[tema].count++
+    const materia = q.materia && q.materia.trim()
+    if (materia) mapa[tema].materias[materia] = (mapa[tema].materias[materia] || 0) + 1
+  })
+  return Object.values(mapa)
+    .map(t => ({
+      tema: t.tema,
+      count: t.count,
+      materiaPrincipal: Object.entries(t.materias).sort((a,b) => b[1]-a[1])[0]?.[0] || ''
+    }))
+    .sort((a,b) => b.count - a.count)
+}
+
 function renderTemasTags(inputId, tagsId) {
   const tagsEl = document.getElementById(tagsId)
   if (!tagsEl) return
-  const temas = getTemasCadastrados().slice(0, 12)
+  const temas = getTemasComMateria().slice(0, 12)
   if (!temas.length) { tagsEl.innerHTML = ''; return }
   const valorAtual = document.getElementById(inputId)?.value || ''
   tagsEl.innerHTML = temas.map(t => `
-    <span class="tema-tag ${valorAtual === t ? 'selecionada' : ''}"
-      onclick="selecionarTema('${escAttr(t)}', '${inputId}', '${tagsId}')">
-      <i class="fas fa-tag" style="font-size:0.65rem"></i>${t}
+    <span class="tema-tag ${valorAtual === t.tema ? 'selecionada' : ''}"
+      onclick="selecionarTema('${escAttr(t.tema)}', '${inputId}', '${tagsId}')">
+      <i class="fas fa-tag" style="font-size:0.65rem"></i>${escHtml(t.tema)}${t.materiaPrincipal ? `<span style="opacity:0.6;font-size:0.82em;margin-left:4px">· ${escHtml(t.materiaPrincipal)}</span>` : ''}
     </span>`).join('')
 }
 
@@ -3740,9 +3761,9 @@ function mostrarTemas(inputId, dropdownId) {
 function filtrarTemas(valor, inputId, dropdownId) {
   const dropdown = document.getElementById(dropdownId)
   if (!dropdown) return
-  const temas = getTemasCadastrados()
+  const temas = getTemasComMateria()
   const filtrados = valor
-    ? temas.filter(t => t.toLowerCase().includes(valor.toLowerCase()))
+    ? temas.filter(t => t.tema.toLowerCase().includes(valor.toLowerCase()))
     : temas
   const tagsId = inputId === 'tema-questao' ? 'temas-tags' : 'edit-temas-tags'
 
@@ -3750,11 +3771,11 @@ function filtrarTemas(valor, inputId, dropdownId) {
 
   let html = filtrados.map(t => `
     <div class="tema-dropdown-item"
-      onclick="selecionarTema('${escAttr(t)}', '${inputId}', '${tagsId}');event.stopPropagation()">
-      <i class="fas fa-tag" style="font-size:0.7rem;margin-right:6px;color:var(--accent)"></i>${t}
+      onclick="selecionarTema('${escAttr(t.tema)}', '${inputId}', '${tagsId}');event.stopPropagation()">
+      <i class="fas fa-tag" style="font-size:0.7rem;margin-right:6px;color:var(--accent)"></i>${escHtml(t.tema)}${t.materiaPrincipal ? `<span style="opacity:0.6;font-size:0.8em;margin-left:6px">· ${escHtml(t.materiaPrincipal)}</span>` : ''}
     </div>`).join('')
 
-  if (valor && !temas.find(t => t.toLowerCase() === valor.toLowerCase())) {
+  if (valor && !temas.find(t => t.tema.toLowerCase() === valor.toLowerCase())) {
     html += `<div class="tema-dropdown-novo"
       onclick="selecionarTema('${escAttr(valor)}', '${inputId}', '${tagsId}');event.stopPropagation()">
       <i class="fas fa-plus" style="margin-right:6px"></i>Criar tema: <strong>${valor}</strong>
