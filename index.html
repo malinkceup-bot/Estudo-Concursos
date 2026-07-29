@@ -450,8 +450,12 @@
 create table if not exists "Mapas" (id bigint generated always as identity primary key);
 create table if not exists "Matérias" (id bigint generated always as identity primary key);
 create table if not exists "Configurações" (id bigint generated always as identity primary key);
+create table if not exists "Edital" (id bigint generated always as identity primary key);
+create table if not exists "Redação" (id bigint generated always as identity primary key);
+create table if not exists "Concurso" (id bigint generated always as identity primary key);
 alter table "Questões" add column if not exists materia text;
 alter table "Questões" add column if not exists enunciado text;
+alter table "Questões" add column if not exists texto_apoio text;
 alter table "Questões" add column if not exists alternativas text;
 alter table "Questões" add column if not exists gabarito text;
 alter table "Questões" add column if not exists anotacao text;
@@ -463,6 +467,10 @@ alter table "Questões" add column if not exists tentativas int default 0;
 alter table "Questões" add column if not exists acertos int default 0;
 alter table "Questões" add column if not exists favorita boolean default false;
 alter table "Questões" add column if not exists created_at timestamptz default now();
+alter table "Questões" add column if not exists relevancia_edital int;
+alter table "Questões" add column if not exists edital_topico text;
+alter table "Questões" add column if not exists edital_motivo text;
+alter table "Questões" add column if not exists edital_analisado boolean default false;
 alter table "Mapas" add column if not exists titulo text;
 alter table "Mapas" add column if not exists materia text;
 alter table "Mapas" add column if not exists img text;
@@ -473,18 +481,49 @@ alter table "Matérias" add column if not exists created_at timestamptz default 
 alter table "Configurações" add column if not exists chave text;
 alter table "Configurações" add column if not exists valor text;
 alter table "Configurações" add column if not exists created_at timestamptz default now();
+alter table "Edital" add column if not exists materia text;
+alter table "Edital" add column if not exists topico text;
+alter table "Edital" add column if not exists ordem int default 0;
+alter table "Edital" add column if not exists created_at timestamptz default now();
+alter table "Redação" add column if not exists tipo text default 'nota';
+alter table "Redação" add column if not exists titulo text;
+alter table "Redação" add column if not exists tema text;
+alter table "Redação" add column if not exists conteudo text;
+alter table "Redação" add column if not exists cor text;
+alter table "Redação" add column if not exists created_at timestamptz default now();
+alter table "Concurso" add column if not exists cargo text;
+alter table "Concurso" add column if not exists banca text;
+alter table "Concurso" add column if not exists data_locais date;
+alter table "Concurso" add column if not exists data_prova date;
+alter table "Concurso" add column if not exists hora_inicio_prova time;
+alter table "Concurso" add column if not exists hora_fim_prova time;
+alter table "Concurso" add column if not exists tem_redacao boolean default false;
+alter table "Concurso" add column if not exists questoes_gerais int;
+alter table "Concurso" add column if not exists questoes_especificos int;
+alter table "Concurso" add column if not exists materias jsonb default '[]'::jsonb;
+alter table "Concurso" add column if not exists created_at timestamptz default now();
+alter table "Concurso" add column if not exists updated_at timestamptz default now();
 alter table "Questões" add column if not exists user_id uuid references auth.users(id) on delete cascade default auth.uid();
 alter table "Mapas" add column if not exists user_id uuid references auth.users(id) on delete cascade default auth.uid();
 alter table "Matérias" add column if not exists user_id uuid references auth.users(id) on delete cascade default auth.uid();
 alter table "Configurações" add column if not exists user_id uuid references auth.users(id) on delete cascade default auth.uid();
+alter table "Edital" add column if not exists user_id uuid references auth.users(id) on delete cascade default auth.uid();
+alter table "Redação" add column if not exists user_id uuid references auth.users(id) on delete cascade default auth.uid();
+alter table "Concurso" add column if not exists user_id uuid references auth.users(id) on delete cascade default auth.uid();
 alter table "Questões" enable row level security;
 alter table "Mapas" enable row level security;
 alter table "Matérias" enable row level security;
 alter table "Configurações" enable row level security;
+alter table "Edital" enable row level security;
+alter table "Redação" enable row level security;
+alter table "Concurso" enable row level security;
 do $$ begin create policy "dono dos dados" on "Questões" for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;
 do $$ begin create policy "dono dos dados" on "Mapas" for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;
 do $$ begin create policy "dono dos dados" on "Matérias" for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;
-do $$ begin create policy "dono dos dados" on "Configurações" for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;</pre>
+do $$ begin create policy "dono dos dados" on "Configurações" for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;
+do $$ begin create policy "dono dos dados" on "Edital" for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;
+do $$ begin create policy "dono dos dados" on "Redação" for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;
+do $$ begin create policy "dono dos dados" on "Concurso" for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;</pre>
         <button onclick="copiarSQL('sql-passo2')" style="position:absolute;top:8px;right:8px;background:var(--surface);border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;font-size:0.75rem;cursor:pointer">
           <i class="fas fa-copy"></i> Copiar
         </button>
@@ -910,6 +949,22 @@ for each row execute function restringir_cadastro_email();</pre>
           <i class="fas fa-magnifying-glass-chart"></i> Verificar relevância no edital
         </button>
         <div id="edital-analise-resultado" style="display:none;margin-top:10px;padding:12px 14px;border-radius:8px;font-size:0.85rem;line-height:1.5"></div>
+      </div>
+
+      <!-- TEXTO DE APOIO (interpretação textual) -->
+      <div class="form-group">
+        <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleTextoApoio()">
+          <label style="margin-bottom:0;cursor:pointer"><i class="fas fa-file-lines" style="margin-right:5px"></i>Texto de Apoio <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional — para questões de interpretação de texto)</span></label>
+          <i class="fas fa-chevron-down" id="icone-toggle-texto-apoio" style="color:var(--text2);transition:transform 0.2s"></i>
+        </div>
+        <div id="bloco-texto-apoio" style="display:none;margin-top:8px">
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('texto-apoio-questao','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('texto-apoio-questao','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+            <span style="font-size:0.72rem;color:var(--text2);align-self:center">selecione o texto e clique</span>
+          </div>
+          <div id="texto-apoio-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o texto/trecho que a questão pede para interpretar..." style="min-height:140px"></div>
+        </div>
       </div>
 
       <!-- ENUNCIADO -->
@@ -1501,6 +1556,19 @@ for each row execute function restringir_cadastro_email();</pre>
   <div class="modal">
     <div class="modal-title">Editar Questão</div>
     <input type="hidden" id="edit-id">
+    <div class="form-group">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleTextoApoio('edit')">
+        <label style="margin-bottom:0;cursor:pointer"><i class="fas fa-file-lines" style="margin-right:5px"></i>Texto de Apoio <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(interpretação de texto)</span></label>
+        <i class="fas fa-chevron-down" id="edit-icone-toggle-texto-apoio" style="color:var(--text2);transition:transform 0.2s"></i>
+      </div>
+      <div id="edit-bloco-texto-apoio" style="display:none;margin-top:8px">
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('edit-texto-apoio','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+          <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('edit-texto-apoio','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+        </div>
+        <div id="edit-texto-apoio" class="rich-editable" contenteditable="true" data-placeholder="Texto/trecho que a questão pede para interpretar..." style="min-height:130px"></div>
+      </div>
+    </div>
     <div class="form-group">
       <label><i class="fas fa-align-left" style="margin-right:5px"></i>Enunciado
         <button type="button" onclick="toggleExpandirEnunciado()" id="btn-expandir-enunciado" style="float:right;background:none;border:none;color:var(--accent);font-size:0.75rem;cursor:pointer;text-decoration:underline">Expandir</button>
@@ -2925,11 +2993,22 @@ async function excluirTopicoEdital(id) {
   renderEdital()
 }
 
+function toggleTextoApoio(prefixo = '') {
+  const idBloco = prefixo ? `${prefixo}-bloco-texto-apoio` : 'bloco-texto-apoio'
+  const idIcone = prefixo ? `${prefixo}-icone-toggle-texto-apoio` : 'icone-toggle-texto-apoio'
+  const bloco = document.getElementById(idBloco)
+  const icone = document.getElementById(idIcone)
+  const abrir = bloco.style.display === 'none'
+  bloco.style.display = abrir ? 'block' : 'none'
+  if (icone) icone.style.transform = abrir ? 'rotate(180deg)' : 'rotate(0deg)'
+}
+
 // ===== ANALISADOR DE EDITAL =====
 async function analisarRelevanciaEdital() {
   const materia = document.getElementById('materia-questao').value
   const tema = document.getElementById('tema-questao').value.trim()
   const enunciado = htmlParaMarkdown(document.getElementById('enunciado-questao')).trim()
+  const textoApoio = htmlParaMarkdown(document.getElementById('texto-apoio-questao')).trim()
   const altA = document.getElementById('alt-a').value.trim()
   const altB = document.getElementById('alt-b').value.trim()
   const altC = document.getElementById('alt-c').value.trim()
@@ -2940,7 +3019,7 @@ async function analisarRelevanciaEdital() {
   const box = document.getElementById('edital-analise-resultado')
 
   if (!materia) { notif('Selecione a matéria antes de analisar!', 'error'); return }
-  if (!tema && !enunciado) { notif('Preencha o tema ou o enunciado antes de analisar!', 'error'); return }
+  if (!tema && !enunciado && !textoApoio) { notif('Preencha o tema, o texto de apoio ou o enunciado antes de analisar!', 'error'); return }
 
   const topicosDaMateria = editalTopicos.filter(t => t.materia === materia).map(t => t.topico)
 
@@ -2972,7 +3051,7 @@ async function analisarRelevanciaEdital() {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({
-        materia, tema, enunciado,
+        materia, tema, enunciado, texto_apoio: textoApoio,
         alternativas: { A: altA, B: altB, C: altC, D: altD, E: altE },
         gabarito, anotacao,
         topicos: topicosDaMateria,
@@ -3013,6 +3092,7 @@ async function salvarQuestao() {
   const materia = document.getElementById('materia-questao').value
   const tema = document.getElementById('tema-questao').value.trim()
   const enunciado = htmlParaMarkdown(document.getElementById('enunciado-questao')).trim()
+  const textoApoio = htmlParaMarkdown(document.getElementById('texto-apoio-questao')).trim()
   const altA = document.getElementById('alt-a').value.trim()
   const altB = document.getElementById('alt-b').value.trim()
   const altC = document.getElementById('alt-c').value.trim()
@@ -3026,7 +3106,7 @@ async function salvarQuestao() {
 
   mostrarLoading('Salvando questão...')
   const resultado = await supa.insert(TABELA_QUESTOES, {
-    materia, tema, enunciado,
+    materia, tema, enunciado, texto_apoio: textoApoio,
     alternativas: JSON.stringify({ A: altA, B: altB, C: altC, D: altD, E: altE }),
     gabarito, anotacao, video, dominada: false,
     data: new Date().toLocaleDateString('pt-BR'),
@@ -3046,6 +3126,9 @@ async function salvarQuestao() {
   document.getElementById('materia-questao').value = ''
   document.getElementById('tema-questao').value = ''
   document.getElementById('enunciado-questao').innerHTML = ''
+  document.getElementById('texto-apoio-questao').innerHTML = ''
+  document.getElementById('bloco-texto-apoio').style.display = 'none'
+  document.getElementById('icone-toggle-texto-apoio').style.transform = 'rotate(0deg)'
   document.getElementById('alt-a').value = ''
   document.getElementById('alt-b').value = ''
   document.getElementById('alt-c').value = ''
@@ -3101,6 +3184,7 @@ function renderQuestoes() {
     if (btnLimpar) btnLimpar.style.display = 'block'
     lista = lista.filter(q =>
       (q.enunciado && q.enunciado.toLowerCase().includes(busca)) ||
+      (q.texto_apoio && q.texto_apoio.toLowerCase().includes(busca)) ||
       (q.tema && q.tema.toLowerCase().includes(busca)) ||
       (q.anotacao && q.anotacao.toLowerCase().includes(busca)) ||
       (q.materia && q.materia.toLowerCase().includes(busca)) ||
@@ -3155,6 +3239,7 @@ function renderQuestoes() {
 
       <!-- DETALHES EXPANDIDOS -->
       <div id="qdetail-${q.id}" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)" onclick="event.stopPropagation()">
+        ${q.texto_apoio ? `<div style="font-size:0.82rem;color:var(--text2);margin-bottom:10px;line-height:1.6;padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--text2);white-space:pre-wrap"><div style="font-size:0.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px"><i class="fas fa-file-lines"></i> Texto de apoio</div>${formatarEnunciado(q.texto_apoio)}</div>` : ''}
         ${q.enunciado ? `<div style="font-size:0.85rem;color:var(--text);margin-bottom:10px;line-height:1.6;padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);white-space:pre-wrap">${formatarEnunciado(q.enunciado)}</div>` : ''}
         ${temAlts ? `<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
           ${['A','B','C','D','E'].filter(l=>alts[l]).map(l=>`
@@ -3336,6 +3421,9 @@ function abrirEditar(id) {
   document.getElementById('edit-enunciado').innerHTML = formatarEnunciado(q.enunciado || '')
   document.getElementById('edit-enunciado').classList.remove('enunciado-expandido')
   document.getElementById('btn-expandir-enunciado').textContent = 'Expandir'
+  document.getElementById('edit-texto-apoio').innerHTML = formatarEnunciado(q.texto_apoio || '')
+  document.getElementById('edit-bloco-texto-apoio').style.display = q.texto_apoio ? 'block' : 'none'
+  document.getElementById('edit-icone-toggle-texto-apoio').style.transform = q.texto_apoio ? 'rotate(180deg)' : 'rotate(0deg)'
   document.getElementById('edit-materia').value = q.materia
   document.getElementById('edit-tema').value = q.tema || ''
   document.getElementById('edit-gabarito').value = q.gabarito
@@ -3397,6 +3485,7 @@ async function salvarEdicao() {
   const id = document.getElementById('edit-id').value
   const dados = {
     enunciado: htmlParaMarkdown(document.getElementById('edit-enunciado')).trim(),
+    texto_apoio: htmlParaMarkdown(document.getElementById('edit-texto-apoio')).trim(),
     materia: document.getElementById('edit-materia').value,
     tema: document.getElementById('edit-tema').value.trim(),
     gabarito: document.getElementById('edit-gabarito').value.trim(),
@@ -3583,6 +3672,7 @@ function renderSimuladoQuestao() {
         <span style="font-size:0.75rem;color:var(--text2)">${q.data || ''}</span>
       </div>
       ${q.tema ? `<div style="font-size:0.78rem;color:var(--accent);margin-bottom:10px"><i class="fas fa-tag" style="margin-right:4px"></i>${q.tema}</div>` : ''}
+      ${q.texto_apoio ? `<div style="font-size:0.88rem;color:var(--text2);line-height:1.6;margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--text2);white-space:pre-wrap"><div style="font-size:0.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px"><i class="fas fa-file-lines"></i> Texto de apoio</div>${formatarEnunciado(q.texto_apoio)}</div>` : ''}
       ${q.enunciado ? `<div style="font-size:0.95rem;color:var(--text);line-height:1.6;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);white-space:pre-wrap">${formatarEnunciado(q.enunciado)}</div>` : '<div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px;font-style:italic">Selecione sua resposta:</div>'}
       ${alternativasHTML}
     </div>`
@@ -4183,6 +4273,7 @@ function renderMapas() {
   }
   const totalSemMateria = baseMapas.filter(m => !m.materia).length
   tabsEl.innerHTML =
+    `<button class="mapa-tab-btn ${mapaTabAtiva==='recentes'?'active':''}" onclick="setMapaTab('recentes')"><i class="fas fa-clock-rotate-left" style="margin-right:4px"></i>Recentes</button>` +
     `<button class="mapa-tab-btn ${mapaTabAtiva==='todas'?'active':''}" onclick="setMapaTab('todas')">Todas <span class="count">${baseMapas.length}</span></button>` +
     materiasCom.map(m => {
       const count = baseMapas.filter(mp => mp.materia === m).length
@@ -4192,7 +4283,9 @@ function renderMapas() {
     (totalSemMateria ? `<button class="mapa-tab-btn ${mapaTabAtiva==='sem-materia'?'active':''}" onclick="setMapaTab('sem-materia')">Sem matéria <span class="count">${totalSemMateria}</span></button>` : '')
 
   let lista = baseMapas
-  if (mapaTabAtiva === 'sem-materia') lista = baseMapas.filter(m => !m.materia)
+  if (mapaTabAtiva === 'recentes') {
+    lista = baseMapas.slice().sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+  } else if (mapaTabAtiva === 'sem-materia') lista = baseMapas.filter(m => !m.materia)
   else if (mapaTabAtiva !== 'todas') lista = baseMapas.filter(m => m.materia === mapaTabAtiva)
 
   const conteudo = document.getElementById('mapas-conteudo')
@@ -4202,7 +4295,9 @@ function renderMapas() {
     return
   }
 
-  if (mapaTabAtiva === 'todas' && materiasCom.length > 1) {
+  if (mapaTabAtiva === 'recentes') {
+    conteudo.innerHTML = `<div class="mapas-grid">${lista.map(m => mapaCardHTML(m)).join('')}</div>`
+  } else if (mapaTabAtiva === 'todas' && materiasCom.length > 1) {
     let html = ''
     materiasCom.forEach(mat => {
       const grupo = baseMapas.filter(m => m.materia === mat).slice().reverse()
