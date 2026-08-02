@@ -1533,7 +1533,7 @@ for each row execute function restringir_cadastro_email();</pre>
     <div class="modal-title">🗺️ Adicionar Mapa Mental</div>
     <div class="form-group">
       <label>Título do Mapa</label>
-      <input type="text" id="mapa-titulo" placeholder="Ex: Arquivamento Alfabético...">
+      <input type="text" id="mapa-titulo" placeholder="Ex: Arquivamento Alfabético..." oninput="verificarMapaSimilarAdd()">
     </div>
     <div class="form-group">
       <label>Matéria <span style="color:var(--red)">*</span></label>
@@ -1542,11 +1542,12 @@ for each row execute function restringir_cadastro_email();</pre>
     <div class="form-group">
       <label><i class="fas fa-tag" style="margin-right:5px;color:var(--yellow)"></i>Tema <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional — selecione ou digite um novo)</span></label>
       <div style="position:relative">
-        <input type="text" id="tema-mapa" placeholder="Digite ou selecione um tema..." oninput="filtrarTemas(this.value, 'tema-mapa', 'tema-mapa-dropdown')" onfocus="mostrarTemas('tema-mapa', 'tema-mapa-dropdown')" onblur="setTimeout(()=>fecharDropdown('tema-mapa-dropdown'),200)" autocomplete="off">
+        <input type="text" id="tema-mapa" placeholder="Digite ou selecione um tema..." oninput="filtrarTemas(this.value, 'tema-mapa', 'tema-mapa-dropdown');verificarMapaSimilarAdd()" onfocus="mostrarTemas('tema-mapa', 'tema-mapa-dropdown')" onblur="setTimeout(()=>fecharDropdown('tema-mapa-dropdown'),200)" autocomplete="off">
         <div id="tema-mapa-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-radius:8px;max-height:180px;overflow-y:auto;z-index:999;margin-top:4px"></div>
       </div>
       <div id="temas-mapa-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
     </div>
+    <div id="mapa-similar-resultado" style="display:none;margin-bottom:14px;padding:10px 12px;border-radius:8px;font-size:0.82rem;line-height:1.5"></div>
     <div class="form-group">
       <label>Imagem do Mapa Mental</label>
       <div class="upload-area" id="upload-drop-area"
@@ -1564,6 +1565,35 @@ for each row execute function restringir_cadastro_email();</pre>
     <div style="display:flex;gap:10px">
       <button class="btn btn-primary" onclick="salvarMapa()"><i class="fas fa-save"></i> Salvar</button>
       <button class="btn btn-ghost" onclick="fecharModalAddMapa()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR MAPA (título, matéria e tema) -->
+<div class="modal-overlay" id="modal-editar-mapa">
+  <div class="modal">
+    <div class="modal-title">✏️ Editar Mapa Mental</div>
+    <input type="hidden" id="editar-mapa-id">
+    <div class="form-group">
+      <label>Título do Mapa</label>
+      <input type="text" id="editar-mapa-titulo" oninput="verificarMapaSimilarEdit()">
+    </div>
+    <div class="form-group">
+      <label>Matéria <span style="color:var(--red)">*</span></label>
+      <select id="editar-mapa-materia"></select>
+    </div>
+    <div class="form-group">
+      <label><i class="fas fa-tag" style="margin-right:5px;color:var(--yellow)"></i>Tema <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional — selecione ou digite um novo)</span></label>
+      <div style="position:relative">
+        <input type="text" id="editar-mapa-tema" placeholder="Digite ou selecione um tema..." oninput="filtrarTemas(this.value, 'editar-mapa-tema', 'editar-mapa-tema-dropdown');verificarMapaSimilarEdit()" onfocus="mostrarTemas('editar-mapa-tema', 'editar-mapa-tema-dropdown')" onblur="setTimeout(()=>fecharDropdown('editar-mapa-tema-dropdown'),200)" autocomplete="off">
+        <div id="editar-mapa-tema-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-radius:8px;max-height:180px;overflow-y:auto;z-index:999;margin-top:4px"></div>
+      </div>
+      <div id="editar-mapa-temas-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+    </div>
+    <div id="editar-mapa-similar-resultado" style="display:none;margin-bottom:14px;padding:10px 12px;border-radius:8px;font-size:0.82rem;line-height:1.5"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" onclick="salvarEdicaoMapa()"><i class="fas fa-save"></i> Salvar</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-editar-mapa').classList.remove('open')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -2354,7 +2384,7 @@ function goPage(id) {
 // ===== POPULAR SELECTS =====
 function popularSelects() {
   const opts = `<option value="">Selecione a matéria</option>` + materias.map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}</option>`).join('')
-  const ids = ['materia-questao','mapa-materia','edit-materia','edital-materia-form']
+  const ids = ['materia-questao','mapa-materia','edit-materia','edital-materia-form','editar-mapa-materia']
   ids.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = opts })
 
   // Checkboxes de matéria para o simulado
@@ -2580,23 +2610,43 @@ function renderDashboard() {
       </div>`
   }).join('')
 
-  const frases = sorted.map(([m, dados]) => {
+  const pior = sorted[0]
+  let destaque = ''
+  if (pior) {
+    const [mPior, dadosPior] = pior
+    const pPior = Math.round((dadosPior.dominadas / dadosPior.total) * 100)
+    const pendPior = dadosPior.total - dadosPior.dominadas
+    if (pPior < 70) {
+      destaque = `
+        <div style="background:linear-gradient(135deg, rgba(239,68,68,0.14), rgba(239,68,68,0.04));border:1px solid var(--red);border-radius:10px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+          <div style="font-size:1.7rem;flex-shrink:0">🎯</div>
+          <div style="min-width:0">
+            <div style="font-weight:700;font-size:0.92rem;margin-bottom:2px">Foque em <span style="color:var(--red)">${mPior}</span> primeiro</div>
+            <div style="font-size:0.8rem;color:var(--text2)">Só ${pPior}% de aproveitamento — ${pendPior} ${pendPior!==1?'questões pendentes':'questão pendente'} esperando revisão.</div>
+          </div>
+        </div>`
+    }
+  }
+
+  const linhas = sorted.map(([m, dados]) => {
     const p = Math.round((dados.dominadas / dados.total) * 100)
     const pend = dados.total - dados.dominadas
-    if (p >= 70) return `<div class="situacao-item" style="border-left-color:var(--green)"><span>✅</span><span style="font-size:0.85rem">Você está indo bem em <strong>${m}</strong> — ${p}% de aproveitamento.</span></div>`
-    if (p >= 40) return `<div class="situacao-item" style="border-left-color:var(--yellow)"><span>⚠️</span><span style="font-size:0.85rem">Em <strong>${m}</strong> você acerta cerca de metade — ainda tem ${pend} ${pend!==1?'questões pendentes':'questão pendente'}.</span></div>`
-    return `<div class="situacao-item" style="border-left-color:var(--red)"><span>❌</span><span style="font-size:0.85rem">Você erra bastante em <strong>${m}</strong> — ainda tem ${pend} ${pend!==1?'questões pendentes':'questão pendente'}. Foque aqui!</span></div>`
-  })
+    const cor = p >= 70 ? 'var(--green)' : p >= 40 ? 'var(--yellow)' : 'var(--red)'
+    const icone = p >= 70 ? 'fa-check' : p >= 40 ? 'fa-triangle-exclamation' : 'fa-xmark'
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px;border-left:3px solid ${cor}">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+          <i class="fas ${icone}" style="color:${cor};font-size:0.75rem;flex-shrink:0"></i>
+          <span style="font-size:0.84rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+          <span style="font-size:0.72rem;color:var(--text2);white-space:nowrap">${pend} pendente${pend!==1?'s':''}</span>
+          <span style="font-size:0.8rem;font-weight:700;color:${cor};min-width:36px;text-align:right">${p}%</span>
+        </div>
+      </div>`
+  }).join('')
 
-  const pior = sorted[0]
-  let dica = ''
-  if (sorted.length > 1) {
-    const pPior = Math.round((pior[1].dominadas / pior[1].total) * 100)
-    dica = `<div style="margin-top:14px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);font-size:0.85rem;color:var(--text2)">
-      💡 <strong>Dica:</strong> Priorize estudar <strong>${pior[0]}</strong> — é onde você tem mais dificuldade (${pPior}% de aproveitamento).
-    </div>`
-  }
-  document.getElementById('dash-situacao').innerHTML = frases.join('') + dica
+  document.getElementById('dash-situacao').innerHTML = destaque + linhas
 }
 
 function renderDonutChart(dom, pend) {
@@ -3961,20 +4011,27 @@ function renderTemasTags(inputId, tagsId) {
     </span>`).join('')
 }
 
+function idParaDropdownId(inputId) {
+  if (inputId === 'tema-questao') return 'tema-dropdown'
+  return `${inputId}-dropdown`
+}
+
 function selecionarTema(tema, inputId, tagsId) {
   const input = document.getElementById(inputId)
   if (!input) return
   input.value = (input.value === tema) ? '' : tema
-  const dropdownId = inputId === 'tema-questao' ? 'tema-dropdown' : 'edit-tema-dropdown'
-  const dropdown = document.getElementById(dropdownId)
+  const dropdown = document.getElementById(idParaDropdownId(inputId))
   if (dropdown) dropdown.style.display = 'none'
   renderTemasTags(inputId, tagsId)
+  if (inputId === 'mapa-titulo' || inputId === 'tema-mapa') verificarMapaSimilarAdd()
+  if (inputId === 'editar-mapa-titulo' || inputId === 'editar-mapa-tema') verificarMapaSimilarEdit()
 }
 
 function idParaTagsId(inputId) {
   if (inputId === 'tema-questao') return 'temas-tags'
   if (inputId === 'edit-tema') return 'edit-temas-tags'
   if (inputId === 'tema-mapa') return 'temas-mapa-tags'
+  if (inputId === 'editar-mapa-tema') return 'editar-mapa-temas-tags'
   return 'temas-tags'
 }
 
@@ -4308,6 +4365,45 @@ async function uploadCloudinary(file) {
   return data.secure_url  // URL permanente da imagem
 }
 
+// ===== VERIFICADOR DE MAPA SIMILAR (título/tema já existente) =====
+function renderizarMapaSimilar(titulo, tema, idExcluir, boxId) {
+  const box = document.getElementById(boxId)
+  if (!box) return
+  const palavrasNovo = normalizarPalavras(`${titulo || ''} ${tema || ''}`)
+  if (palavrasNovo.length < 2) { box.style.display = 'none'; return }
+
+  let melhor = null, melhorScore = 0
+  mapas.forEach(m => {
+    if (idExcluir && String(m.id) === String(idExcluir)) return
+    const score = similaridadeJaccard(palavrasNovo, normalizarPalavras(`${m.titulo || ''} ${m.tema || ''}`))
+    if (score > melhorScore) { melhorScore = score; melhor = m }
+  })
+
+  if (melhorScore >= 0.45 && melhor) {
+    box.style.display = 'block'
+    box.style.border = '1px solid var(--yellow)'
+    box.style.background = 'rgba(234,179,8,0.08)'
+    box.innerHTML = `
+      <div style="color:var(--yellow);font-weight:700;margin-bottom:2px"><i class="fas fa-triangle-exclamation"></i> Já existe um mapa parecido (${Math.round(melhorScore*100)}%)</div>
+      <div style="color:var(--text2)">"${escHtml(melhor.titulo || '')}"${melhor.tema ? ` · tema: ${escHtml(melhor.tema)}` : ''}${melhor.materia ? ` — matéria: <strong style="color:var(--text)">${escHtml(melhor.materia)}</strong>` : ''}</div>`
+  } else {
+    box.style.display = 'none'
+  }
+}
+
+function verificarMapaSimilarAdd() {
+  const titulo = document.getElementById('mapa-titulo').value.trim()
+  const tema = document.getElementById('tema-mapa').value.trim()
+  renderizarMapaSimilar(titulo, tema, null, 'mapa-similar-resultado')
+}
+
+function verificarMapaSimilarEdit() {
+  const idAtual = document.getElementById('editar-mapa-id').value
+  const titulo = document.getElementById('editar-mapa-titulo').value.trim()
+  const tema = document.getElementById('editar-mapa-tema').value.trim()
+  renderizarMapaSimilar(titulo, tema, idAtual, 'editar-mapa-similar-resultado')
+}
+
 // ===== MAPAS =====
 let mapaImgBase64 = null  // mantido para compatibilidade com mapas antigos
 let mapaTabAtiva = 'todas'
@@ -4318,6 +4414,7 @@ function abrirModalAddMapa() {
   document.getElementById('mapa-materia').value = ''
   document.getElementById('tema-mapa').value = ''
   document.getElementById('temas-mapa-tags').innerHTML = ''
+  document.getElementById('mapa-similar-resultado').style.display = 'none'
   document.getElementById('mapa-preview').style.display = 'none'
   mapaImgBase64 = null
   mapaArquivo = null
@@ -4446,11 +4543,42 @@ function mapaCardHTML(m) {
           <div class="mapa-grid-data">${m.data||''}</div>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
-          <button class="btn btn-ghost btn-sm" onclick="editarTituloMapa('${m.id}','${escAttr(m.titulo)}')"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-ghost btn-sm" onclick="abrirEditarMapa('${m.id}')"><i class="fas fa-edit"></i></button>
           <button class="btn btn-danger btn-sm" onclick="deletarMapa('${m.id}')"><i class="fas fa-trash"></i></button>
         </div>
       </div>
     </div>`
+}
+
+function abrirEditarMapa(id) {
+  const m = mapas.find(m => String(m.id) === String(id))
+  if (!m) return
+  popularSelects()
+  document.getElementById('editar-mapa-id').value = id
+  document.getElementById('editar-mapa-titulo').value = m.titulo || ''
+  document.getElementById('editar-mapa-materia').value = m.materia || ''
+  document.getElementById('editar-mapa-tema').value = m.tema || ''
+  document.getElementById('editar-mapa-similar-resultado').style.display = 'none'
+  document.getElementById('modal-editar-mapa').classList.add('open')
+  setTimeout(() => renderTemasTags('editar-mapa-tema', 'editar-mapa-temas-tags'), 100)
+}
+
+async function salvarEdicaoMapa() {
+  const id = document.getElementById('editar-mapa-id').value
+  const titulo = document.getElementById('editar-mapa-titulo').value.trim()
+  const materia = document.getElementById('editar-mapa-materia').value
+  const tema = document.getElementById('editar-mapa-tema').value.trim()
+  if (!titulo) { notif('Preencha o título!', 'error'); return }
+  if (!materia) { notif('Selecione a matéria! Todo mapa precisa estar vinculado a uma matéria.', 'error'); return }
+
+  mostrarLoading('Salvando...')
+  await supa.update(TABELA_MAPAS, id, { titulo, materia, tema })
+  esconderLoading()
+  mapas = mapas.map(m => String(m.id) === String(id) ? { ...m, titulo, materia, tema } : m)
+  document.getElementById('modal-editar-mapa').classList.remove('open')
+  notif('✅ Mapa atualizado!')
+  mapaTabAtiva = materia
+  renderMapas()
 }
 
 async function editarTituloMapa(id, tituloAtual) {
