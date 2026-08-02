@@ -58,6 +58,7 @@
   .card:hover { border-color: #3a4166; box-shadow: 0 6px 20px rgba(0,0,0,0.22); }
 
   @keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes pulseAlerta { 0%,100% { transform: scale(1); } 50% { transform: scale(1.12); } }
   #page-dashboard.active .dash-hero { animation: fadeInUp 0.35s ease both; }
   #page-dashboard.active .stats-grid { animation: fadeInUp 0.35s ease 0.05s both; }
   #page-dashboard.active .card { animation: fadeInUp 0.35s ease 0.1s both; }
@@ -1658,6 +1659,19 @@ for each row execute function restringir_cadastro_email();</pre>
   </div>
 </div>
 
+<!-- MODAL ALERTA CENTRAL DE CONCURSO (aparece quando está bem perto da prova) -->
+<div class="modal-overlay" id="modal-alerta-concurso">
+  <div class="modal" id="modal-alerta-concurso-caixa" style="max-width:380px;text-align:center;border:2px solid var(--red);box-shadow:0 0 0 4px rgba(239,68,68,0.15),0 0 40px rgba(239,68,68,0.25)">
+    <div id="alerta-concurso-icone" style="font-size:3rem;margin-bottom:10px;animation:pulseAlerta 1.4s ease-in-out infinite">⏰</div>
+    <div id="alerta-concurso-titulo" style="font-weight:800;font-size:1.15rem;margin-bottom:6px;color:var(--red)">Faltam poucos dias!</div>
+    <div id="alerta-concurso-texto" style="font-size:0.9rem;color:var(--text2);margin-bottom:22px"></div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn btn-primary" onclick="document.getElementById('modal-alerta-concurso').classList.remove('open');goPage('concurso')">Ver detalhes</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('modal-alerta-concurso').classList.remove('open')">Entendi</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL MIGRAR QUESTÕES PARA OUTRA MATÉRIA -->
 <div class="modal-overlay" id="modal-migrar">
   <div class="modal" style="max-width:380px">
@@ -2453,6 +2467,29 @@ function toggleTemasDashboard(idx) {
   if (chevron) chevron.style.transform = aberto ? 'rotate(0deg)' : 'rotate(90deg)'
 }
 
+// ===== SOM DE NOTIFICAÇÃO (sintetizado via Web Audio, sem depender de arquivo externo) =====
+function tocarSomNotificacao(urgente = false) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const notas = urgente ? [660, 880, 1046] : [523, 659]
+    let tempo = ctx.currentTime
+    notas.forEach(freq => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(0, tempo)
+      gain.gain.linearRampToValueAtTime(0.18, tempo + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.001, tempo + 0.22)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start(tempo)
+      osc.stop(tempo + 0.24)
+      tempo += 0.18
+    })
+  } catch(e) { /* navegador pode bloquear áudio sem interação prévia — ignora silenciosamente */ }
+}
+
 function renderDashboard() {
   // Banner de contagem regressiva do concurso (só aparece quando faz sentido avisar)
   const bannerEl = document.getElementById('dash-concurso-banner')
@@ -2461,8 +2498,11 @@ function renderDashboard() {
       const diasProva = diasRestantes(meuConcurso.data_prova)
       const diasLocais = diasRestantes(meuConcurso.data_locais)
       let alvo = null, rotulo = ''
-      if (diasProva !== null && diasProva >= 0) { alvo = diasProva; rotulo = 'para a prova' }
-      else if (diasLocais !== null && diasLocais >= 0) { alvo = diasLocais; rotulo = 'para a divulgação dos locais' }
+      // A divulgação dos locais acontece ANTES da prova — então, enquanto ela ainda
+      // não passou, é ela quem deve receber o destaque/aviso. Depois que passar,
+      // a atenção volta pra contagem da prova.
+      if (diasLocais !== null && diasLocais >= 0) { alvo = diasLocais; rotulo = 'para a divulgação dos locais' }
+      else if (diasProva !== null && diasProva >= 0) { alvo = diasProva; rotulo = 'para a prova' }
 
       if (alvo !== null && alvo <= 30) {
         const cor = corUrgenciaConcurso(alvo)
@@ -2477,6 +2517,38 @@ function renderDashboard() {
               <div style="font-size:0.75rem;color:var(--text2)">${escHtml(meuConcurso.cargo || '')} — clique pra ver os detalhes</div>
             </div>
           </div>`
+
+        // Alerta central + som quando está bem perto (só 1x por dia, pra não virar spam)
+        if (alvo <= 7) {
+          const chaveAlerta = `alerta_concurso_${meuConcurso.id || 'x'}_${rotulo}_${new Date().toDateString()}`
+          if (!localStorage.getItem(chaveAlerta)) {
+            localStorage.setItem(chaveAlerta, '1')
+            const tituloEl = document.getElementById('alerta-concurso-titulo')
+            const textoEl = document.getElementById('alerta-concurso-texto')
+            const iconeEl = document.getElementById('alerta-concurso-icone')
+            const caixaEl = document.getElementById('modal-alerta-concurso-caixa')
+            caixaEl.style.borderColor = cor
+            caixaEl.style.boxShadow = `0 0 0 4px ${cor}26, 0 0 40px ${cor}40`
+            tituloEl.style.color = cor
+            if (alvo === 0) {
+              iconeEl.textContent = '🍀'
+              tituloEl.textContent = rotulo === 'para a prova' ? 'É hoje!' : 'Divulgação dos locais é hoje!'
+              textoEl.textContent = rotulo === 'para a prova'
+                ? `Boa prova em ${meuConcurso.cargo || 'seu concurso'}! Você se preparou, confie no seu estudo.`
+                : `Fica de olho — os locais de prova de ${meuConcurso.cargo || 'seu concurso'} saem hoje.`
+            } else if (alvo === 1) {
+              iconeEl.textContent = '⏰'
+              tituloEl.textContent = `Falta 1 dia ${rotulo}!`
+              textoEl.textContent = `${meuConcurso.cargo || 'Seu concurso'} está chegando. Hora de revisar com calma o que já estudou.`
+            } else {
+              iconeEl.textContent = '⏰'
+              tituloEl.textContent = `Faltam ${alvo} dias ${rotulo}!`
+              textoEl.textContent = `${meuConcurso.cargo || 'Seu concurso'} está bem perto. Aproveite esse tempo pra reforçar os pontos fracos.`
+            }
+            document.getElementById('modal-alerta-concurso').classList.add('open')
+            tocarSomNotificacao(alvo <= 1)
+          }
+        }
       } else {
         bannerEl.innerHTML = ''
       }
