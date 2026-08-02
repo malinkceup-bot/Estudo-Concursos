@@ -472,6 +472,7 @@ alter table "Questões" add column if not exists edital_topico text;
 alter table "Questões" add column if not exists edital_motivo text;
 alter table "Questões" add column if not exists edital_analisado boolean default false;
 alter table "Mapas" add column if not exists titulo text;
+alter table "Mapas" add column if not exists tema text;
 alter table "Mapas" add column if not exists materia text;
 alter table "Mapas" add column if not exists img text;
 alter table "Mapas" add column if not exists data text;
@@ -976,6 +977,14 @@ for each row execute function restringir_cadastro_email();</pre>
           <span style="font-size:0.72rem;color:var(--text2);align-self:center">selecione o texto e clique</span>
         </div>
         <div id="enunciado-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o enunciado da questão ou um resumo do que ela pede..." style="min-height:120px"></div>
+      </div>
+
+      <!-- VERIFICADOR DE DUPLICATA -->
+      <div class="form-group">
+        <button type="button" class="btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:100%" onclick="verificarQuestaoDuplicada()">
+          <i class="fas fa-copy"></i> Verificar se já foi cadastrada
+        </button>
+        <div id="duplicata-resultado" style="display:none;margin-top:10px;padding:12px 14px;border-radius:8px;font-size:0.85rem;line-height:1.5"></div>
       </div>
 
       <!-- ALTERNATIVAS -->
@@ -1527,8 +1536,16 @@ for each row execute function restringir_cadastro_email();</pre>
       <input type="text" id="mapa-titulo" placeholder="Ex: Arquivamento Alfabético...">
     </div>
     <div class="form-group">
-      <label>Matéria</label>
+      <label>Matéria <span style="color:var(--red)">*</span></label>
       <select id="mapa-materia"></select>
+    </div>
+    <div class="form-group">
+      <label><i class="fas fa-tag" style="margin-right:5px;color:var(--yellow)"></i>Tema <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional — selecione ou digite um novo)</span></label>
+      <div style="position:relative">
+        <input type="text" id="tema-mapa" placeholder="Digite ou selecione um tema..." oninput="filtrarTemas(this.value, 'tema-mapa', 'tema-mapa-dropdown')" onfocus="mostrarTemas('tema-mapa', 'tema-mapa-dropdown')" onblur="setTimeout(()=>fecharDropdown('tema-mapa-dropdown'),200)" autocomplete="off">
+        <div id="tema-mapa-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-radius:8px;max-height:180px;overflow-y:auto;z-index:999;margin-top:4px"></div>
+      </div>
+      <div id="temas-mapa-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
     </div>
     <div class="form-group">
       <label>Imagem do Mapa Mental</label>
@@ -2524,38 +2541,42 @@ function renderDashboard() {
       const tp = Math.round((td.dominadas / td.total) * 100)
       const tcor = tp >= 70 ? 'var(--green)' : tp >= 40 ? 'var(--yellow)' : 'var(--red)'
       return `
-        <div style="margin:8px 0;padding-left:12px;border-left:2px solid var(--border)">
+        <div style="margin-bottom:10px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:8px">
-            <span style="font-size:0.78rem;color:var(--text2)">${t}</span>
+            <span style="font-size:0.78rem;color:var(--text)">${t}</span>
             <span style="font-size:0.72rem;color:${tcor};font-weight:700;white-space:nowrap">${tp}% · ${td.dominadas}/${td.total}</span>
           </div>
-          <div style="background:var(--surface2);border-radius:5px;height:6px;overflow:hidden">
+          <div style="background:var(--bg);border-radius:5px;height:6px;overflow:hidden">
             <div style="background:${tcor};height:6px;border-radius:5px;width:${tp}%"></div>
           </div>
         </div>`
     }).join('')
 
     return `
-      <div style="margin-bottom:16px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;flex-wrap:wrap;gap:6px;${temTemas ? 'cursor:pointer' : ''}" ${temTemas ? `onclick="toggleTemasDashboard(${idx})"` : ''}>
-          <div style="display:flex;align-items:center;gap:6px">
-            ${temTemas ? `<i class="fas fa-chevron-right" id="chevron-dash-${idx}" style="font-size:0.65rem;color:var(--text2);transition:transform 0.2s"></i>` : ''}
-            <span style="font-size:0.9rem;font-weight:600">${m}</span>
-            <span style="font-size:0.7rem;background:var(--surface2);padding:2px 8px;border-radius:20px;color:var(--text2)">${emoji} ${status}</span>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;${temTemas ? 'cursor:pointer' : ''}" ${temTemas ? `onclick="toggleTemasDashboard(${idx})"` : ''}>
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            ${temTemas ? `<i class="fas fa-chevron-right" id="chevron-dash-${idx}" style="font-size:0.7rem;color:var(--text2);transition:transform 0.2s;flex-shrink:0"></i>` : ''}
+            <div style="min-width:0">
+              <div style="font-size:0.95rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m}</div>
+              <div style="font-size:0.72rem;color:var(--text2);margin-top:2px">
+                ${dados.total} ${dados.total!==1?'questões':'questão'}${temTemas ? ` · <span style="text-decoration:underline">${temasOrdenados.length} ${temasOrdenados.length!==1?'temas':'tema'}</span>` : ''}
+              </div>
+            </div>
           </div>
-          <div style="display:flex;gap:12px;font-size:0.8rem">
-            <span style="color:var(--red)">❌ ${pend} pendente${pend!==1?'s':''}</span>
-            <span style="color:var(--green)">✅ ${dados.dominadas} dominada${dados.dominadas!==1?'s':''}</span>
-            <span style="color:${cor};font-weight:700">${p}%</span>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-size:1.4rem;font-weight:800;color:${cor};line-height:1">${p}%</div>
+            <div style="font-size:0.66rem;color:var(--text2);white-space:nowrap;margin-top:2px">${emoji} ${status}</div>
           </div>
         </div>
-        <div style="background:var(--surface2);border-radius:6px;height:10px;overflow:hidden">
-          <div style="background:${cor};height:10px;border-radius:6px;width:${p}%"></div>
+        <div style="background:var(--bg);border-radius:8px;height:8px;overflow:hidden;margin-bottom:12px">
+          <div style="background:${cor};height:8px;border-radius:8px;width:${p}%;transition:width 0.3s"></div>
         </div>
-        <div style="font-size:0.72rem;color:var(--text2);margin-top:4px">
-          ${dados.total} ${dados.total!==1?'questões cadastradas':'questão cadastrada'}${temTemas ? ` · <span style="cursor:pointer;text-decoration:underline" onclick="toggleTemasDashboard(${idx})">${temasOrdenados.length} ${temasOrdenados.length!==1?'temas — ver detalhes':'tema — ver detalhes'}</span>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:0.75rem;background:rgba(34,197,94,0.14);color:var(--green);padding:5px 10px;border-radius:20px;font-weight:600"><i class="fas fa-check"></i> ${dados.dominadas} dominada${dados.dominadas!==1?'s':''}</span>
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:0.75rem;background:rgba(239,68,68,0.14);color:var(--red);padding:5px 10px;border-radius:20px;font-weight:600"><i class="fas fa-xmark"></i> ${pend} pendente${pend!==1?'s':''}</span>
         </div>
-        ${temTemas ? `<div id="temas-dash-${idx}" style="display:none">${temasHtml}</div>` : ''}
+        ${temTemas ? `<div id="temas-dash-${idx}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">${temasHtml}</div>` : ''}
       </div>`
   }).join('')
 
@@ -3003,6 +3024,88 @@ function toggleTextoApoio(prefixo = '') {
   if (icone) icone.style.transform = abrir ? 'rotate(180deg)' : 'rotate(0deg)'
 }
 
+// ===== VERIFICADOR DE QUESTÃO DUPLICADA (comparação local, sem IA) =====
+const STOPWORDS_PT = new Set(['a','o','as','os','um','uma','uns','umas','de','da','do','das','dos','em','no','na','nos','nas','por','pra','para','com','sem','que','e','ou','se','ao','aos','a','as','é','são','foi','ser','sua','seu','suas','seus','este','esta','isso','isto','como','mais','menos','tambem','ja','nao','sim','the','of','and'])
+
+function normalizarPalavras(txt) {
+  return (txt || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !STOPWORDS_PT.has(w))
+}
+
+function similaridadeJaccard(palavrasA, palavrasB) {
+  const a = new Set(palavrasA), b = new Set(palavrasB)
+  if (!a.size || !b.size) return 0
+  let intersecao = 0
+  a.forEach(w => { if (b.has(w)) intersecao++ })
+  const uniao = new Set([...a, ...b]).size
+  return uniao ? intersecao / uniao : 0
+}
+
+function textoCompletoQuestao(enunciado, textoApoio, alternativas) {
+  const partes = [enunciado || '', textoApoio || '']
+  if (alternativas) {
+    const alts = typeof alternativas === 'string' ? JSON.parse(alternativas || '{}') : alternativas
+    ;['A','B','C','D','E'].forEach(l => { if (alts[l]) partes.push(alts[l]) })
+  }
+  return partes.join(' ')
+}
+
+function verificarQuestaoDuplicada() {
+  const enunciado = htmlParaMarkdown(document.getElementById('enunciado-questao')).trim()
+  const textoApoio = htmlParaMarkdown(document.getElementById('texto-apoio-questao')).trim()
+  const altA = document.getElementById('alt-a').value.trim()
+  const altB = document.getElementById('alt-b').value.trim()
+  const altC = document.getElementById('alt-c').value.trim()
+  const altD = document.getElementById('alt-d').value.trim()
+  const altE = document.getElementById('alt-e').value.trim()
+  const box = document.getElementById('duplicata-resultado')
+
+  const palavrasNovo = normalizarPalavras([enunciado, textoApoio, altA, altB, altC, altD, altE].join(' '))
+
+  if (palavrasNovo.length < 4) {
+    notif('Preencha o enunciado (ou texto de apoio/alternativas) com mais detalhes antes de verificar!', 'error')
+    return
+  }
+
+  let melhor = null
+  let melhorScore = 0
+  questoes.forEach(q => {
+    const palavrasExistente = normalizarPalavras(textoCompletoQuestao(q.enunciado, q.texto_apoio, q.alternativas))
+    const score = similaridadeJaccard(palavrasNovo, palavrasExistente)
+    if (score > melhorScore) { melhorScore = score; melhor = q }
+  })
+
+  box.style.display = 'block'
+
+  if (melhorScore >= 0.55 && melhor) {
+    const trecho = melhor.enunciado || melhor.texto_apoio || '(sem enunciado registrado)'
+    box.style.border = '1px solid var(--red)'
+    box.style.background = 'rgba(239,68,68,0.08)'
+    box.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;color:var(--red);font-weight:700;margin-bottom:6px">
+        <i class="fas fa-triangle-exclamation"></i> Provavelmente já cadastrada (${Math.round(melhorScore*100)}% de semelhança)
+      </div>
+      <div style="color:var(--text2);margin-bottom:8px">${melhor.materia ? `Matéria: <strong style="color:var(--text)">${escHtml(melhor.materia)}</strong>` : ''}${melhor.tema ? ` · Tema: <strong style="color:var(--text)">${escHtml(melhor.tema)}</strong>` : ''}</div>
+      <div style="background:var(--surface2);padding:10px;border-radius:8px;color:var(--text);white-space:pre-wrap">${escHtml(trecho.slice(0, 280))}${trecho.length > 280 ? '…' : ''}</div>
+      <button type="button" class="btn btn-ghost" style="margin-top:10px;font-size:0.8rem" onclick="goPage('questoes');setTimeout(()=>{const el=document.getElementById('qmini-${melhor.id}');if(el){el.scrollIntoView({behavior:'smooth',block:'center'});toggleQuestao('${melhor.id}')}},250)">
+        <i class="fas fa-eye"></i> Ver questão existente
+      </button>
+    `
+  } else if (melhorScore >= 0.3 && melhor) {
+    box.style.border = '1px solid var(--yellow)'
+    box.style.background = 'rgba(234,179,8,0.08)'
+    box.innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:var(--yellow);font-weight:700"><i class="fas fa-circle-question"></i> Encontrei uma questão parecida (${Math.round(melhorScore*100)}%), mas pode ser só o mesmo assunto — confira antes de continuar.</div>`
+  } else {
+    box.style.border = '1px solid var(--green)'
+    box.style.background = 'rgba(34,197,94,0.08)'
+    box.innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:var(--green);font-weight:700"><i class="fas fa-circle-check"></i> Não encontrei nada parecido no seu banco — parece ser inédita.</div>`
+  }
+}
+
 // ===== ANALISADOR DE EDITAL =====
 async function analisarRelevanciaEdital() {
   const materia = document.getElementById('materia-questao').value
@@ -3129,6 +3232,7 @@ async function salvarQuestao() {
   document.getElementById('texto-apoio-questao').innerHTML = ''
   document.getElementById('bloco-texto-apoio').style.display = 'none'
   document.getElementById('icone-toggle-texto-apoio').style.transform = 'rotate(0deg)'
+  document.getElementById('duplicata-resultado').style.display = 'none'
   document.getElementById('alt-a').value = ''
   document.getElementById('alt-b').value = ''
   document.getElementById('alt-c').value = ''
@@ -3822,16 +3926,19 @@ function getTemasCadastrados() {
 
 // Igual getTemasCadastrados, mas junto com a matéria mais usada por esse tema
 // (um tema pode ter sido usado em mais de uma matéria; aqui mostramos a predominante)
+// Junta temas tanto de Questões quanto de Mapas, para poder reaproveitar entre as duas abas.
 function getTemasComMateria() {
   const mapa = {}
-  questoes.forEach(q => {
-    const tema = q.tema && q.tema.trim()
+  const registrar = (tema, materia) => {
+    tema = tema && tema.trim()
     if (!tema) return
     if (!mapa[tema]) mapa[tema] = { tema, count: 0, materias: {} }
     mapa[tema].count++
-    const materia = q.materia && q.materia.trim()
+    materia = materia && materia.trim()
     if (materia) mapa[tema].materias[materia] = (mapa[tema].materias[materia] || 0) + 1
-  })
+  }
+  questoes.forEach(q => registrar(q.tema, q.materia))
+  mapas.forEach(m => registrar(m.tema, m.materia))
   return Object.values(mapa)
     .map(t => ({
       tema: t.tema,
@@ -3864,10 +3971,17 @@ function selecionarTema(tema, inputId, tagsId) {
   renderTemasTags(inputId, tagsId)
 }
 
+function idParaTagsId(inputId) {
+  if (inputId === 'tema-questao') return 'temas-tags'
+  if (inputId === 'edit-tema') return 'edit-temas-tags'
+  if (inputId === 'tema-mapa') return 'temas-mapa-tags'
+  return 'temas-tags'
+}
+
 function mostrarTemas(inputId, dropdownId) {
   _dropdownAberto = true
   filtrarTemas(document.getElementById(inputId)?.value || '', inputId, dropdownId)
-  const tagsId = inputId === 'tema-questao' ? 'temas-tags' : 'edit-temas-tags'
+  const tagsId = idParaTagsId(inputId)
   renderTemasTags(inputId, tagsId)
 }
 
@@ -3878,7 +3992,7 @@ function filtrarTemas(valor, inputId, dropdownId) {
   const filtrados = valor
     ? temas.filter(t => t.tema.toLowerCase().includes(valor.toLowerCase()))
     : temas
-  const tagsId = inputId === 'tema-questao' ? 'temas-tags' : 'edit-temas-tags'
+  const tagsId = idParaTagsId(inputId)
 
   if (!filtrados.length && !valor) { dropdown.style.display = 'none'; return }
 
@@ -4202,6 +4316,8 @@ function abrirModalAddMapa() {
   popularSelects()
   document.getElementById('mapa-titulo').value = ''
   document.getElementById('mapa-materia').value = ''
+  document.getElementById('tema-mapa').value = ''
+  document.getElementById('temas-mapa-tags').innerHTML = ''
   document.getElementById('mapa-preview').style.display = 'none'
   mapaImgBase64 = null
   mapaArquivo = null
@@ -4217,7 +4333,9 @@ function previewMapa(e) {
 async function salvarMapa() {
   const titulo = document.getElementById('mapa-titulo').value.trim()
   const materia = document.getElementById('mapa-materia').value
+  const tema = document.getElementById('tema-mapa').value.trim()
   if (!titulo || !mapaArquivo) { notif('Preencha o título e selecione uma imagem!', 'error'); return }
+  if (!materia) { notif('Selecione a matéria! Todo mapa precisa estar vinculado a uma matéria.', 'error'); return }
 
   if (!getCloudinaryCloud() || !getCloudinaryPreset()) {
     notif('⚠️ Configure o Cloudinary em Config → Conta antes de salvar mapas!', 'error')
@@ -4236,7 +4354,7 @@ async function salvarMapa() {
 
   mostrarLoading('Salvando mapa...')
   const resultado = await supa.insert(TABELA_MAPAS, {
-    titulo, materia, img: imgUrl, data: new Date().toLocaleDateString('pt-BR')
+    titulo, materia, tema, img: imgUrl, data: new Date().toLocaleDateString('pt-BR')
   })
   esconderLoading()
   if (!resultado) { notif('Erro ao salvar mapa!', 'error'); return }
@@ -4324,6 +4442,7 @@ function mapaCardHTML(m) {
       <div class="mapa-grid-info">
         <div style="flex:1;min-width:0">
           <div class="mapa-grid-titulo" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.titulo}</div>
+          ${m.tema ? `<div style="font-size:0.72rem;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><i class="fas fa-tag" style="margin-right:3px"></i>${escHtml(m.tema)}</div>` : ''}
           <div class="mapa-grid-data">${m.data||''}</div>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
