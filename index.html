@@ -2527,27 +2527,29 @@ function calcularAlvoConcurso() {
 
 // Sino fixo no menu — visível em qualquer aba, não só no Início
 function atualizarSinoConcurso() {
-  const sino = document.getElementById('nav-sino-concurso')
-  const badge = document.getElementById('nav-sino-badge')
-  if (!sino || !badge) return
-  const calc = calcularAlvoConcurso()
-  if (!calc || calc.alvo > 30) {
-    sino.style.display = 'none'
-    return
+  try {
+    const sino = document.getElementById('nav-sino-concurso')
+    const badge = document.getElementById('nav-sino-badge')
+    if (!sino || !badge) return
+    const calc = calcularAlvoConcurso()
+    if (!calc || calc.alvo > 30) {
+      sino.style.display = 'none'
+      return
+    }
+    const cor = corUrgenciaConcurso(calc.alvo)
+    const texto = calc.alvo === 0 ? `É hoje ${calc.rotulo}!`
+      : calc.alvo === 1 ? `Falta 1 dia ${calc.rotulo}`
+      : `Faltam ${calc.alvo} dias ${calc.rotulo}`
+    sino.style.display = 'inline-flex'
+    sino.title = `${texto} — clique pra ver`
+    sino.classList.toggle('urgente', calc.alvo <= 7)
+    const icone = sino.querySelector('i')
+    if (icone) icone.style.color = cor
+    badge.style.display = 'block'
+    badge.style.background = cor
+  } catch(e) {
+    console.warn('Não foi possível atualizar o sino do concurso:', e)
   }
-  const cor = corUrgenciaConcurso(calc.alvo)
-  const texto = calc.alvo === 0 ? `É hoje ${calc.rotulo}!`
-    : calc.alvo === 1 ? `Falta 1 dia ${calc.rotulo}`
-    : `Faltam ${calc.alvo} dias ${calc.rotulo}`
-  sino.style.display = 'inline-flex'
-  sino.title = `${texto} — clique pra ver`
-  sino.classList.toggle('urgente', calc.alvo <= 7)
-  sino.querySelector('i').style.color = cor
-  badge.style.display = 'block'
-  badge.style.background = cor
-
-  const badgeTexto = document.getElementById('nav-sino-texto')
-  if (badgeTexto) badgeTexto.textContent = calc.alvo
 }
 
 function renderDashboard() {
