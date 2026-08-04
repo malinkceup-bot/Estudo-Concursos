@@ -90,17 +90,28 @@
   .nav-tab:hover { background: var(--surface2); color: var(--text); }
   .nav-tab.active { background: var(--accent); color: #fff; }
 
+  .nav-sino-wrap { position: relative; display: none; }
   .nav-sino {
     background: none; border: none; padding: 8px 12px; border-radius: 8px;
-    cursor: pointer; position: relative; transition: all 0.2s;
+    cursor: pointer; position: relative; transition: all 0.2s; color: var(--text);
   }
   .nav-sino:hover { background: var(--surface2); }
-  .nav-sino i { font-size: 1rem; }
+  .nav-sino i { font-size: 1rem; color: inherit; }
   .nav-sino-badge {
     position: absolute; top: 5px; right: 7px; width: 9px; height: 9px;
     border-radius: 50%; border: 2px solid var(--surface); pointer-events: none;
   }
   .nav-sino.urgente i { animation: sinoBalancar 1.6s ease-in-out infinite; }
+  .nav-sino-popover {
+    display: none; position: absolute; top: 100%; right: 0; margin-top: 10px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px; width: 250px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); z-index: 200; text-align: left;
+  }
+  .nav-sino-wrap:hover .nav-sino-popover { display: block; }
+  .nav-sino-popover::before {
+    content: ''; position: absolute; top: -6px; right: 18px; width: 12px; height: 12px;
+    background: var(--surface); border-left: 1px solid var(--border); border-top: 1px solid var(--border); transform: rotate(45deg);
+  }
   @keyframes sinoBalancar {
     0%, 100% { transform: rotate(0deg); }
     10% { transform: rotate(14deg); }
@@ -822,10 +833,13 @@ for each row execute function restringir_cadastro_email();</pre>
     <button class="nav-tab" onclick="goPage('edital')"><i class="fas fa-book-open"></i> <span>Edital</span></button>
     <button class="nav-tab" onclick="goPage('redacao')"><i class="fas fa-feather-alt"></i> <span>Redação</span></button>
     <button class="nav-tab" onclick="goPage('concurso')"><i class="fas fa-graduation-cap"></i> <span>Concurso</span></button>
-    <button id="nav-sino-concurso" class="nav-sino" onclick="goPage('concurso')" title="" style="display:none">
-      <i class="fas fa-bell"></i>
-      <span id="nav-sino-badge" class="nav-sino-badge" style="display:none"></span>
-    </button>
+    <div id="nav-sino-concurso" class="nav-sino-wrap">
+      <button class="nav-sino">
+        <i class="fas fa-bell"></i>
+        <span id="nav-sino-badge" class="nav-sino-badge" style="display:none"></span>
+      </button>
+      <div class="nav-sino-popover" id="nav-sino-popover"></div>
+    </div>
     <button class="nav-tab" onclick="goPage('config')"><i class="fas fa-cog"></i> <span>Config</span></button>
     <button class="nav-tab" onclick="fazerLogout()" style="color:var(--red)" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
   </div>
@@ -2528,25 +2542,38 @@ function calcularAlvoConcurso() {
 // Sino fixo no menu — visível em qualquer aba, não só no Início
 function atualizarSinoConcurso() {
   try {
-    const sino = document.getElementById('nav-sino-concurso')
+    const wrap = document.getElementById('nav-sino-concurso')
     const badge = document.getElementById('nav-sino-badge')
-    if (!sino || !badge) return
+    const popover = document.getElementById('nav-sino-popover')
+    if (!wrap || !badge || !popover) return
     const calc = calcularAlvoConcurso()
     if (!calc || calc.alvo > 30) {
-      sino.style.display = 'none'
+      wrap.style.display = 'none'
       return
     }
     const cor = corUrgenciaConcurso(calc.alvo)
     const texto = calc.alvo === 0 ? `É hoje ${calc.rotulo}!`
       : calc.alvo === 1 ? `Falta 1 dia ${calc.rotulo}`
       : `Faltam ${calc.alvo} dias ${calc.rotulo}`
-    sino.style.display = 'inline-flex'
-    sino.title = `${texto} — clique pra ver`
-    sino.classList.toggle('urgente', calc.alvo <= 7)
-    const icone = sino.querySelector('i')
-    if (icone) icone.style.color = cor
+
+    wrap.style.display = 'flex'
+    wrap.style.alignItems = 'center'
+    const botao = wrap.querySelector('.nav-sino')
+    if (botao) {
+      botao.style.color = cor
+      botao.classList.toggle('urgente', calc.alvo <= 7)
+    }
     badge.style.display = 'block'
     badge.style.background = cor
+
+    popover.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <i class="fas fa-bell" style="color:${cor}"></i>
+        <span style="font-weight:700;font-size:0.85rem;color:${cor}">${texto}</span>
+      </div>
+      <div style="font-size:0.8rem;color:var(--text2);margin-bottom:10px">${escHtml(meuConcurso.cargo || 'Seu concurso')}${meuConcurso.banca ? ` · ${escHtml(meuConcurso.banca)}` : ''}</div>
+      <button type="button" class="btn btn-primary" style="width:100%;padding:8px;font-size:0.8rem" onclick="goPage('concurso')">Ver detalhes completos</button>
+    `
   } catch(e) {
     console.warn('Não foi possível atualizar o sino do concurso:', e)
   }
@@ -5997,8 +6024,8 @@ async function init() {
         esconderTelaLogin()
         await carregarDados()
         return
-      } else if (r.status === 401) {
-        // Token expirado — tentar renovar com refresh token
+      } else if (r.status === 401 || r.status === 403) {
+        // Token expirado ou inválido — tentar renovar com refresh token
         authToken = tokenSalvo
         const renovou = await renovarToken()
         if (renovou) {
