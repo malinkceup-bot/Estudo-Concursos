@@ -998,11 +998,14 @@ for each row execute function restringir_cadastro_email();</pre>
           <i class="fas fa-chevron-down" id="icone-toggle-texto-apoio" style="color:var(--text2);transition:transform 0.2s"></i>
         </div>
         <div id="bloco-texto-apoio" style="display:none;margin-top:8px">
-          <div style="display:flex;gap:6px;margin-bottom:6px">
+          <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
             <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('texto-apoio-questao','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
             <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('texto-apoio-questao','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
-            <span style="font-size:0.72rem;color:var(--text2);align-self:center">selecione o texto e clique</span>
+            <span style="width:1px;background:var(--border);margin:2px 2px"></span>
+            <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('texto-apoio-questao','justifyLeft')" title="Alinhar à esquerda" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-left"></i></button>
+            <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('texto-apoio-questao','justifyCenter')" title="Centralizar (útil pra poemas)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
           </div>
+          <div style="font-size:0.7rem;color:var(--text2);margin-bottom:6px">Selecione um trecho pra negrito/sublinhado. Clique numa linha e use os botões de alinhamento pra centralizar (poemas etc). Enter cria um novo parágrafo.</div>
           <div id="texto-apoio-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o texto/trecho que a questão pede para interpretar..." style="min-height:140px"></div>
         </div>
       </div>
@@ -1010,10 +1013,12 @@ for each row execute function restringir_cadastro_email();</pre>
       <!-- ENUNCIADO -->
       <div class="form-group">
         <label><i class="fas fa-align-left" style="margin-right:5px"></i>Enunciado da Questão <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional — cole o enunciado resumido)</span></label>
-        <div style="display:flex;gap:6px;margin-bottom:6px">
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
           <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('enunciado-questao','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
           <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('enunciado-questao','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
-          <span style="font-size:0.72rem;color:var(--text2);align-self:center">selecione o texto e clique</span>
+          <span style="width:1px;background:var(--border);margin:2px 2px"></span>
+          <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('enunciado-questao','justifyLeft')" title="Alinhar à esquerda" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-left"></i></button>
+          <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('enunciado-questao','justifyCenter')" title="Centralizar" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
         </div>
         <div id="enunciado-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o enunciado da questão ou um resumo do que ela pede..." style="min-height:120px"></div>
       </div>
@@ -1644,9 +1649,12 @@ for each row execute function restringir_cadastro_email();</pre>
         <i class="fas fa-chevron-down" id="edit-icone-toggle-texto-apoio" style="color:var(--text2);transition:transform 0.2s"></i>
       </div>
       <div id="edit-bloco-texto-apoio" style="display:none;margin-top:8px">
-        <div style="display:flex;gap:6px;margin-bottom:6px">
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
           <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('edit-texto-apoio','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
           <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('edit-texto-apoio','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+          <span style="width:1px;background:var(--border);margin:2px 2px"></span>
+          <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-texto-apoio','justifyLeft')" title="Alinhar à esquerda" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-left"></i></button>
+          <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-texto-apoio','justifyCenter')" title="Centralizar (útil pra poemas)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
         </div>
         <div id="edit-texto-apoio" class="rich-editable" contenteditable="true" data-placeholder="Texto/trecho que a questão pede para interpretar..." style="min-height:130px"></div>
       </div>
@@ -1655,9 +1663,12 @@ for each row execute function restringir_cadastro_email();</pre>
       <label><i class="fas fa-align-left" style="margin-right:5px"></i>Enunciado
         <button type="button" onclick="toggleExpandirEnunciado()" id="btn-expandir-enunciado" style="float:right;background:none;border:none;color:var(--accent);font-size:0.75rem;cursor:pointer;text-decoration:underline">Expandir</button>
       </label>
-      <div style="display:flex;gap:6px;margin-bottom:6px">
+      <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
         <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('edit-enunciado','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
         <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('edit-enunciado','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+        <span style="width:1px;background:var(--border);margin:2px 2px"></span>
+        <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-enunciado','justifyLeft')" title="Alinhar à esquerda" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-left"></i></button>
+        <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-enunciado','justifyCenter')" title="Centralizar" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
       </div>
       <div id="edit-enunciado" class="rich-editable" contenteditable="true" data-placeholder="Enunciado da questão..." style="min-height:130px"></div>
     </div>
@@ -3761,8 +3772,15 @@ function formatarSelecao(id, comando) {
   }
   document.execCommand(comando, false, null)
 }
+// Alinhamento (esquerda/centro) age no parágrafo onde está o cursor — não precisa selecionar texto
+function alinharParagrafo(id, comando) {
+  const el = document.getElementById(id)
+  el.focus()
+  document.execCommand(comando, false, null)
+}
 // Converte o conteúdo digitado (com <b>/<u>/<br>/<div>) de volta para texto simples
-// com marcadores **negrito** e __sublinhado__, que é o formato salvo no banco
+// com marcadores **negrito**, __sublinhado__ e [[center]]...[[/center]] por parágrafo,
+// que é o formato salvo no banco
 function htmlParaMarkdown(el) {
   function walk(node) {
     let out = ''
@@ -3776,7 +3794,9 @@ function htmlParaMarkdown(el) {
         else if (tag === 'u') out += '__' + walk(child) + '__'
         else if (tag === 'div' || tag === 'p') {
           if (out.length > 0 && !out.endsWith('\n')) out += '\n'
-          out += walk(child) + '\n'
+          const centralizado = child.style && child.style.textAlign === 'center'
+          const conteudo = walk(child)
+          out += (centralizado && conteudo.trim() ? `[[center]]${conteudo}[[/center]]` : conteudo) + '\n'
         }
         else out += walk(child)
       }
@@ -3785,13 +3805,18 @@ function htmlParaMarkdown(el) {
   }
   return walk(el).replace(/\n+$/, '')
 }
-// Converte **negrito** e __sublinhado__ em HTML, escapando o resto pra evitar HTML indevido
+// Converte **negrito**, __sublinhado__ e [[center]]...[[/center]] em HTML,
+// um <div> por linha (preserva parágrafos e permite centralizar poemas etc)
 function formatarEnunciado(texto) {
   if (!texto) return ''
-  let t = escHtml(texto)
-  t = t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
-  t = t.replace(/__(.+?)__/g, '<u>$1</u>')
-  return t
+  return texto.split('\n').map(linha => {
+    const m = linha.match(/^\[\[center\]\](.*)\[\[\/center\]\]$/)
+    const centralizado = !!m
+    let t = escHtml(m ? m[1] : linha)
+    t = t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    t = t.replace(/__(.+?)__/g, '<u>$1</u>')
+    return `<div${centralizado ? ' style="text-align:center"' : ''}>${t || '<br>'}</div>`
+  }).join('')
 }
 async function salvarEdicao() {
   const id = document.getElementById('edit-id').value
