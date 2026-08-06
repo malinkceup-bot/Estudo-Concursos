@@ -524,6 +524,7 @@ alter table "Redação" add column if not exists tema text;
 alter table "Redação" add column if not exists conteudo text;
 alter table "Redação" add column if not exists cor text;
 alter table "Redação" add column if not exists created_at timestamptz default now();
+alter table "Concurso" add column if not exists nome text;
 alter table "Concurso" add column if not exists cargo text;
 alter table "Concurso" add column if not exists banca text;
 alter table "Concurso" add column if not exists data_locais date;
@@ -979,8 +980,11 @@ for each row execute function restringir_cadastro_email();</pre>
           <input type="text" id="tema-questao" placeholder="Digite ou selecione um tema..." oninput="filtrarTemas(this.value, 'tema-questao', 'tema-dropdown')" onfocus="mostrarTemas('tema-questao', 'tema-dropdown')" onblur="setTimeout(()=>fecharDropdown('tema-dropdown'),200)" autocomplete="off">
           <div id="tema-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-radius:8px;max-height:180px;overflow-y:auto;z-index:999;margin-top:4px"></div>
         </div>
-        <!-- Tags de temas usados recentemente -->
-        <div id="temas-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+        <!-- Tags de temas usados recentemente (oculto por padrão pra não poluir a tela) -->
+        <div style="margin-top:8px">
+          <span id="toggle-temas-tags" onclick="toggleListaTemasTags('temas-tags','toggle-temas-tags')" style="font-size:0.75rem;color:var(--accent);cursor:pointer;text-decoration:underline">Ver temas já cadastrados</span>
+          <div id="temas-tags" style="display:none;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+        </div>
       </div>
 
       <!-- ANALISADOR DE EDITAL -->
@@ -1006,7 +1010,7 @@ for each row execute function restringir_cadastro_email();</pre>
             <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('texto-apoio-questao','justifyCenter')" title="Centralizar (útil pra poemas)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
           </div>
           <div style="font-size:0.7rem;color:var(--text2);margin-bottom:6px">Selecione um trecho pra negrito/sublinhado. Clique numa linha e use os botões de alinhamento pra centralizar (poemas etc). Enter cria um novo parágrafo.</div>
-          <div id="texto-apoio-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o texto/trecho que a questão pede para interpretar..." style="min-height:140px"></div>
+          <div id="texto-apoio-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o texto/trecho que a questão pede para interpretar..." style="min-height:140px" onpaste="tratarColagem(event)"></div>
         </div>
       </div>
 
@@ -1020,7 +1024,7 @@ for each row execute function restringir_cadastro_email();</pre>
           <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('enunciado-questao','justifyLeft')" title="Alinhar à esquerda" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-left"></i></button>
           <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('enunciado-questao','justifyCenter')" title="Centralizar" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
         </div>
-        <div id="enunciado-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o enunciado da questão ou um resumo do que ela pede..." style="min-height:120px"></div>
+        <div id="enunciado-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o enunciado da questão ou um resumo do que ela pede..." style="min-height:120px" onpaste="tratarColagem(event)"></div>
       </div>
 
       <!-- VERIFICADOR DE DUPLICATA -->
@@ -1446,6 +1450,11 @@ for each row execute function restringir_cadastro_email();</pre>
     <div class="modal-title" id="modal-concurso-titulo">🎓 Meu Concurso</div>
 
     <div class="form-group">
+      <label>Nome do Concurso</label>
+      <input type="text" id="concurso-nome" placeholder="Ex: Concurso ALECE 2026">
+    </div>
+
+    <div class="form-group">
       <label>Cargo</label>
       <input type="text" id="concurso-cargo" placeholder="Ex: Técnico Legislativo">
     </div>
@@ -1656,7 +1665,7 @@ for each row execute function restringir_cadastro_email();</pre>
           <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-texto-apoio','justifyLeft')" title="Alinhar à esquerda" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-left"></i></button>
           <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-texto-apoio','justifyCenter')" title="Centralizar (útil pra poemas)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
         </div>
-        <div id="edit-texto-apoio" class="rich-editable" contenteditable="true" data-placeholder="Texto/trecho que a questão pede para interpretar..." style="min-height:130px"></div>
+        <div id="edit-texto-apoio" class="rich-editable" contenteditable="true" data-placeholder="Texto/trecho que a questão pede para interpretar..." style="min-height:130px" onpaste="tratarColagem(event)"></div>
       </div>
     </div>
     <div class="form-group">
@@ -1670,7 +1679,7 @@ for each row execute function restringir_cadastro_email();</pre>
         <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-enunciado','justifyLeft')" title="Alinhar à esquerda" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-left"></i></button>
         <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-enunciado','justifyCenter')" title="Centralizar" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
       </div>
-      <div id="edit-enunciado" class="rich-editable" contenteditable="true" data-placeholder="Enunciado da questão..." style="min-height:130px"></div>
+      <div id="edit-enunciado" class="rich-editable" contenteditable="true" data-placeholder="Enunciado da questão..." style="min-height:130px" onpaste="tratarColagem(event)"></div>
     </div>
     <div class="form-group"><label>Matéria</label><select id="edit-materia"></select></div>
     <div class="form-group">
@@ -1679,7 +1688,10 @@ for each row execute function restringir_cadastro_email();</pre>
         <input type="text" id="edit-tema" placeholder="Digite ou selecione um tema..." oninput="filtrarTemas(this.value, 'edit-tema', 'edit-tema-dropdown')" onfocus="mostrarTemas('edit-tema', 'edit-tema-dropdown')" onblur="setTimeout(()=>fecharDropdown('edit-tema-dropdown'),200)" autocomplete="off">
         <div id="edit-tema-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-radius:8px;max-height:180px;overflow-y:auto;z-index:9999;margin-top:4px"></div>
       </div>
-      <div id="edit-temas-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+      <div style="margin-top:8px">
+        <span id="toggle-edit-temas-tags" onclick="toggleListaTemasTags('edit-temas-tags','toggle-edit-temas-tags')" style="font-size:0.75rem;color:var(--accent);cursor:pointer;text-decoration:underline">Ver temas já cadastrados</span>
+        <div id="edit-temas-tags" style="display:none;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
+      </div>
     </div>
     <div class="form-group"><label>Gabarito</label><input type="text" id="edit-gabarito"></div>
     <div class="form-group"><label>Anotação</label><textarea id="edit-anotacao"></textarea></div>
@@ -2582,7 +2594,7 @@ function atualizarSinoConcurso() {
         <i class="fas fa-bell" style="color:${cor}"></i>
         <span style="font-weight:700;font-size:0.85rem;color:${cor}">${texto}</span>
       </div>
-      <div style="font-size:0.8rem;color:var(--text2);margin-bottom:10px">${escHtml(meuConcurso.cargo || 'Seu concurso')}${meuConcurso.banca ? ` · ${escHtml(meuConcurso.banca)}` : ''}</div>
+      <div style="font-size:0.8rem;color:var(--text2);margin-bottom:10px">${escHtml(meuConcurso.nome || meuConcurso.cargo || 'Seu concurso')}${meuConcurso.banca ? ` · ${escHtml(meuConcurso.banca)}` : ''}</div>
       <button type="button" class="btn btn-primary" style="width:100%;padding:8px;font-size:0.8rem" onclick="goPage('concurso')">Ver detalhes completos</button>
     `
   } catch(e) {
@@ -2609,7 +2621,7 @@ function renderDashboard() {
             <i class="fas fa-bell" style="color:${cor};font-size:1.1rem"></i>
             <div>
               <div style="font-weight:700;color:${cor};font-size:0.9rem">${texto}</div>
-              <div style="font-size:0.75rem;color:var(--text2)">${escHtml(meuConcurso.cargo || '')} — clique pra ver os detalhes</div>
+              <div style="font-size:0.75rem;color:var(--text2)">${escHtml(meuConcurso.nome || meuConcurso.cargo || '')} — clique pra ver os detalhes</div>
             </div>
           </div>`
 
@@ -2629,16 +2641,16 @@ function renderDashboard() {
               iconeEl.textContent = '🍀'
               tituloEl.textContent = rotulo === 'para a prova' ? 'É hoje!' : 'Divulgação dos locais é hoje!'
               textoEl.textContent = rotulo === 'para a prova'
-                ? `Boa prova em ${meuConcurso.cargo || 'seu concurso'}! Você se preparou, confie no seu estudo.`
-                : `Fica de olho — os locais de prova de ${meuConcurso.cargo || 'seu concurso'} saem hoje.`
+                ? `Boa prova em ${meuConcurso.nome || meuConcurso.cargo || 'seu concurso'}! Você se preparou, confie no seu estudo.`
+                : `Fica de olho — os locais de prova de ${meuConcurso.nome || meuConcurso.cargo || 'seu concurso'} saem hoje.`
             } else if (alvo === 1) {
               iconeEl.textContent = '⏰'
               tituloEl.textContent = `Falta 1 dia ${rotulo}!`
-              textoEl.textContent = `${meuConcurso.cargo || 'Seu concurso'} está chegando. Hora de revisar com calma o que já estudou.`
+              textoEl.textContent = `${meuConcurso.nome || meuConcurso.cargo || 'Seu concurso'} está chegando. Hora de revisar com calma o que já estudou.`
             } else {
               iconeEl.textContent = '⏰'
               tituloEl.textContent = `Faltam ${alvo} dias ${rotulo}!`
-              textoEl.textContent = `${meuConcurso.cargo || 'Seu concurso'} está bem perto. Aproveite esse tempo pra reforçar os pontos fracos.`
+              textoEl.textContent = `${meuConcurso.nome || meuConcurso.cargo || 'Seu concurso'} está bem perto. Aproveite esse tempo pra reforçar os pontos fracos.`
             }
             document.getElementById('modal-alerta-concurso').classList.add('open')
             tocarSomNotificacao(alvo <= 1)
@@ -3763,6 +3775,42 @@ function toggleExpandirEnunciado() {
   btn.textContent = ta.classList.contains('enunciado-expandido') ? 'Recolher' : 'Expandir'
 }
 // Aplica negrito/sublinhado em tempo real na seleção (a caixa é "contenteditable")
+// Junta quebras de linha "soltas" (como as que vêm ao copiar de PDF, onde cada
+// linha visual da página vira uma linha separada) em parágrafos corridos —
+// mantém quebra de parágrafo de verdade quando há linha em branco, ou quando a
+// linha começa com espaço/tab (recuo de primeira linha, comum em provas/PDFs).
+function limparTextoColado(texto) {
+  const linhasBrutas = texto.replace(/\r\n?/g, '\n').split('\n')
+  const paragrafos = []
+  let atual = ''
+  linhasBrutas.forEach(linhaBruta => {
+    if (linhaBruta.trim() === '') {
+      if (atual.trim()) paragrafos.push(atual.trim())
+      atual = ''
+      return
+    }
+    const comecaComRecuo = /^[ \t]/.test(linhaBruta)
+    const linhaLimpa = linhaBruta.trim()
+    if (comecaComRecuo && atual.trim()) {
+      paragrafos.push(atual.trim())
+      atual = linhaLimpa
+    } else {
+      atual = atual ? `${atual} ${linhaLimpa}` : linhaLimpa
+    }
+  })
+  if (atual.trim()) paragrafos.push(atual.trim())
+  return paragrafos
+}
+
+function tratarColagem(e) {
+  e.preventDefault()
+  const texto = (e.clipboardData || window.clipboardData).getData('text/plain')
+  if (!texto) return
+  const paragrafos = limparTextoColado(texto)
+  const html = paragrafos.map(p => `<div>${escHtml(p)}</div>`).join('')
+  document.execCommand('insertHTML', false, html)
+}
+
 function formatarSelecao(id, comando) {
   const el = document.getElementById(id)
   const sel = window.getSelection()
@@ -4177,6 +4225,15 @@ function getTemasComMateria() {
       materiaPrincipal: Object.entries(t.materias).sort((a,b) => b[1]-a[1])[0]?.[0] || ''
     }))
     .sort((a,b) => b.count - a.count)
+}
+
+function toggleListaTemasTags(tagsId, toggleId) {
+  const tagsEl = document.getElementById(tagsId)
+  const toggleEl = document.getElementById(toggleId)
+  if (!tagsEl || !toggleEl) return
+  const abrir = tagsEl.style.display === 'none' || !tagsEl.style.display
+  tagsEl.style.display = abrir ? 'flex' : 'none'
+  toggleEl.textContent = abrir ? 'Ocultar temas' : 'Ver temas já cadastrados'
 }
 
 function renderTemasTags(inputId, tagsId) {
@@ -5759,8 +5816,8 @@ function renderConcurso() {
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:16px">
         <div>
-          <div class="card-title" style="margin-bottom:0"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-graduation-cap"></i></span>${escHtml(meuConcurso.cargo || 'Meu concurso')}</div>
-          ${meuConcurso.banca ? `<div style="font-size:0.78rem;color:var(--text2);margin-top:4px;margin-left:38px">Banca: ${escHtml(meuConcurso.banca)}</div>` : ''}
+          <div class="card-title" style="margin-bottom:0"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-graduation-cap"></i></span>${escHtml(meuConcurso.nome || meuConcurso.cargo || 'Meu concurso')}</div>
+          ${(meuConcurso.nome && meuConcurso.cargo) || meuConcurso.banca ? `<div style="font-size:0.78rem;color:var(--text2);margin-top:4px;margin-left:38px">${meuConcurso.nome && meuConcurso.cargo ? escHtml(meuConcurso.cargo) : ''}${meuConcurso.nome && meuConcurso.cargo && meuConcurso.banca ? ' · ' : ''}${meuConcurso.banca ? `Banca: ${escHtml(meuConcurso.banca)}` : ''}</div>` : ''}
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-ghost" style="padding:6px 12px;font-size:0.8rem" onclick="abrirModalConcurso()"><i class="fas fa-edit"></i> Editar</button>
@@ -5827,6 +5884,7 @@ let _concursoLinhaId = 0
 
 function abrirModalConcurso() {
   document.getElementById('modal-concurso-titulo').textContent = meuConcurso ? '🎓 Editar Concurso' : '🎓 Cadastrar Concurso'
+  document.getElementById('concurso-nome').value = meuConcurso?.nome || ''
   document.getElementById('concurso-cargo').value = meuConcurso?.cargo || ''
   document.getElementById('concurso-banca').value = meuConcurso?.banca || ''
   document.getElementById('concurso-data-locais').value = meuConcurso?.data_locais || ''
@@ -5889,6 +5947,7 @@ function atualizarTotalConcursoQuestoes() {
 }
 
 async function salvarConcurso() {
+  const nome = document.getElementById('concurso-nome').value.trim()
   const cargo = document.getElementById('concurso-cargo').value.trim()
   const banca = document.getElementById('concurso-banca').value.trim()
   const dataLocais = document.getElementById('concurso-data-locais').value
@@ -5924,7 +5983,7 @@ async function salvarConcurso() {
   btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...'
 
   const dados = {
-    cargo, banca: banca || null, data_locais: dataLocais || null, data_prova: dataProva || null,
+    nome: nome || null, cargo, banca: banca || null, data_locais: dataLocais || null, data_prova: dataProva || null,
     hora_inicio_prova: horaInicio || null, hora_fim_prova: horaFim || null,
     tem_redacao: temRedacao,
     questoes_gerais: qtdGeraisVal !== '' ? Number(qtdGeraisVal) : null,
