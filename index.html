@@ -523,6 +523,11 @@ alter table "Redação" add column if not exists titulo text;
 alter table "Redação" add column if not exists tema text;
 alter table "Redação" add column if not exists conteudo text;
 alter table "Redação" add column if not exists cor text;
+alter table "Redação" add column if not exists area text;
+alter table "Redação" add column if not exists conteudo_introducao text;
+alter table "Redação" add column if not exists conteudo_desenvolvimento1 text;
+alter table "Redação" add column if not exists conteudo_desenvolvimento2 text;
+alter table "Redação" add column if not exists conteudo_conclusao text;
 alter table "Redação" add column if not exists created_at timestamptz default now();
 alter table "Concurso" add column if not exists nome text;
 alter table "Concurso" add column if not exists cargo text;
@@ -1314,14 +1319,48 @@ for each row execute function restringir_cadastro_email();</pre>
         <button class="btn btn-primary" onclick="criarModeloCuringa()"><i class="fas fa-plus"></i> Criar meu modelo curinga</button>
       </div>
 
-      <div id="modelo-view" style="display:none;font-size:0.9rem;line-height:1.7;white-space:pre-wrap;color:var(--text)"></div>
+      <div id="modelo-view" style="display:none">
+        <div id="modelo-view-tabs" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap"></div>
+        <div id="modelo-view-conteudo" style="font-size:0.88rem;line-height:1.7;white-space:pre-wrap;color:var(--text);min-height:40px"></div>
+      </div>
 
       <div id="modelo-edit" style="display:none">
-        <div style="display:flex;gap:6px;margin-bottom:6px">
-          <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
-          <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+        <div id="modelo-edit-tabs" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+          <button type="button" id="modelo-edit-tab-introducao" class="mapa-tab-btn active" onclick="selecionarSecaoModeloEdit('introducao')">Introdução</button>
+          <button type="button" id="modelo-edit-tab-desenvolvimento1" class="mapa-tab-btn" onclick="selecionarSecaoModeloEdit('desenvolvimento1')">Desenvolvimento 1</button>
+          <button type="button" id="modelo-edit-tab-desenvolvimento2" class="mapa-tab-btn" onclick="selecionarSecaoModeloEdit('desenvolvimento2')">Desenvolvimento 2</button>
+          <button type="button" id="modelo-edit-tab-conclusao" class="mapa-tab-btn" onclick="selecionarSecaoModeloEdit('conclusao')">Conclusão</button>
         </div>
-        <div id="modelo-editavel" class="rich-editable" contenteditable="true" data-placeholder="Escreva aqui seu modelo curinga de redação..." style="min-height:220px"></div>
+
+        <div class="modelo-secao-edit" data-secao="introducao">
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-introducao','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-introducao','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+          </div>
+          <div id="modelo-editavel-introducao" class="rich-editable" contenteditable="true" data-placeholder="Escreva a introdução do seu modelo curinga..." style="min-height:180px" onpaste="tratarColagem(event)"></div>
+        </div>
+        <div class="modelo-secao-edit" data-secao="desenvolvimento1" style="display:none">
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-desenvolvimento1','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-desenvolvimento1','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+          </div>
+          <div id="modelo-editavel-desenvolvimento1" class="rich-editable" contenteditable="true" data-placeholder="Escreva o primeiro parágrafo de desenvolvimento..." style="min-height:180px" onpaste="tratarColagem(event)"></div>
+        </div>
+        <div class="modelo-secao-edit" data-secao="desenvolvimento2" style="display:none">
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-desenvolvimento2','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-desenvolvimento2','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+          </div>
+          <div id="modelo-editavel-desenvolvimento2" class="rich-editable" contenteditable="true" data-placeholder="Escreva o segundo parágrafo de desenvolvimento..." style="min-height:180px" onpaste="tratarColagem(event)"></div>
+        </div>
+        <div class="modelo-secao-edit" data-secao="conclusao" style="display:none">
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-conclusao','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-conclusao','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+          </div>
+          <div id="modelo-editavel-conclusao" class="rich-editable" contenteditable="true" data-placeholder="Escreva a conclusão..." style="min-height:180px" onpaste="tratarColagem(event)"></div>
+        </div>
+
         <div style="display:flex;gap:10px;margin-top:10px;justify-content:flex-end">
           <button class="btn btn-ghost btn-sm" onclick="cancelarEdicaoModelo()">Cancelar</button>
           <button class="btn btn-primary btn-sm" onclick="salvarModelo()"><i class="fas fa-save"></i> Salvar modelo</button>
@@ -1340,6 +1379,10 @@ for each row execute function restringir_cadastro_email();</pre>
       <input type="text" id="busca-redacao" placeholder="Buscar por título, tema ou conteúdo..." style="padding-left:36px" oninput="renderRedacao()">
     </div>
 
+    <div style="font-size:0.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Área</div>
+    <div class="mapas-tabs" id="redacao-areas-tabs"></div>
+
+    <div style="font-size:0.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 4px">Tema</div>
     <div class="mapas-tabs" id="redacao-temas-tabs"></div>
 
     <div id="redacao-grid"></div>
@@ -1756,8 +1799,13 @@ for each row execute function restringir_cadastro_email();</pre>
     </div>
     <div class="form-group">
       <label>Tema</label>
-      <input type="text" id="nota-tema" placeholder="Ex: Educação, Tecnologia, Meio ambiente..." list="lista-temas-redacao">
+      <input type="text" id="nota-tema" placeholder="Ex: Uso de celular na educação, Desigualdade social..." list="lista-temas-redacao">
       <datalist id="lista-temas-redacao"></datalist>
+    </div>
+    <div class="form-group">
+      <label>Área <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(pra filtrar melhor — Educação, Saúde, Financeiro...)</span></label>
+      <input type="text" id="nota-area" placeholder="Ex: Educação, Saúde, Financeiro, Segurança Pública..." list="lista-areas-redacao">
+      <datalist id="lista-areas-redacao"></datalist>
     </div>
     <div class="form-group">
       <label>Cor</label>
@@ -1792,6 +1840,10 @@ for each row execute function restringir_cadastro_email();</pre>
     <div class="form-group">
       <label>Tema</label>
       <input type="text" id="duplicar-tema" placeholder="Ex: Educação" list="lista-temas-redacao">
+    </div>
+    <div class="form-group">
+      <label>Área</label>
+      <input type="text" id="duplicar-area" placeholder="Ex: Educação, Saúde, Financeiro..." list="lista-areas-redacao">
     </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
       <button class="btn btn-ghost" onclick="document.getElementById('modal-duplicar').classList.remove('open')">Cancelar</button>
@@ -2420,6 +2472,15 @@ let editalTopicos = []
 let ultimaAnaliseEdital = null
 let redacoes = []
 let filtroTemaRedacao = 'todos'
+let filtroAreaRedacao = 'todos'
+const SECOES_MODELO = [
+  { chave: 'introducao', label: 'Introdução', campo: 'conteudo_introducao' },
+  { chave: 'desenvolvimento1', label: 'Desenvolvimento 1', campo: 'conteudo_desenvolvimento1' },
+  { chave: 'desenvolvimento2', label: 'Desenvolvimento 2', campo: 'conteudo_desenvolvimento2' },
+  { chave: 'conclusao', label: 'Conclusão', campo: 'conteudo_conclusao' },
+]
+let modeloSecaoAtivaView = 'introducao'
+let modeloSecaoAtivaEdit = 'introducao'
 let meuConcurso = null
 let _duplicarOrigemId = null // id do card sendo duplicado (null = duplicando o modelo)
 let _corSelecionadaNota = ''
@@ -2986,11 +3047,19 @@ function renderRedacao() {
   document.getElementById('modelo-acoes-view').style.display = modelo ? 'flex' : 'none'
   document.getElementById('modelo-edit').style.display = 'none'
   document.getElementById('modelo-view').style.display = modelo ? 'block' : 'none'
-  if (modelo) document.getElementById('modelo-view').innerHTML = formatarEnunciado(modelo.conteudo || '')
+  if (modelo) renderModeloView(modelo)
 
   let notas = redacoes.filter(r => r.tipo !== 'modelo')
 
-  // Chips de tema
+  // Chips de área
+  const areas = [...new Set(notas.map(n => n.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  document.getElementById('redacao-areas-tabs').innerHTML =
+    `<button class="mapa-tab-btn ${filtroAreaRedacao === 'todos' ? 'active' : ''}" onclick="filtrarAreaRedacao('todos')">Todas <span class="count">${notas.length}</span></button>` +
+    areas.map(a => `<button class="mapa-tab-btn ${filtroAreaRedacao === a ? 'active' : ''}" onclick="filtrarAreaRedacao('${escAttr(a)}')">${escHtml(a)} <span class="count">${notas.filter(n => n.area === a).length}</span></button>`).join('')
+
+  if (filtroAreaRedacao !== 'todos') notas = notas.filter(n => n.area === filtroAreaRedacao)
+
+  // Chips de tema (já considerando o filtro de área acima)
   const temas = [...new Set(notas.map(n => n.tema).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
   document.getElementById('redacao-temas-tabs').innerHTML =
     `<button class="mapa-tab-btn ${filtroTemaRedacao === 'todos' ? 'active' : ''}" onclick="filtrarTemaRedacao('todos')">Todos <span class="count">${notas.length}</span></button>` +
@@ -3003,12 +3072,16 @@ function renderRedacao() {
     notas = notas.filter(n =>
       (n.titulo && n.titulo.toLowerCase().includes(busca)) ||
       (n.tema && n.tema.toLowerCase().includes(busca)) ||
+      (n.area && n.area.toLowerCase().includes(busca)) ||
       (n.conteudo && n.conteudo.toLowerCase().includes(busca))
     )
   }
 
-  // Datalist de temas (reaproveitado nos modais de nota/duplicar)
+  // Datalists (reaproveitados nos modais de nota/duplicar)
   document.getElementById('lista-temas-redacao').innerHTML = temas.map(t => `<option value="${escAttr(t)}">`).join('')
+  const todasAsAreas = [...new Set(redacoes.filter(r => r.tipo !== 'modelo').map(n => n.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const listaAreasEl = document.getElementById('lista-areas-redacao')
+  if (listaAreasEl) listaAreasEl.innerHTML = todasAsAreas.map(a => `<option value="${escAttr(a)}">`).join('')
 
   const grid = document.getElementById('redacao-grid')
   if (!notas.length) {
@@ -3019,7 +3092,10 @@ function renderRedacao() {
   grid.innerHTML = `<div class="nota-grid">` + notas.slice().reverse().map(n => `
     <div class="nota-card ${n.cor ? 'nota-cor-' + n.cor : ''}" onclick="abrirEditarNota('${n.id}')">
       <div class="nota-card-titulo">${escHtml(n.titulo || 'Sem título')}</div>
-      ${n.tema ? `<span style="font-size:0.7rem;color:var(--accent)"><i class="fas fa-tag" style="margin-right:3px"></i>${escHtml(n.tema)}</span>` : ''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${n.area ? `<span style="font-size:0.68rem;color:var(--text2);background:var(--surface2);padding:1px 7px;border-radius:10px"><i class="fas fa-layer-group" style="margin-right:3px"></i>${escHtml(n.area)}</span>` : ''}
+        ${n.tema ? `<span style="font-size:0.7rem;color:var(--accent)"><i class="fas fa-tag" style="margin-right:3px"></i>${escHtml(n.tema)}</span>` : ''}
+      </div>
       <div class="nota-card-conteudo" style="margin-top:6px">${formatarEnunciado(n.conteudo || '')}</div>
       <div class="nota-card-footer">
         <span style="font-size:0.68rem;color:var(--text2)">${n.created_at ? new Date(n.created_at).toLocaleDateString('pt-BR') : ''}</span>
@@ -3036,6 +3112,12 @@ function filtrarTemaRedacao(tema) {
   renderRedacao()
 }
 
+function filtrarAreaRedacao(area) {
+  filtroAreaRedacao = area
+  filtroTemaRedacao = 'todos' // muda a área, reseta o sub-filtro de tema pra não ficar vazio à toa
+  renderRedacao()
+}
+
 // --- Modelo curinga ---
 async function criarModeloCuringa() {
   mostrarLoading('Criando modelo curinga...')
@@ -3045,13 +3127,61 @@ async function criarModeloCuringa() {
   else notif('Erro ao criar modelo!', 'error')
 }
 
+// O modelo antigo (uma coisa só, campo "conteudo") ainda não foi dividido em
+// seções: enquanto isso, mostramos ele inteiro na aba Introdução, pra não
+// perder nada — o usuário pode redistribuir os parágrafos manualmente editando.
+function modeloTemSecoesPreenchidas(modelo) {
+  return SECOES_MODELO.some(s => modelo[s.campo])
+}
+
+function renderModeloView(modelo) {
+  const tabsEl = document.getElementById('modelo-view-tabs')
+  tabsEl.innerHTML = SECOES_MODELO.map(s => `
+    <button type="button" class="mapa-tab-btn ${modeloSecaoAtivaView === s.chave ? 'active' : ''}" onclick="selecionarSecaoModeloView('${s.chave}')">${s.label}</button>
+  `).join('')
+
+  const secaoAtual = SECOES_MODELO.find(s => s.chave === modeloSecaoAtivaView) || SECOES_MODELO[0]
+  const temSecoes = modeloTemSecoesPreenchidas(modelo)
+  let texto = modelo[secaoAtual.campo] || ''
+  if (!temSecoes && secaoAtual.chave === 'introducao' && modelo.conteudo) texto = modelo.conteudo
+
+  const conteudoEl = document.getElementById('modelo-view-conteudo')
+  conteudoEl.innerHTML = texto
+    ? formatarEnunciado(texto)
+    : `<div style="color:var(--text2);font-size:0.85rem;font-style:italic">Seção "${secaoAtual.label}" ainda vazia. Clique em Editar pra preencher.</div>`
+}
+
+function selecionarSecaoModeloView(chave) {
+  modeloSecaoAtivaView = chave
+  const modelo = redacoes.find(r => r.tipo === 'modelo')
+  if (modelo) renderModeloView(modelo)
+}
+
+function selecionarSecaoModeloEdit(chave) {
+  modeloSecaoAtivaEdit = chave
+  document.querySelectorAll('.modelo-secao-edit').forEach(el => {
+    el.style.display = el.dataset.secao === chave ? 'block' : 'none'
+  })
+  document.querySelectorAll('#modelo-edit-tabs .mapa-tab-btn').forEach(btn => btn.classList.remove('active'))
+  const btnAtivo = document.getElementById(`modelo-edit-tab-${chave}`)
+  if (btnAtivo) btnAtivo.classList.add('active')
+}
+
 function toggleEditarModelo() {
   const modelo = redacoes.find(r => r.tipo === 'modelo')
   if (!modelo) return
   document.getElementById('modelo-view').style.display = 'none'
   document.getElementById('modelo-acoes-view').style.display = 'none'
   document.getElementById('modelo-edit').style.display = 'block'
-  document.getElementById('modelo-editavel').innerHTML = formatarEnunciado(modelo.conteudo || '')
+
+  const temSecoes = modeloTemSecoesPreenchidas(modelo)
+  SECOES_MODELO.forEach(s => {
+    let valor = modelo[s.campo] || ''
+    if (!temSecoes && s.chave === 'introducao' && modelo.conteudo) valor = modelo.conteudo
+    document.getElementById(`modelo-editavel-${s.chave}`).innerHTML = formatarEnunciado(valor)
+  })
+  modeloSecaoAtivaEdit = 'introducao'
+  selecionarSecaoModeloEdit('introducao')
 }
 
 function cancelarEdicaoModelo() {
@@ -3063,11 +3193,15 @@ function cancelarEdicaoModelo() {
 async function salvarModelo() {
   const modelo = redacoes.find(r => r.tipo === 'modelo')
   if (!modelo) return
-  const conteudo = htmlParaMarkdown(document.getElementById('modelo-editavel')).trim()
+  const dados = {}
+  SECOES_MODELO.forEach(s => {
+    dados[s.campo] = htmlParaMarkdown(document.getElementById(`modelo-editavel-${s.chave}`)).trim()
+  })
   mostrarLoading('Salvando modelo...')
-  await supa.update(TABELA_REDACAO, modelo.id, { conteudo })
+  await supa.update(TABELA_REDACAO, modelo.id, dados)
   esconderLoading()
-  modelo.conteudo = conteudo
+  Object.assign(modelo, dados)
+  modeloSecaoAtivaView = 'introducao'
   cancelarEdicaoModelo()
   notif('✅ Modelo curinga salvo!')
   renderRedacao()
@@ -3093,6 +3227,7 @@ function abrirModalNovaNota() {
   document.getElementById('nota-id').value = ''
   document.getElementById('nota-titulo').value = ''
   document.getElementById('nota-tema').value = filtroTemaRedacao !== 'todos' ? filtroTemaRedacao : ''
+  document.getElementById('nota-area').value = filtroAreaRedacao !== 'todos' ? filtroAreaRedacao : ''
   document.getElementById('nota-conteudo').innerHTML = ''
   document.getElementById('btn-deletar-nota').style.display = 'none'
   _corSelecionadaNota = ''
@@ -3107,6 +3242,7 @@ function abrirEditarNota(id) {
   document.getElementById('nota-id').value = n.id
   document.getElementById('nota-titulo').value = n.titulo || ''
   document.getElementById('nota-tema').value = n.tema || ''
+  document.getElementById('nota-area').value = n.area || ''
   document.getElementById('nota-conteudo').innerHTML = formatarEnunciado(n.conteudo || '')
   document.getElementById('btn-deletar-nota').style.display = 'inline-flex'
   _corSelecionadaNota = n.cor || ''
@@ -3119,6 +3255,7 @@ async function salvarNota() {
   const dados = {
     titulo: document.getElementById('nota-titulo').value.trim(),
     tema: document.getElementById('nota-tema').value.trim(),
+    area: document.getElementById('nota-area').value.trim(),
     conteudo: htmlParaMarkdown(document.getElementById('nota-conteudo')).trim(),
     cor: _corSelecionadaNota,
   }
@@ -3166,6 +3303,7 @@ function abrirModalDuplicar(id) {
   if (!origem) { notif('Crie o modelo curinga primeiro', 'error'); return }
   document.getElementById('duplicar-titulo').value = id ? `${origem.titulo || ''} (cópia)` : 'Redação sobre '
   document.getElementById('duplicar-tema').value = id ? (origem.tema || '') : ''
+  document.getElementById('duplicar-area').value = id ? (origem.area || '') : ''
   document.getElementById('modal-duplicar').classList.add('open')
 }
 
@@ -3174,9 +3312,19 @@ async function confirmarDuplicar() {
   if (!origem) return
   const titulo = document.getElementById('duplicar-titulo').value.trim()
   const tema = document.getElementById('duplicar-tema').value.trim()
+  const area = document.getElementById('duplicar-area').value.trim()
   if (!titulo) { notif('Dê um título para a nova nota', 'error'); return }
+
+  let conteudo = origem.conteudo || ''
+  if (origem.tipo === 'modelo') {
+    // Junta as 4 seções (Introdução, Desenvolvimento 1/2, Conclusão) num texto
+    // corrido só, já que a nota final não usa a divisão em abas — é pra escrever direto.
+    const partes = SECOES_MODELO.map(s => origem[s.campo]).filter(Boolean)
+    conteudo = partes.length ? partes.join('\n\n') : (origem.conteudo || '')
+  }
+
   mostrarLoading('Duplicando...')
-  const r = await supa.insert(TABELA_REDACAO, { tipo: 'nota', titulo, tema, conteudo: origem.conteudo || '', cor: origem.tipo === 'modelo' ? '' : (origem.cor || '') })
+  const r = await supa.insert(TABELA_REDACAO, { tipo: 'nota', titulo, tema, area, conteudo, cor: origem.tipo === 'modelo' ? '' : (origem.cor || '') })
   esconderLoading()
   if (r && r[0]) redacoes.push(r[0])
   document.getElementById('modal-duplicar').classList.remove('open')
