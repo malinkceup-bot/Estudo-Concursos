@@ -311,6 +311,7 @@
     border-radius: var(--radius); padding: 14px; cursor: pointer; transition: border-color 0.2s;
   }
   .nota-card:hover { border-color: var(--accent); }
+  .nota-modelo-completo { border-color: var(--accent) !important; border-width: 2px; }
   .nota-card-titulo { font-weight: 700; font-size: 0.9rem; color: var(--text); margin-bottom: 4px; }
   .nota-card-conteudo { font-size: 0.82rem; color: var(--text2); line-height: 1.5; white-space: pre-wrap; max-height: 180px; overflow: hidden; }
   .nota-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
@@ -528,11 +529,16 @@ alter table "Redação" add column if not exists conteudo_introducao text;
 alter table "Redação" add column if not exists conteudo_desenvolvimento1 text;
 alter table "Redação" add column if not exists conteudo_desenvolvimento2 text;
 alter table "Redação" add column if not exists conteudo_conclusao text;
+alter table "Redação" add column if not exists parte text;
 alter table "Redação" add column if not exists created_at timestamptz default now();
 alter table "Concurso" add column if not exists nome text;
 alter table "Concurso" add column if not exists cargo text;
 alter table "Concurso" add column if not exists banca text;
 alter table "Concurso" add column if not exists data_locais date;
+alter table "Concurso" add column if not exists local_nome text;
+alter table "Concurso" add column if not exists local_endereco text;
+alter table "Concurso" add column if not exists local_cidade text;
+alter table "Concurso" add column if not exists local_sala text;
 alter table "Concurso" add column if not exists data_prova date;
 alter table "Concurso" add column if not exists hora_inicio_prova time;
 alter table "Concurso" add column if not exists hora_fim_prova time;
@@ -1303,73 +1309,8 @@ for each row execute function restringir_cadastro_email();</pre>
   <!-- REDAÇÃO -->
   <div class="page" id="page-redacao">
 
-    <!-- MODELO CURINGA -->
-    <div class="card" id="card-modelo-curinga" style="border:1px solid var(--accent);background:linear-gradient(135deg, rgba(79,142,247,0.08), var(--surface))">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
-        <div class="card-title" style="margin:0"><i class="fas fa-thumbtack" style="margin-right:6px"></i>Modelo Curinga</div>
-        <div style="display:flex;gap:8px" id="modelo-acoes-view">
-          <button class="btn btn-ghost btn-sm" onclick="toggleEditarModelo()"><i class="fas fa-edit"></i> Editar</button>
-          <button class="btn btn-primary btn-sm" onclick="abrirModalDuplicar(null)"><i class="fas fa-clone"></i> Duplicar p/ novo tema</button>
-        </div>
-      </div>
-
-      <div id="modelo-vazio" style="display:none;text-align:center;padding:20px 0">
-        <div style="font-size:2rem;margin-bottom:10px">📌</div>
-        <div style="color:var(--text2);margin-bottom:14px;font-size:0.85rem">Você ainda não tem um modelo curinga salvo.</div>
-        <button class="btn btn-primary" onclick="criarModeloCuringa()"><i class="fas fa-plus"></i> Criar meu modelo curinga</button>
-      </div>
-
-      <div id="modelo-view" style="display:none">
-        <div id="modelo-view-tabs" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap"></div>
-        <div id="modelo-view-conteudo" style="font-size:0.88rem;line-height:1.7;white-space:pre-wrap;color:var(--text);min-height:40px"></div>
-      </div>
-
-      <div id="modelo-edit" style="display:none">
-        <div id="modelo-edit-tabs" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
-          <button type="button" id="modelo-edit-tab-introducao" class="mapa-tab-btn active" onclick="selecionarSecaoModeloEdit('introducao')">Introdução</button>
-          <button type="button" id="modelo-edit-tab-desenvolvimento1" class="mapa-tab-btn" onclick="selecionarSecaoModeloEdit('desenvolvimento1')">Desenvolvimento 1</button>
-          <button type="button" id="modelo-edit-tab-desenvolvimento2" class="mapa-tab-btn" onclick="selecionarSecaoModeloEdit('desenvolvimento2')">Desenvolvimento 2</button>
-          <button type="button" id="modelo-edit-tab-conclusao" class="mapa-tab-btn" onclick="selecionarSecaoModeloEdit('conclusao')">Conclusão</button>
-        </div>
-
-        <div class="modelo-secao-edit" data-secao="introducao">
-          <div style="display:flex;gap:6px;margin-bottom:6px">
-            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-introducao','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
-            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-introducao','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
-          </div>
-          <div id="modelo-editavel-introducao" class="rich-editable" contenteditable="true" data-placeholder="Escreva a introdução do seu modelo curinga..." style="min-height:180px" onpaste="tratarColagem(event)"></div>
-        </div>
-        <div class="modelo-secao-edit" data-secao="desenvolvimento1" style="display:none">
-          <div style="display:flex;gap:6px;margin-bottom:6px">
-            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-desenvolvimento1','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
-            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-desenvolvimento1','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
-          </div>
-          <div id="modelo-editavel-desenvolvimento1" class="rich-editable" contenteditable="true" data-placeholder="Escreva o primeiro parágrafo de desenvolvimento..." style="min-height:180px" onpaste="tratarColagem(event)"></div>
-        </div>
-        <div class="modelo-secao-edit" data-secao="desenvolvimento2" style="display:none">
-          <div style="display:flex;gap:6px;margin-bottom:6px">
-            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-desenvolvimento2','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
-            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-desenvolvimento2','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
-          </div>
-          <div id="modelo-editavel-desenvolvimento2" class="rich-editable" contenteditable="true" data-placeholder="Escreva o segundo parágrafo de desenvolvimento..." style="min-height:180px" onpaste="tratarColagem(event)"></div>
-        </div>
-        <div class="modelo-secao-edit" data-secao="conclusao" style="display:none">
-          <div style="display:flex;gap:6px;margin-bottom:6px">
-            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-conclusao','bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
-            <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecao('modelo-editavel-conclusao','underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
-          </div>
-          <div id="modelo-editavel-conclusao" class="rich-editable" contenteditable="true" data-placeholder="Escreva a conclusão..." style="min-height:180px" onpaste="tratarColagem(event)"></div>
-        </div>
-
-        <div style="display:flex;gap:10px;margin-top:10px;justify-content:flex-end">
-          <button class="btn btn-ghost btn-sm" onclick="cancelarEdicaoModelo()">Cancelar</button>
-          <button class="btn btn-primary btn-sm" onclick="salvarModelo()"><i class="fas fa-save"></i> Salvar modelo</button>
-        </div>
-      </div>
-    </div>
-
     <!-- MURAL DE NOTAS -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin:22px 0 12px;flex-wrap:wrap;gap:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
       <div class="card-title" style="margin:0">Mural de Anotações</div>
       <button class="btn btn-primary btn-sm" onclick="abrirModalNovaNota()"><i class="fas fa-plus"></i> Nova nota</button>
     </div>
@@ -1379,7 +1320,10 @@ for each row execute function restringir_cadastro_email();</pre>
       <input type="text" id="busca-redacao" placeholder="Buscar por título, tema ou conteúdo..." style="padding-left:36px" oninput="renderRedacao()">
     </div>
 
-    <div style="font-size:0.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Área</div>
+    <div style="font-size:0.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Parte da Redação</div>
+    <div class="mapas-tabs" id="redacao-partes-tabs"></div>
+
+    <div style="font-size:0.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 4px">Área</div>
     <div class="mapas-tabs" id="redacao-areas-tabs"></div>
 
     <div style="font-size:0.72rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 4px">Tema</div>
@@ -1510,6 +1454,29 @@ for each row execute function restringir_cadastro_email();</pre>
     <div class="form-group">
       <label>Data de divulgação dos locais de prova</label>
       <input type="date" id="concurso-data-locais">
+    </div>
+
+    <div class="form-group">
+      <label>Local da Prova <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(preencha assim que os locais forem divulgados)</span></label>
+      <input type="text" id="concurso-local-nome" placeholder="Ex: Escola Estadual José de Alencar">
+    </div>
+
+    <div class="form-group">
+      <label>Endereço</label>
+      <input type="text" id="concurso-local-endereco" placeholder="Ex: Rua/Av., número, bairro">
+    </div>
+
+    <div class="form-group">
+      <div style="display:flex;gap:10px">
+        <div style="flex:2">
+          <label>Cidade / UF</label>
+          <input type="text" id="concurso-local-cidade" placeholder="Ex: Fortaleza - CE">
+        </div>
+        <div style="flex:1">
+          <label>Sala</label>
+          <input type="text" id="concurso-local-sala" placeholder="Ex: 12">
+        </div>
+      </div>
     </div>
 
     <div class="form-group">
@@ -1796,6 +1763,17 @@ for each row execute function restringir_cadastro_email();</pre>
     <div class="form-group">
       <label>Título</label>
       <input type="text" id="nota-titulo" placeholder="Ex: Repertório sobre desigualdade social">
+    </div>
+    <div class="form-group">
+      <label>Parte da Redação <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional — se essa nota é um trecho pra usar numa parte específica)</span></label>
+      <select id="nota-parte">
+        <option value="">Trecho avulso / sem parte definida</option>
+        <option value="introducao">Introdução</option>
+        <option value="desenvolvimento1">Desenvolvimento 1</option>
+        <option value="desenvolvimento2">Desenvolvimento 2</option>
+        <option value="conclusao">Conclusão</option>
+        <option value="completa">Modelo completo (redação inteira)</option>
+      </select>
     </div>
     <div class="form-group">
       <label>Tema</label>
@@ -2473,14 +2451,25 @@ let ultimaAnaliseEdital = null
 let redacoes = []
 let filtroTemaRedacao = 'todos'
 let filtroAreaRedacao = 'todos'
+let filtroParteRedacao = 'todos'
+// Usado só para migrar registros antigos do "modelo curinga" (tipo='modelo', com
+// as 4 seções em colunas separadas) para o formato novo de nota unificada
 const SECOES_MODELO = [
   { chave: 'introducao', label: 'Introdução', campo: 'conteudo_introducao' },
   { chave: 'desenvolvimento1', label: 'Desenvolvimento 1', campo: 'conteudo_desenvolvimento1' },
   { chave: 'desenvolvimento2', label: 'Desenvolvimento 2', campo: 'conteudo_desenvolvimento2' },
   { chave: 'conclusao', label: 'Conclusão', campo: 'conteudo_conclusao' },
 ]
-let modeloSecaoAtivaView = 'introducao'
-let modeloSecaoAtivaEdit = 'introducao'
+const PARTES_REDACAO = [
+  { chave: 'introducao', label: 'Introdução' },
+  { chave: 'desenvolvimento1', label: 'Desenvolvimento 1' },
+  { chave: 'desenvolvimento2', label: 'Desenvolvimento 2' },
+  { chave: 'conclusao', label: 'Conclusão' },
+  { chave: 'completa', label: 'Modelo completo' },
+]
+function labelParte(chave) {
+  return (PARTES_REDACAO.find(p => p.chave === chave) || {}).label || ''
+}
 let meuConcurso = null
 let _duplicarOrigemId = null // id do card sendo duplicado (null = duplicando o modelo)
 let _corSelecionadaNota = ''
@@ -3040,16 +3029,32 @@ function renderEdital() {
 }
 
 // ===== REDAÇÃO (modelo curinga + mural de notas) =====
-function renderRedacao() {
+// Migra o antigo "modelo curinga" (registro isolado, tipo='modelo', com as 4
+// seções em colunas separadas) para uma nota comum no mural, com parte='completa'
+// e as 4 seções já juntadas num texto corrido só. Roda uma vez só, sozinha.
+let _migracaoModeloRodou = false
+async function migrarModeloCuringaParaMural() {
+  if (_migracaoModeloRodou) return
+  _migracaoModeloRodou = true
   const modelo = redacoes.find(r => r.tipo === 'modelo')
+  if (!modelo) return
+  const partes = SECOES_MODELO.map(s => modelo[s.campo]).filter(Boolean)
+  const conteudo = partes.length ? partes.join('\n\n') : (modelo.conteudo || '')
+  const dados = { tipo: 'nota', parte: 'completa', titulo: modelo.titulo || 'Modelo Curinga', conteudo }
+  await supa.update(TABELA_REDACAO, modelo.id, dados)
+  Object.assign(modelo, dados)
+}
 
-  document.getElementById('modelo-vazio').style.display = modelo ? 'none' : 'block'
-  document.getElementById('modelo-acoes-view').style.display = modelo ? 'flex' : 'none'
-  document.getElementById('modelo-edit').style.display = 'none'
-  document.getElementById('modelo-view').style.display = modelo ? 'block' : 'none'
-  if (modelo) renderModeloView(modelo)
-
+function renderRedacao() {
   let notas = redacoes.filter(r => r.tipo !== 'modelo')
+
+  // Chips de parte da redação
+  const partesUsadas = [...new Set(notas.map(n => n.parte).filter(Boolean))]
+  document.getElementById('redacao-partes-tabs').innerHTML =
+    `<button class="mapa-tab-btn ${filtroParteRedacao === 'todos' ? 'active' : ''}" onclick="filtrarParteRedacao('todos')">Todas <span class="count">${notas.length}</span></button>` +
+    PARTES_REDACAO.filter(p => partesUsadas.includes(p.chave)).map(p => `<button class="mapa-tab-btn ${filtroParteRedacao === p.chave ? 'active' : ''}" onclick="filtrarParteRedacao('${p.chave}')">${p.label} <span class="count">${notas.filter(n => n.parte === p.chave).length}</span></button>`).join('')
+
+  if (filtroParteRedacao !== 'todos') notas = notas.filter(n => n.parte === filtroParteRedacao)
 
   // Chips de área
   const areas = [...new Set(notas.map(n => n.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
@@ -3059,7 +3064,7 @@ function renderRedacao() {
 
   if (filtroAreaRedacao !== 'todos') notas = notas.filter(n => n.area === filtroAreaRedacao)
 
-  // Chips de tema (já considerando o filtro de área acima)
+  // Chips de tema (já considerando os filtros de parte/área acima)
   const temas = [...new Set(notas.map(n => n.tema).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
   document.getElementById('redacao-temas-tabs').innerHTML =
     `<button class="mapa-tab-btn ${filtroTemaRedacao === 'todos' ? 'active' : ''}" onclick="filtrarTemaRedacao('todos')">Todos <span class="count">${notas.length}</span></button>` +
@@ -3090,11 +3095,12 @@ function renderRedacao() {
   }
 
   grid.innerHTML = `<div class="nota-grid">` + notas.slice().reverse().map(n => `
-    <div class="nota-card ${n.cor ? 'nota-cor-' + n.cor : ''}" onclick="abrirEditarNota('${n.id}')">
-      <div class="nota-card-titulo">${escHtml(n.titulo || 'Sem título')}</div>
+    <div class="nota-card ${n.cor ? 'nota-cor-' + n.cor : ''} ${n.parte === 'completa' ? 'nota-modelo-completo' : ''}" onclick="abrirEditarNota('${n.id}')">
+      <div class="nota-card-titulo">${n.parte === 'completa' ? '<i class="fas fa-thumbtack" style="margin-right:5px;color:var(--accent)"></i>' : ''}${escHtml(n.titulo || 'Sem título')}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${n.parte ? `<span style="font-size:0.68rem;color:var(--accent);background:rgba(79,142,247,0.12);padding:1px 7px;border-radius:10px;font-weight:600">${labelParte(n.parte)}</span>` : ''}
         ${n.area ? `<span style="font-size:0.68rem;color:var(--text2);background:var(--surface2);padding:1px 7px;border-radius:10px"><i class="fas fa-layer-group" style="margin-right:3px"></i>${escHtml(n.area)}</span>` : ''}
-        ${n.tema ? `<span style="font-size:0.7rem;color:var(--accent)"><i class="fas fa-tag" style="margin-right:3px"></i>${escHtml(n.tema)}</span>` : ''}
+        ${n.tema ? `<span style="font-size:0.7rem;color:var(--text2)"><i class="fas fa-tag" style="margin-right:3px"></i>${escHtml(n.tema)}</span>` : ''}
       </div>
       <div class="nota-card-conteudo" style="margin-top:6px">${formatarEnunciado(n.conteudo || '')}</div>
       <div class="nota-card-footer">
@@ -3118,92 +3124,10 @@ function filtrarAreaRedacao(area) {
   renderRedacao()
 }
 
-// --- Modelo curinga ---
-async function criarModeloCuringa() {
-  mostrarLoading('Criando modelo curinga...')
-  const r = await supa.insert(TABELA_REDACAO, { tipo: 'modelo', titulo: 'Modelo Curinga', conteudo: '' })
-  esconderLoading()
-  if (r && r[0]) { redacoes.push(r[0]); renderRedacao(); toggleEditarModelo() }
-  else notif('Erro ao criar modelo!', 'error')
-}
-
-// O modelo antigo (uma coisa só, campo "conteudo") ainda não foi dividido em
-// seções: enquanto isso, mostramos ele inteiro na aba Introdução, pra não
-// perder nada — o usuário pode redistribuir os parágrafos manualmente editando.
-function modeloTemSecoesPreenchidas(modelo) {
-  return SECOES_MODELO.some(s => modelo[s.campo])
-}
-
-function renderModeloView(modelo) {
-  const tabsEl = document.getElementById('modelo-view-tabs')
-  tabsEl.innerHTML = SECOES_MODELO.map(s => `
-    <button type="button" class="mapa-tab-btn ${modeloSecaoAtivaView === s.chave ? 'active' : ''}" onclick="selecionarSecaoModeloView('${s.chave}')">${s.label}</button>
-  `).join('')
-
-  const secaoAtual = SECOES_MODELO.find(s => s.chave === modeloSecaoAtivaView) || SECOES_MODELO[0]
-  const temSecoes = modeloTemSecoesPreenchidas(modelo)
-  let texto = modelo[secaoAtual.campo] || ''
-  if (!temSecoes && secaoAtual.chave === 'introducao' && modelo.conteudo) texto = modelo.conteudo
-
-  const conteudoEl = document.getElementById('modelo-view-conteudo')
-  conteudoEl.innerHTML = texto
-    ? formatarEnunciado(texto)
-    : `<div style="color:var(--text2);font-size:0.85rem;font-style:italic">Seção "${secaoAtual.label}" ainda vazia. Clique em Editar pra preencher.</div>`
-}
-
-function selecionarSecaoModeloView(chave) {
-  modeloSecaoAtivaView = chave
-  const modelo = redacoes.find(r => r.tipo === 'modelo')
-  if (modelo) renderModeloView(modelo)
-}
-
-function selecionarSecaoModeloEdit(chave) {
-  modeloSecaoAtivaEdit = chave
-  document.querySelectorAll('.modelo-secao-edit').forEach(el => {
-    el.style.display = el.dataset.secao === chave ? 'block' : 'none'
-  })
-  document.querySelectorAll('#modelo-edit-tabs .mapa-tab-btn').forEach(btn => btn.classList.remove('active'))
-  const btnAtivo = document.getElementById(`modelo-edit-tab-${chave}`)
-  if (btnAtivo) btnAtivo.classList.add('active')
-}
-
-function toggleEditarModelo() {
-  const modelo = redacoes.find(r => r.tipo === 'modelo')
-  if (!modelo) return
-  document.getElementById('modelo-view').style.display = 'none'
-  document.getElementById('modelo-acoes-view').style.display = 'none'
-  document.getElementById('modelo-edit').style.display = 'block'
-
-  const temSecoes = modeloTemSecoesPreenchidas(modelo)
-  SECOES_MODELO.forEach(s => {
-    let valor = modelo[s.campo] || ''
-    if (!temSecoes && s.chave === 'introducao' && modelo.conteudo) valor = modelo.conteudo
-    document.getElementById(`modelo-editavel-${s.chave}`).innerHTML = formatarEnunciado(valor)
-  })
-  modeloSecaoAtivaEdit = 'introducao'
-  selecionarSecaoModeloEdit('introducao')
-}
-
-function cancelarEdicaoModelo() {
-  document.getElementById('modelo-edit').style.display = 'none'
-  document.getElementById('modelo-acoes-view').style.display = 'flex'
-  document.getElementById('modelo-view').style.display = 'block'
-}
-
-async function salvarModelo() {
-  const modelo = redacoes.find(r => r.tipo === 'modelo')
-  if (!modelo) return
-  const dados = {}
-  SECOES_MODELO.forEach(s => {
-    dados[s.campo] = htmlParaMarkdown(document.getElementById(`modelo-editavel-${s.chave}`)).trim()
-  })
-  mostrarLoading('Salvando modelo...')
-  await supa.update(TABELA_REDACAO, modelo.id, dados)
-  esconderLoading()
-  Object.assign(modelo, dados)
-  modeloSecaoAtivaView = 'introducao'
-  cancelarEdicaoModelo()
-  notif('✅ Modelo curinga salvo!')
+function filtrarParteRedacao(parte) {
+  filtroParteRedacao = parte
+  filtroAreaRedacao = 'todos'
+  filtroTemaRedacao = 'todos'
   renderRedacao()
 }
 
@@ -3226,6 +3150,7 @@ function abrirModalNovaNota() {
   document.getElementById('modal-nota-titulo').innerHTML = '<i class="fas fa-sticky-note" style="margin-right:6px"></i>Nova nota'
   document.getElementById('nota-id').value = ''
   document.getElementById('nota-titulo').value = ''
+  document.getElementById('nota-parte').value = ['todos','completa'].includes(filtroParteRedacao) ? '' : filtroParteRedacao
   document.getElementById('nota-tema').value = filtroTemaRedacao !== 'todos' ? filtroTemaRedacao : ''
   document.getElementById('nota-area').value = filtroAreaRedacao !== 'todos' ? filtroAreaRedacao : ''
   document.getElementById('nota-conteudo').innerHTML = ''
@@ -3241,6 +3166,7 @@ function abrirEditarNota(id) {
   document.getElementById('modal-nota-titulo').innerHTML = '<i class="fas fa-sticky-note" style="margin-right:6px"></i>Editar nota'
   document.getElementById('nota-id').value = n.id
   document.getElementById('nota-titulo').value = n.titulo || ''
+  document.getElementById('nota-parte').value = n.parte || ''
   document.getElementById('nota-tema').value = n.tema || ''
   document.getElementById('nota-area').value = n.area || ''
   document.getElementById('nota-conteudo').innerHTML = formatarEnunciado(n.conteudo || '')
@@ -3254,6 +3180,7 @@ async function salvarNota() {
   const id = document.getElementById('nota-id').value
   const dados = {
     titulo: document.getElementById('nota-titulo').value.trim(),
+    parte: document.getElementById('nota-parte').value || null,
     tema: document.getElementById('nota-tema').value.trim(),
     area: document.getElementById('nota-area').value.trim(),
     conteudo: htmlParaMarkdown(document.getElementById('nota-conteudo')).trim(),
@@ -3296,35 +3223,27 @@ async function deletarNotaDireto(id) {
   }
 }
 
-// --- Duplicar (modelo ou nota) para um novo tema ---
+// --- Duplicar uma nota (inclusive um "modelo completo") para um novo tema ---
 function abrirModalDuplicar(id) {
-  _duplicarOrigemId = id // null = duplicando o modelo curinga
-  const origem = id ? redacoes.find(r => String(r.id) === String(id)) : redacoes.find(r => r.tipo === 'modelo')
-  if (!origem) { notif('Crie o modelo curinga primeiro', 'error'); return }
-  document.getElementById('duplicar-titulo').value = id ? `${origem.titulo || ''} (cópia)` : 'Redação sobre '
-  document.getElementById('duplicar-tema').value = id ? (origem.tema || '') : ''
-  document.getElementById('duplicar-area').value = id ? (origem.area || '') : ''
+  _duplicarOrigemId = id
+  const origem = redacoes.find(r => String(r.id) === String(id))
+  if (!origem) return
+  document.getElementById('duplicar-titulo').value = `${origem.titulo || ''} (cópia)`
+  document.getElementById('duplicar-tema').value = origem.tema || ''
+  document.getElementById('duplicar-area').value = origem.area || ''
   document.getElementById('modal-duplicar').classList.add('open')
 }
 
 async function confirmarDuplicar() {
-  const origem = _duplicarOrigemId ? redacoes.find(r => String(r.id) === String(_duplicarOrigemId)) : redacoes.find(r => r.tipo === 'modelo')
+  const origem = redacoes.find(r => String(r.id) === String(_duplicarOrigemId))
   if (!origem) return
   const titulo = document.getElementById('duplicar-titulo').value.trim()
   const tema = document.getElementById('duplicar-tema').value.trim()
   const area = document.getElementById('duplicar-area').value.trim()
   if (!titulo) { notif('Dê um título para a nova nota', 'error'); return }
 
-  let conteudo = origem.conteudo || ''
-  if (origem.tipo === 'modelo') {
-    // Junta as 4 seções (Introdução, Desenvolvimento 1/2, Conclusão) num texto
-    // corrido só, já que a nota final não usa a divisão em abas — é pra escrever direto.
-    const partes = SECOES_MODELO.map(s => origem[s.campo]).filter(Boolean)
-    conteudo = partes.length ? partes.join('\n\n') : (origem.conteudo || '')
-  }
-
   mostrarLoading('Duplicando...')
-  const r = await supa.insert(TABELA_REDACAO, { tipo: 'nota', titulo, tema, area, conteudo, cor: origem.tipo === 'modelo' ? '' : (origem.cor || '') })
+  const r = await supa.insert(TABELA_REDACAO, { tipo: 'nota', titulo, tema, area, parte: origem.parte || null, conteudo: origem.conteudo || '', cor: origem.cor || '' })
   esconderLoading()
   if (r && r[0]) redacoes.push(r[0])
   document.getElementById('modal-duplicar').classList.remove('open')
@@ -5987,6 +5906,14 @@ function renderConcurso() {
         </div>
       </div>
 
+      ${(meuConcurso.local_nome || meuConcurso.local_endereco || meuConcurso.local_cidade || meuConcurso.local_sala) ? `
+      <div style="background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:16px;border-left:3px solid var(--accent)">
+        <div style="font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px"><i class="fas fa-map-marker-alt" style="margin-right:4px"></i>Local da Prova</div>
+        ${meuConcurso.local_nome ? `<div style="font-weight:700;font-size:0.92rem">${escHtml(meuConcurso.local_nome)}</div>` : ''}
+        ${meuConcurso.local_endereco ? `<div style="font-size:0.82rem;color:var(--text2);margin-top:2px">${escHtml(meuConcurso.local_endereco)}</div>` : ''}
+        ${(meuConcurso.local_cidade || meuConcurso.local_sala) ? `<div style="font-size:0.82rem;color:var(--text2);margin-top:2px">${meuConcurso.local_cidade ? escHtml(meuConcurso.local_cidade) : ''}${meuConcurso.local_cidade && meuConcurso.local_sala ? ' · ' : ''}${meuConcurso.local_sala ? `Sala ${escHtml(meuConcurso.local_sala)}` : ''}</div>` : ''}
+      </div>` : ''}
+
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">
         <div style="background:var(--surface2);border-radius:10px;padding:14px;text-align:center">
           <div style="font-size:0.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">Conhecimentos Gerais</div>
@@ -6036,6 +5963,10 @@ function abrirModalConcurso() {
   document.getElementById('concurso-cargo').value = meuConcurso?.cargo || ''
   document.getElementById('concurso-banca').value = meuConcurso?.banca || ''
   document.getElementById('concurso-data-locais').value = meuConcurso?.data_locais || ''
+  document.getElementById('concurso-local-nome').value = meuConcurso?.local_nome || ''
+  document.getElementById('concurso-local-endereco').value = meuConcurso?.local_endereco || ''
+  document.getElementById('concurso-local-cidade').value = meuConcurso?.local_cidade || ''
+  document.getElementById('concurso-local-sala').value = meuConcurso?.local_sala || ''
   document.getElementById('concurso-data-prova').value = meuConcurso?.data_prova || ''
   document.getElementById('concurso-hora-inicio').value = meuConcurso?.hora_inicio_prova || ''
   document.getElementById('concurso-hora-fim').value = meuConcurso?.hora_fim_prova || ''
@@ -6099,6 +6030,10 @@ async function salvarConcurso() {
   const cargo = document.getElementById('concurso-cargo').value.trim()
   const banca = document.getElementById('concurso-banca').value.trim()
   const dataLocais = document.getElementById('concurso-data-locais').value
+  const localNome = document.getElementById('concurso-local-nome').value.trim()
+  const localEndereco = document.getElementById('concurso-local-endereco').value.trim()
+  const localCidade = document.getElementById('concurso-local-cidade').value.trim()
+  const localSala = document.getElementById('concurso-local-sala').value.trim()
   const dataProva = document.getElementById('concurso-data-prova').value
   const horaInicio = document.getElementById('concurso-hora-inicio').value
   const horaFim = document.getElementById('concurso-hora-fim').value
@@ -6132,6 +6067,7 @@ async function salvarConcurso() {
 
   const dados = {
     nome: nome || null, cargo, banca: banca || null, data_locais: dataLocais || null, data_prova: dataProva || null,
+    local_nome: localNome || null, local_endereco: localEndereco || null, local_cidade: localCidade || null, local_sala: localSala || null,
     hora_inicio_prova: horaInicio || null, hora_fim_prova: horaFim || null,
     tem_redacao: temRedacao,
     questoes_gerais: qtdGeraisVal !== '' ? Number(qtdGeraisVal) : null,
@@ -6190,6 +6126,7 @@ async function carregarDados() {
     materias = mt && mt.length ? mt : []
     editalTopicos = ed || []
     redacoes = rd || []
+    await migrarModeloCuringaParaMural()
     meuConcurso = (cc && cc.length) ? cc[0] : null
     if (!materias.length) {
       mostrarLoading('Configurando matérias padrão...')
