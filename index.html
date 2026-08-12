@@ -1116,7 +1116,7 @@ for each row execute function restringir_cadastro_email();</pre>
     <div style="position:relative;margin-bottom:12px">
       <i class="fas fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text2);font-size:0.85rem"></i>
       <input type="text" id="busca-questoes" placeholder="Buscar por enunciado, tema ou anotação..."
-        style="padding-left:36px" oninput="renderQuestoes()">
+        style="padding-left:36px" oninput="paginaAtualQuestoes=1;renderQuestoes()">
       <button id="btn-limpar-busca" onclick="limparBusca()" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);cursor:pointer;font-size:0.9rem">
         <i class="fas fa-times"></i>
       </button>
@@ -1145,6 +1145,7 @@ for each row execute function restringir_cadastro_email();</pre>
     </div>
 
     <div id="lista-questoes"></div>
+    <div id="questoes-paginacao"></div>
   </div>
 
   <!-- BARRA FLUTUANTE DE SELEÇÃO (migrar questões em lote) -->
@@ -1703,7 +1704,52 @@ for each row execute function restringir_cadastro_email();</pre>
         <div id="edit-temas-tags" style="display:none;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
       </div>
     </div>
-    <div class="form-group"><label>Gabarito</label><input type="text" id="edit-gabarito"></div>
+
+    <!-- ALTERNATIVAS -->
+    <div class="form-group">
+      <label><i class="fas fa-list-ol" style="margin-right:5px"></i>Alternativas <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional)</span></label>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:700;color:var(--accent);min-width:20px">A)</span>
+          <input type="text" id="edit-alt-a" placeholder="Alternativa A">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:700;color:var(--accent);min-width:20px">B)</span>
+          <input type="text" id="edit-alt-b" placeholder="Alternativa B">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:700;color:var(--accent);min-width:20px">C)</span>
+          <input type="text" id="edit-alt-c" placeholder="Alternativa C">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:700;color:var(--accent);min-width:20px">D)</span>
+          <input type="text" id="edit-alt-d" placeholder="Alternativa D">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:700;color:var(--accent);min-width:20px">E)</span>
+          <input type="text" id="edit-alt-e" placeholder="Alternativa E">
+        </div>
+      </div>
+    </div>
+
+    <!-- GABARITO -->
+    <div class="form-group">
+      <label><i class="fas fa-check-circle" style="margin-right:5px;color:var(--green)"></i>Gabarito — Alternativa Correta</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap" id="edit-gabarito-btns">
+        <button type="button" class="gabarito-opt" onclick="selecionarGabarito('A','edit-')">A</button>
+        <button type="button" class="gabarito-opt" onclick="selecionarGabarito('B','edit-')">B</button>
+        <button type="button" class="gabarito-opt" onclick="selecionarGabarito('C','edit-')">C</button>
+        <button type="button" class="gabarito-opt" onclick="selecionarGabarito('D','edit-')">D</button>
+        <button type="button" class="gabarito-opt" onclick="selecionarGabarito('E','edit-')">E</button>
+        <button type="button" class="gabarito-opt" onclick="selecionarGabarito('Certo','edit-')">Certo</button>
+        <button type="button" class="gabarito-opt" onclick="selecionarGabarito('Errado','edit-')">Errado</button>
+      </div>
+      <input type="hidden" id="edit-gabarito-questao">
+      <div id="edit-gabarito-selecionado" style="margin-top:8px;font-size:0.85rem;color:var(--green);display:none">
+        ✅ Gabarito selecionado: <strong id="edit-gabarito-label"></strong>
+      </div>
+    </div>
+
     <div class="form-group"><label>Anotação</label><textarea id="edit-anotacao"></textarea></div>
     <div class="form-group"><label>Link do Vídeo</label><input type="url" id="edit-video"></div>
     <div style="display:flex;gap:10px">
@@ -2969,12 +3015,12 @@ function renderBarrasChart(sorted) {
 }
 
 // ===== GABARITO SELECTOR =====
-function selecionarGabarito(val) {
-  document.querySelectorAll('.gabarito-opt').forEach(b => b.classList.remove('selected'))
+function selecionarGabarito(val, prefixo = '') {
+  document.querySelectorAll(`#${prefixo}gabarito-btns .gabarito-opt`).forEach(b => b.classList.remove('selected'))
   event.target.classList.add('selected')
-  document.getElementById('gabarito-questao').value = val
-  document.getElementById('gabarito-label').textContent = val
-  document.getElementById('gabarito-selecionado').style.display = 'block'
+  document.getElementById(`${prefixo}gabarito-questao`).value = val
+  document.getElementById(`${prefixo}gabarito-label`).textContent = val
+  document.getElementById(`${prefixo}gabarito-selecionado`).style.display = 'block'
 }
 
 // ===== CADASTRAR =====
@@ -3560,6 +3606,8 @@ async function salvarQuestao() {
 let filtroMateria = 'todas-materias'
 let filtroStatus = 'todas'
 let modoSelecaoQuestoes = false
+let paginaAtualQuestoes = 1
+let questoesPorPagina = 20
 let questoesSelecionadas = []
 
 function renderQuestoes() {
@@ -3599,9 +3647,21 @@ function renderQuestoes() {
   }
 
   const el = document.getElementById('lista-questoes')
-  if (!lista.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Nenhuma questão encontrada.</div></div>'; return }
+  if (!lista.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-text">Nenhuma questão encontrada.</div></div>'
+    const pagEl = document.getElementById('questoes-paginacao')
+    if (pagEl) pagEl.innerHTML = ''
+    return
+  }
 
-  el.innerHTML = lista.slice().reverse().map(q => {
+  const listaOrdenada = lista.slice().reverse()
+  const totalPaginas = Math.max(1, Math.ceil(listaOrdenada.length / questoesPorPagina))
+  if (paginaAtualQuestoes > totalPaginas) paginaAtualQuestoes = totalPaginas
+  if (paginaAtualQuestoes < 1) paginaAtualQuestoes = 1
+  const inicio = (paginaAtualQuestoes - 1) * questoesPorPagina
+  const listaPagina = listaOrdenada.slice(inicio, inicio + questoesPorPagina)
+
+  el.innerHTML = listaPagina.map(q => {
     const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
     const temAlts = Object.values(alts).some(v => v)
     const statusIcon = q.dominada ? '✅' : '⏳'
@@ -3663,6 +3723,43 @@ function renderQuestoes() {
       </div>
     </div>`
   }).join('')
+
+  renderPaginacaoQuestoes(listaOrdenada.length, totalPaginas)
+}
+
+function renderPaginacaoQuestoes(totalItens, totalPaginas) {
+  const pagEl = document.getElementById('questoes-paginacao')
+  if (!pagEl) return
+  if (totalPaginas <= 1) { pagEl.innerHTML = ''; return }
+
+  const p = paginaAtualQuestoes
+  // Mostra a página atual, uma vizinha de cada lado, e sempre a primeira/última
+  const paginasVisiveis = new Set([1, totalPaginas, p, p - 1, p + 1].filter(n => n >= 1 && n <= totalPaginas))
+  const ordenadas = [...paginasVisiveis].sort((a, b) => a - b)
+
+  let botoesNumeros = ''
+  let anterior = 0
+  ordenadas.forEach(n => {
+    if (anterior && n - anterior > 1) botoesNumeros += `<span style="color:var(--text2);padding:0 4px">…</span>`
+    botoesNumeros += `<button class="btn ${n === p ? 'btn-primary' : 'btn-ghost'} btn-sm" style="min-width:34px;padding:6px 8px" onclick="irParaPaginaQuestoes(${n})">${n}</button>`
+    anterior = n
+  })
+
+  pagEl.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="font-size:0.78rem;color:var(--text2)">${totalItens} questão${totalItens!==1?'ões':''} · página ${p} de ${totalPaginas}</div>
+      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" style="padding:6px 10px" onclick="irParaPaginaQuestoes(${p - 1})" ${p <= 1 ? 'disabled' : ''}><i class="fas fa-chevron-left"></i></button>
+        ${botoesNumeros}
+        <button class="btn btn-ghost btn-sm" style="padding:6px 10px" onclick="irParaPaginaQuestoes(${p + 1})" ${p >= totalPaginas ? 'disabled' : ''}><i class="fas fa-chevron-right"></i></button>
+      </div>
+    </div>`
+}
+
+function irParaPaginaQuestoes(n) {
+  paginaAtualQuestoes = n
+  renderQuestoes()
+  document.getElementById('lista-questoes')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 // ===== MIGRAR QUESTÕES ENTRE MATÉRIAS =====
@@ -3758,6 +3855,7 @@ function limparBusca() {
   document.getElementById('busca-questoes').value = ''
   document.getElementById('btn-limpar-busca').style.display = 'none'
   document.getElementById('busca-resultado').textContent = ''
+  paginaAtualQuestoes = 1
   renderQuestoes()
 }
 
@@ -3776,9 +3874,10 @@ function filtrarMateriaPorIndice(i) {
   if (m) filtrarMateria(m)
 }
 
-function filtrarMateria(m) { filtroMateria = m; renderQuestoes() }
+function filtrarMateria(m) { filtroMateria = m; paginaAtualQuestoes = 1; renderQuestoes() }
 function filtrarStatus(s) {
   filtroStatus = s
+  paginaAtualQuestoes = 1
   document.querySelectorAll('#filtro-todas,#filtro-pendentes,#filtro-dominadas,#filtro-favoritas').forEach(b => b.classList.remove('active'))
   document.getElementById('filtro-'+s).classList.add('active')
   renderQuestoes()
@@ -3828,7 +3927,15 @@ function abrirEditar(id) {
   document.getElementById('edit-icone-toggle-texto-apoio').style.transform = q.texto_apoio ? 'rotate(180deg)' : 'rotate(0deg)'
   document.getElementById('edit-materia').value = q.materia
   document.getElementById('edit-tema').value = q.tema || ''
-  document.getElementById('edit-gabarito').value = q.gabarito
+  document.getElementById('edit-alt-a').value = alts.A || ''
+  document.getElementById('edit-alt-b').value = alts.B || ''
+  document.getElementById('edit-alt-c').value = alts.C || ''
+  document.getElementById('edit-alt-d').value = alts.D || ''
+  document.getElementById('edit-alt-e').value = alts.E || ''
+  document.querySelectorAll('#edit-gabarito-btns .gabarito-opt').forEach(b => b.classList.toggle('selected', b.textContent === q.gabarito))
+  document.getElementById('edit-gabarito-questao').value = q.gabarito || ''
+  document.getElementById('edit-gabarito-label').textContent = q.gabarito || ''
+  document.getElementById('edit-gabarito-selecionado').style.display = q.gabarito ? 'block' : 'none'
   document.getElementById('edit-anotacao').value = q.anotacao || ''
   document.getElementById('edit-video').value = q.video || ''
   document.getElementById('modal-editar').classList.add('open')
@@ -3940,7 +4047,14 @@ async function salvarEdicao() {
     texto_apoio: htmlParaMarkdown(document.getElementById('edit-texto-apoio')).trim(),
     materia: document.getElementById('edit-materia').value,
     tema: document.getElementById('edit-tema').value.trim(),
-    gabarito: document.getElementById('edit-gabarito').value.trim(),
+    alternativas: JSON.stringify({
+      A: document.getElementById('edit-alt-a').value.trim(),
+      B: document.getElementById('edit-alt-b').value.trim(),
+      C: document.getElementById('edit-alt-c').value.trim(),
+      D: document.getElementById('edit-alt-d').value.trim(),
+      E: document.getElementById('edit-alt-e').value.trim(),
+    }),
+    gabarito: document.getElementById('edit-gabarito-questao').value.trim(),
     anotacao: document.getElementById('edit-anotacao').value.trim(),
     video: document.getElementById('edit-video').value.trim(),
   }
