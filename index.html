@@ -1286,6 +1286,11 @@ for each row execute function restringir_cadastro_email();</pre>
 
   <!-- EDITAL -->
   <div class="page" id="page-edital">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div class="card-title" style="margin:0"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-book-open"></i></span>Meu Edital</div>
+      <button class="btn btn-ghost btn-sm" id="btn-limpar-edital" style="color:var(--red);border-color:rgba(239,68,68,0.35)" onclick="confirmarLimparEdital()" title="Apagar todos os tópicos cadastrados, para começar o edital de outro concurso"><i class="fas fa-eraser"></i> Limpar edital</button>
+    </div>
+
     <div class="card">
       <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-book-open"></i></span>Adicionar tópico ao edital</div>
       <div class="form-group">
@@ -2057,6 +2062,13 @@ const supa = {
       method: 'DELETE', headers: getHeaders()
     })
     return r.ok
+  },
+  // Apaga TODAS as linhas da tabela (RLS garante que só apaga as do usuário logado)
+  async deleteAll(tabela) {
+    const r = await fetchComRenovacao(`${SUPA_URL}/rest/v1/${encodeURIComponent(tabela)}?id=gt.0`, {
+      method: 'DELETE', headers: getHeaders()
+    })
+    return r.ok
   }
 }
 
@@ -2516,7 +2528,9 @@ const PARTES_REDACAO = [
 function labelParte(chave) {
   return (PARTES_REDACAO.find(p => p.chave === chave) || {}).label || ''
 }
-let meuConcurso = null
+let concursos = []
+// concurso individual sendo editado no momento (usado pelo modal); null = cadastrando um novo
+let _concursoEditandoId = null
 let _duplicarOrigemId = null // id do card sendo duplicado (null = duplicando o modelo)
 let _corSelecionadaNota = ''
 const CORES_NOTA = ['amarelo', 'verde', 'azul', 'rosa', 'roxo', 'laranja']
@@ -2550,15 +2564,42 @@ function goPage(id) {
 }
 
 // ===== POPULAR SELECTS =====
-function popularSelects() {
-  const opts = `<option value="">Selecione a matéria</option>` + materias.map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}</option>`).join('')
-  const ids = ['materia-questao','mapa-materia','edit-materia','edital-materia-form','editar-mapa-materia']
-  ids.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = opts })
+// Matérias bloqueadas (ativa === false) ficam de fora dos selects usados para
+// CADASTRAR conteúdo novo, pra não atrapalhar quando você tá focado em outro
+// concurso. Mas continuam disponíveis pra EDITAR o que já existe, e nas telas
+// de relatório/filtro, pra não sumir com dados antigos.
+function materiasAtivas() { return materias.filter(m => m.ativa !== false) }
 
-  // Checkboxes de matéria para o simulado
+// Conjunto (Set) com os NOMES das matérias bloqueadas — usado pra filtrar
+// questões e mapas em todo o sistema (Questões, Mapas, Dashboard, Simulado).
+// Bloquear uma matéria em Config esconde ela daqui; nada é apagado, e ela
+// volta a aparecer normalmente assim que for desbloqueada em Config.
+function materiasBloqueadasSet() {
+  return new Set(materias.filter(m => m.ativa === false).map(m => m.nome))
+}
+function questoesVisiveis() {
+  const bloqueadas = materiasBloqueadasSet()
+  return bloqueadas.size ? questoes.filter(q => !bloqueadas.has(q.materia)) : questoes
+}
+function mapasVisiveis() {
+  const bloqueadas = materiasBloqueadasSet()
+  return bloqueadas.size ? mapas.filter(m => !bloqueadas.has(m.materia)) : mapas
+}
+
+function popularSelects() {
+  const optsAtivas = `<option value="">Selecione a matéria</option>` + materiasAtivas().map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}</option>`).join('')
+  const optsTodas = `<option value="">Selecione a matéria</option>` + materias.map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}${m.ativa === false ? ' (bloqueada)' : ''}</option>`).join('')
+
+  const idsCadastro = ['materia-questao','mapa-materia','edital-materia-form']
+  idsCadastro.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = optsAtivas })
+
+  const idsEdicao = ['edit-materia','editar-mapa-materia']
+  idsEdicao.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = optsTodas })
+
+  // Checkboxes de matéria para o simulado (só matérias ativas)
   const checkboxEl = document.getElementById('simulado-materias-checkboxes')
   if (checkboxEl) {
-    checkboxEl.innerHTML = materias.map(m => `
+    checkboxEl.innerHTML = materiasAtivas().map(m => `
       <button type="button" class="filtro-btn simulado-mat-btn" onclick="toggleSimuladoMateria(this, '${escAttr(m.nome)}')">
         ${m.nome}
       </button>`).join('')
@@ -2644,18 +2685,29 @@ function tocarSomNotificacao(urgente = false) {
   } catch(e) { /* navegador pode bloquear áudio sem interação prévia — ignora silenciosamente */ }
 }
 
-// Calcula qual data está mais próxima de acontecer (locais ou prova) e quantos dias faltam.
-// Compartilhado entre o banner do Início, o alerta central e o sino do menu.
-function calcularAlvoConcurso() {
-  if (!meuConcurso || (!meuConcurso.data_prova && !meuConcurso.data_locais)) return null
-  const diasProva = diasRestantes(meuConcurso.data_prova)
-  const diasLocais = diasRestantes(meuConcurso.data_locais)
+// Calcula qual data está mais próxima de acontecer (locais ou prova) e quantos dias faltam,
+// para UM concurso específico.
+function calcularAlvoDoConcurso(c) {
+  if (!c || (!c.data_prova && !c.data_locais)) return null
+  const diasProva = diasRestantes(c.data_prova)
+  const diasLocais = diasRestantes(c.data_locais)
   // A divulgação dos locais acontece ANTES da prova — então, enquanto ela ainda
   // não passou, é ela quem deve receber o destaque/aviso. Depois que passar,
   // a atenção volta pra contagem da prova.
-  if (diasLocais !== null && diasLocais >= 0) return { alvo: diasLocais, rotulo: 'para a divulgação dos locais' }
-  if (diasProva !== null && diasProva >= 0) return { alvo: diasProva, rotulo: 'para a prova' }
+  if (diasLocais !== null && diasLocais >= 0) return { concurso: c, alvo: diasLocais, rotulo: 'para a divulgação dos locais' }
+  if (diasProva !== null && diasProva >= 0) return { concurso: c, alvo: diasProva, rotulo: 'para a prova' }
   return null
+}
+
+// Com vários concursos cadastrados ao mesmo tempo, o banner/sino/alerta do
+// Início sempre destaca o concurso com a data mais PRÓXIMA de todos — pra não
+// virar bagunça de vários avisos, mas sem perder o que importa mais na hora.
+// Compartilhado entre o banner do Início, o alerta central e o sino do menu.
+function calcularAlvoConcurso() {
+  const candidatos = concursos.map(calcularAlvoDoConcurso).filter(Boolean)
+  if (!candidatos.length) return null
+  candidatos.sort((a, b) => a.alvo - b.alvo)
+  return candidatos[0]
 }
 
 // Sino fixo no menu — visível em qualquer aba, não só no Início
@@ -2690,7 +2742,7 @@ function atualizarSinoConcurso() {
         <i class="fas fa-bell" style="color:${cor}"></i>
         <span style="font-weight:700;font-size:0.85rem;color:${cor}">${texto}</span>
       </div>
-      <div style="font-size:0.8rem;color:var(--text2);margin-bottom:10px">${escHtml(meuConcurso.nome || meuConcurso.cargo || 'Seu concurso')}${meuConcurso.banca ? ` · ${escHtml(meuConcurso.banca)}` : ''}</div>
+      <div style="font-size:0.8rem;color:var(--text2);margin-bottom:10px">${escHtml(calc.concurso.nome || calc.concurso.cargo || 'Seu concurso')}${calc.concurso.banca ? ` · ${escHtml(calc.concurso.banca)}` : ''}</div>
       <button type="button" class="btn btn-primary" style="width:100%;padding:8px;font-size:0.8rem" onclick="goPage('concurso')">Ver detalhes completos</button>
     `
   } catch(e) {
@@ -2702,58 +2754,55 @@ function renderDashboard() {
   // Banner de contagem regressiva do concurso (só aparece quando faz sentido avisar)
   const bannerEl = document.getElementById('dash-concurso-banner')
   if (bannerEl) {
-    if (meuConcurso && (meuConcurso.data_prova || meuConcurso.data_locais)) {
-      const calc = calcularAlvoConcurso()
-      const alvo = calc ? calc.alvo : null
-      const rotulo = calc ? calc.rotulo : ''
+    const calc = calcularAlvoConcurso()
+    const alvo = calc ? calc.alvo : null
+    const rotulo = calc ? calc.rotulo : ''
 
-      if (alvo !== null && alvo <= 30) {
-        const cor = corUrgenciaConcurso(alvo)
-        const texto = alvo === 0 ? `É hoje! ${rotulo === 'para a prova' ? 'Boa prova' : 'Fica de olho'} 🍀`
-          : alvo === 1 ? `Falta 1 dia ${rotulo}!`
-          : `Faltam ${alvo} dias ${rotulo}!`
-        bannerEl.innerHTML = `
-          <div style="display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.15);border:1px solid ${cor};border-left:4px solid ${cor};border-radius:10px;padding:12px 16px;margin-bottom:16px;cursor:pointer" onclick="goPage('concurso')">
-            <i class="fas fa-bell" style="color:${cor};font-size:1.1rem"></i>
-            <div>
-              <div style="font-weight:700;color:${cor};font-size:0.9rem">${texto}</div>
-              <div style="font-size:0.75rem;color:var(--text2)">${escHtml(meuConcurso.nome || meuConcurso.cargo || '')} — clique pra ver os detalhes</div>
-            </div>
-          </div>`
+    if (calc && alvo !== null && alvo <= 30) {
+      const c = calc.concurso
+      const cor = corUrgenciaConcurso(alvo)
+      const texto = alvo === 0 ? `É hoje! ${rotulo === 'para a prova' ? 'Boa prova' : 'Fica de olho'} 🍀`
+        : alvo === 1 ? `Falta 1 dia ${rotulo}!`
+        : `Faltam ${alvo} dias ${rotulo}!`
+      bannerEl.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;background:rgba(0,0,0,0.15);border:1px solid ${cor};border-left:4px solid ${cor};border-radius:10px;padding:12px 16px;margin-bottom:16px;cursor:pointer" onclick="goPage('concurso')">
+          <i class="fas fa-bell" style="color:${cor};font-size:1.1rem"></i>
+          <div>
+            <div style="font-weight:700;color:${cor};font-size:0.9rem">${texto}</div>
+            <div style="font-size:0.75rem;color:var(--text2)">${escHtml(c.nome || c.cargo || '')} — clique pra ver os detalhes</div>
+          </div>
+        </div>`
 
-        // Alerta central + som quando está bem perto (só 1x por dia, pra não virar spam)
-        if (alvo <= 7) {
-          const chaveAlerta = `alerta_concurso_${meuConcurso.id || 'x'}_${rotulo}_${new Date().toDateString()}`
-          if (!localStorage.getItem(chaveAlerta)) {
-            localStorage.setItem(chaveAlerta, '1')
-            const tituloEl = document.getElementById('alerta-concurso-titulo')
-            const textoEl = document.getElementById('alerta-concurso-texto')
-            const iconeEl = document.getElementById('alerta-concurso-icone')
-            const caixaEl = document.getElementById('modal-alerta-concurso-caixa')
-            caixaEl.style.borderColor = cor
-            caixaEl.style.boxShadow = `0 0 0 4px ${cor}26, 0 0 40px ${cor}40`
-            tituloEl.style.color = cor
-            if (alvo === 0) {
-              iconeEl.textContent = '🍀'
-              tituloEl.textContent = rotulo === 'para a prova' ? 'É hoje!' : 'Divulgação dos locais é hoje!'
-              textoEl.textContent = rotulo === 'para a prova'
-                ? `Boa prova em ${meuConcurso.nome || meuConcurso.cargo || 'seu concurso'}! Você se preparou, confie no seu estudo.`
-                : `Fica de olho — os locais de prova de ${meuConcurso.nome || meuConcurso.cargo || 'seu concurso'} saem hoje.`
-            } else if (alvo === 1) {
-              iconeEl.textContent = '⏰'
-              tituloEl.textContent = `Falta 1 dia ${rotulo}!`
-              textoEl.textContent = `${meuConcurso.nome || meuConcurso.cargo || 'Seu concurso'} está chegando. Hora de revisar com calma o que já estudou.`
-            } else {
-              iconeEl.textContent = '⏰'
-              tituloEl.textContent = `Faltam ${alvo} dias ${rotulo}!`
-              textoEl.textContent = `${meuConcurso.nome || meuConcurso.cargo || 'Seu concurso'} está bem perto. Aproveite esse tempo pra reforçar os pontos fracos.`
-            }
-            document.getElementById('modal-alerta-concurso').classList.add('open')
-            tocarSomNotificacao(alvo <= 1)
+      // Alerta central + som quando está bem perto (só 1x por dia, pra não virar spam)
+      if (alvo <= 7) {
+        const chaveAlerta = `alerta_concurso_${c.id || 'x'}_${rotulo}_${new Date().toDateString()}`
+        if (!localStorage.getItem(chaveAlerta)) {
+          localStorage.setItem(chaveAlerta, '1')
+          const tituloEl = document.getElementById('alerta-concurso-titulo')
+          const textoEl = document.getElementById('alerta-concurso-texto')
+          const iconeEl = document.getElementById('alerta-concurso-icone')
+          const caixaEl = document.getElementById('modal-alerta-concurso-caixa')
+          caixaEl.style.borderColor = cor
+          caixaEl.style.boxShadow = `0 0 0 4px ${cor}26, 0 0 40px ${cor}40`
+          tituloEl.style.color = cor
+          if (alvo === 0) {
+            iconeEl.textContent = '🍀'
+            tituloEl.textContent = rotulo === 'para a prova' ? 'É hoje!' : 'Divulgação dos locais é hoje!'
+            textoEl.textContent = rotulo === 'para a prova'
+              ? `Boa prova em ${c.nome || c.cargo || 'seu concurso'}! Você se preparou, confie no seu estudo.`
+              : `Fica de olho — os locais de prova de ${c.nome || c.cargo || 'seu concurso'} saem hoje.`
+          } else if (alvo === 1) {
+            iconeEl.textContent = '⏰'
+            tituloEl.textContent = `Falta 1 dia ${rotulo}!`
+            textoEl.textContent = `${c.nome || c.cargo || 'Seu concurso'} está chegando. Hora de revisar com calma o que já estudou.`
+          } else {
+            iconeEl.textContent = '⏰'
+            tituloEl.textContent = `Faltam ${alvo} dias ${rotulo}!`
+            textoEl.textContent = `${c.nome || c.cargo || 'Seu concurso'} está bem perto. Aproveite esse tempo pra reforçar os pontos fracos.`
           }
+          document.getElementById('modal-alerta-concurso').classList.add('open')
+          tocarSomNotificacao(alvo <= 1)
         }
-      } else {
-        bannerEl.innerHTML = ''
       }
     } else {
       bannerEl.innerHTML = ''
@@ -2766,12 +2815,13 @@ function renderDashboard() {
   const selDonut = document.getElementById('donut-filtro-materia')
   if (selDonut) {
     selDonut.innerHTML = '<option value="todas">Todas as matérias</option>' +
-      materias.map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}</option>`).join('')
-    if (filtroDonutMateria !== 'todas' && !materias.some(m => m.nome === filtroDonutMateria)) filtroDonutMateria = 'todas'
+      materiasAtivas().map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}</option>`).join('')
+    if (filtroDonutMateria !== 'todas' && !materiasAtivas().some(m => m.nome === filtroDonutMateria)) filtroDonutMateria = 'todas'
     selDonut.value = filtroDonutMateria
   }
 
-  const questoesDonut = filtroDonutMateria === 'todas' ? questoes : questoes.filter(q => q.materia === filtroDonutMateria)
+  const questoesDash = questoesVisiveis()
+  const questoesDonut = filtroDonutMateria === 'todas' ? questoesDash : questoesDash.filter(q => q.materia === filtroDonutMateria)
   const totalDonut = questoesDonut.length
   const domDonut = questoesDonut.filter(q => q.dominada).length
   const pendDonut = totalDonut - domDonut
@@ -2783,8 +2833,8 @@ function renderDashboard() {
   document.getElementById('legenda-total').textContent = totalDonut
   renderDonutChart(domDonut, pendDonut)
 
-  const total = questoes.length
-  const dom = questoes.filter(q => q.dominada).length
+  const total = questoesDash.length
+  const dom = questoesDash.filter(q => q.dominada).length
   const pend = total - dom
   const pct = total ? Math.round((dom / total) * 100) : 0
 
@@ -2815,7 +2865,7 @@ function renderDashboard() {
   }
 
   const porMateria = {}
-  questoes.forEach(q => {
+  questoesDash.forEach(q => {
     const m = q.materia || 'Sem matéria'
     if (!porMateria[m]) porMateria[m] = { total: 0, dominadas: 0 }
     porMateria[m].total++
@@ -2835,7 +2885,7 @@ function renderDashboard() {
 
     // Detalhamento por tema dentro dessa matéria
     const temasDaMateria = {}
-    questoes.filter(q => (q.materia || 'Sem matéria') === m && q.tema).forEach(q => {
+    questoesDash.filter(q => (q.materia || 'Sem matéria') === m && q.tema).forEach(q => {
       const t = q.tema
       if (!temasDaMateria[t]) temasDaMateria[t] = { total: 0, dominadas: 0 }
       temasDaMateria[t].total++
@@ -3358,6 +3408,27 @@ async function excluirTopicoEdital(id) {
   renderEdital()
 }
 
+// ===== LIMPAR TODO O EDITAL (pra começar o edital de outro concurso) =====
+function confirmarLimparEdital() {
+  if (!editalTopicos.length) { notif('O edital já está vazio!'); return }
+
+  const total = editalTopicos.length
+  document.getElementById('confirmar-titulo').textContent = 'Limpar todo o edital?'
+  document.getElementById('confirmar-texto').textContent = `Isso vai apagar ${total} tópico${total !== 1 ? 's' : ''} cadastrado${total !== 1 ? 's' : ''} no edital. Use quando for começar a estudar para outro concurso. Essa ação não pode ser desfeita.`
+  document.getElementById('modal-confirmar').classList.add('open')
+  document.getElementById('confirmar-sim').onclick = async () => {
+    mostrarLoading('Limpando edital...')
+    const ok = await supa.deleteAll(TABELA_EDITAL)
+    esconderLoading()
+    document.getElementById('modal-confirmar').classList.remove('open')
+    if (!ok) { notif('Erro ao limpar o edital!', 'error'); return }
+    editalTopicos = []
+    document.getElementById('busca-edital').value = ''
+    renderEdital()
+    notif('🧹 Edital limpo! Pode cadastrar o conteúdo do próximo concurso.')
+  }
+}
+
 function toggleTextoApoio(prefixo = '') {
   const idBloco = prefixo ? `${prefixo}-bloco-texto-apoio` : 'bloco-texto-apoio'
   const idIcone = prefixo ? `${prefixo}-icone-toggle-texto-apoio` : 'icone-toggle-texto-apoio'
@@ -3611,14 +3682,15 @@ let questoesPorPagina = 20
 let questoesSelecionadas = []
 
 function renderQuestoes() {
-  const materiasList = [...new Set(questoes.map(q => q.materia))].filter(Boolean)
+  const questoesBase = questoesVisiveis()
+  const materiasList = [...new Set(questoesBase.map(q => q.materia))].filter(Boolean)
   window._materiasListaFiltro = materiasList
 
   document.getElementById('filtros-materias').innerHTML =
     `<button class="filtro-btn ${filtroMateria==='todas-materias'?'active':''}" onclick="filtrarMateria('todas-materias')">Todas</button>` +
     materiasList.map((m, i) => `<button class="filtro-btn ${filtroMateria===m?'active':''}" onclick="filtrarMateriaPorIndice(${i})">${m}</button>`).join('')
 
-  let lista = questoes
+  let lista = questoesBase
   if (filtroMateria !== 'todas-materias') lista = lista.filter(q => q.materia === filtroMateria)
   if (filtroStatus === 'pendentes') lista = lista.filter(q => !q.dominada)
   if (filtroStatus === 'dominadas') lista = lista.filter(q => q.dominada)
@@ -4088,9 +4160,9 @@ function toggleSimuladoMateria(btn, nome) {
 function renderSimuladoTemas() {
   const el = document.getElementById('simulado-temas-checkboxes')
   if (!el) return
-  let questoesFiltradas = questoes
+  let questoesFiltradas = questoesVisiveis()
   if (simuladoMatSelecionadas.length > 0) {
-    questoesFiltradas = questoes.filter(q => simuladoMatSelecionadas.includes(q.materia))
+    questoesFiltradas = questoesFiltradas.filter(q => simuladoMatSelecionadas.includes(q.materia))
   }
   const temas = [...new Set(questoesFiltradas.map(q => q.tema).filter(t => t && t.trim()))]
   if (!temas.length) {
@@ -4119,7 +4191,7 @@ function iniciarSimulado() {
   popularSelects()
   const inclDom = document.getElementById('simulado-incluir-dom').value === 'sim'
   simuladoTimerSegundos = parseInt(document.getElementById('simulado-timer').value) || 0
-  let lista = questoes
+  let lista = questoesVisiveis()
 
   if (simuladoMatSelecionadas.length > 0) {
     lista = lista.filter(q => simuladoMatSelecionadas.includes(q.materia))
@@ -4905,7 +4977,8 @@ function limparBuscaMapas() {
 }
 
 function renderMapas() {
-  const materiasCom = [...new Set(mapas.map(m => m.materia).filter(Boolean))]
+  const mapasBase = mapasVisiveis()
+  const materiasCom = [...new Set(mapasBase.map(m => m.materia).filter(Boolean))]
 
   const buscaInput = document.getElementById('busca-mapas')
   const busca = buscaInput ? buscaInput.value.trim().toLowerCase() : ''
@@ -4913,11 +4986,11 @@ function renderMapas() {
   if (btnLimpar) btnLimpar.style.display = busca ? 'block' : 'none'
 
   const baseMapas = busca
-    ? mapas.filter(m => (m.titulo && m.titulo.toLowerCase().includes(busca)) || (m.materia && m.materia.toLowerCase().includes(busca)))
-    : mapas
+    ? mapasBase.filter(m => (m.titulo && m.titulo.toLowerCase().includes(busca)) || (m.materia && m.materia.toLowerCase().includes(busca)))
+    : mapasBase
 
   const tabsEl = document.getElementById('mapas-tabs')
-  if (!mapas.length) {
+  if (!mapasBase.length) {
     tabsEl.innerHTML = ''
     document.getElementById('mapas-conteudo').innerHTML = `<div class="empty"><div class="empty-icon">🗺️</div><div class="empty-text">Nenhum mapa mental ainda.<br>Clique em "Adicionar" para começar!</div></div>`
     return
@@ -5275,10 +5348,12 @@ function renderConfig() {
     el.className = 'chips-wrap'
     el.innerHTML = materiasFiltradas.map((m) => {
       const count = questoes.filter(q => q.materia === m.nome).length
+      const bloqueada = m.ativa === false
       return `
-      <div class="item-chip">
-        <span>${m.nome}</span>
+      <div class="item-chip" style="${bloqueada ? 'opacity:0.55' : ''}">
+        <span>${m.nome}${bloqueada ? ' <i class="fas fa-lock" style="font-size:0.65rem;margin-left:2px" title="Bloqueada"></i>' : ''}</span>
         <span class="chip-count">${count}</span>
+        <button onclick="toggleMateria('${m.id}')" title="${bloqueada ? 'Desbloquear (voltar a mostrar nos formulários)' : 'Bloquear (ocultar dos formulários — útil quando não cai no concurso atual)'}"><i class="fas ${bloqueada ? 'fa-lock' : 'fa-lock-open'}"></i></button>
         <button onclick="abrirEditarMateria('${m.id}','${escAttr(m.nome)}')" title="Editar"><i class="fas fa-edit"></i></button>
         <button class="chip-del" onclick="removerMateria('${m.id}')" title="Remover"><i class="fas fa-trash"></i></button>
       </div>`
@@ -5572,6 +5647,23 @@ async function adicionarMateria() {
   materias.push(resultado[0])
   input.value = ''
   notif('✅ Matéria adicionada!')
+  renderConfig()
+  popularSelects()
+}
+
+// ===== BLOQUEAR/DESBLOQUEAR MATÉRIA =====
+// Bloquear só esconde a matéria dos formulários de cadastro (nova questão, novo
+// mapa, novo tópico de edital, simulado) — útil quando ela não cai no concurso
+// que você tá estudando agora. Não apaga nada: questões e mapas já cadastrados
+// continuam intactos, e é só desbloquear de novo quando precisar.
+async function toggleMateria(id) {
+  const m = materias.find(m => String(m.id) === String(id))
+  if (!m) return
+  const ativaAgora = m.ativa === false // se estava bloqueada (ativa===false), agora vai desbloquear (true)
+  const resultado = await supa.update(TABELA_MATERIAS, id, { ativa: ativaAgora })
+  if (!resultado) { notif('Erro ao atualizar matéria!', 'error'); return }
+  m.ativa = ativaAgora
+  notif(ativaAgora ? `🔓 "${m.nome}" desbloqueada!` : `🔒 "${m.nome}" bloqueada — não vai mais aparecer pra cadastrar conteúdo novo.`)
   renderConfig()
   popularSelects()
 }
@@ -5941,7 +6033,7 @@ function renderConcurso() {
   const el = document.getElementById('concurso-conteudo')
   if (!el) return
 
-  if (!meuConcurso) {
+  if (!concursos.length) {
     el.innerHTML = `
       <div class="card" style="text-align:center;padding:40px 20px">
         <div style="font-size:2.5rem;margin-bottom:12px">🎓</div>
@@ -5952,6 +6044,23 @@ function renderConcurso() {
     return
   }
 
+  // Ordena mostrando primeiro quem tem data mais próxima (o que precisa de mais atenção agora)
+  const comAlvo = concursos.map(c => ({ c, calc: calcularAlvoDoConcurso(c) }))
+  comAlvo.sort((a, b) => {
+    const av = a.calc ? a.calc.alvo : Infinity
+    const bv = b.calc ? b.calc.alvo : Infinity
+    return av - bv
+  })
+
+  const botaoAdicionar = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <button class="btn btn-primary" style="padding:8px 16px;font-size:0.85rem" onclick="abrirModalConcurso()"><i class="fas fa-plus"></i> Adicionar outro concurso</button>
+    </div>`
+
+  el.innerHTML = botaoAdicionar + comAlvo.map(({ c }) => renderCardConcurso(c)).join('<div style="height:16px"></div>')
+}
+
+function renderCardConcurso(meuConcurso) {
   const diasLocais = diasRestantes(meuConcurso.data_locais)
   const diasProva = diasRestantes(meuConcurso.data_prova)
   const materiasArr = Array.isArray(meuConcurso.materias) ? meuConcurso.materias : []
@@ -5993,7 +6102,7 @@ function renderConcurso() {
     </div>`
   }
 
-  el.innerHTML = `
+  return `
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:16px">
         <div>
@@ -6001,8 +6110,8 @@ function renderConcurso() {
           ${(meuConcurso.nome && meuConcurso.cargo) || meuConcurso.banca ? `<div style="font-size:0.78rem;color:var(--text2);margin-top:4px;margin-left:38px">${meuConcurso.nome && meuConcurso.cargo ? escHtml(meuConcurso.cargo) : ''}${meuConcurso.nome && meuConcurso.cargo && meuConcurso.banca ? ' · ' : ''}${meuConcurso.banca ? `Banca: ${escHtml(meuConcurso.banca)}` : ''}</div>` : ''}
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost" style="padding:6px 12px;font-size:0.8rem" onclick="abrirModalConcurso()"><i class="fas fa-edit"></i> Editar</button>
-          <button class="btn btn-danger" style="padding:6px 12px;font-size:0.8rem" onclick="excluirConcurso()"><i class="fas fa-trash"></i></button>
+          <button class="btn btn-ghost" style="padding:6px 12px;font-size:0.8rem" onclick="abrirModalConcurso('${meuConcurso.id}')"><i class="fas fa-edit"></i> Editar</button>
+          <button class="btn btn-danger" style="padding:6px 12px;font-size:0.8rem" onclick="excluirConcurso('${meuConcurso.id}')"><i class="fas fa-trash"></i></button>
         </div>
       </div>
 
@@ -6071,7 +6180,10 @@ function renderConcurso() {
 
 let _concursoLinhaId = 0
 
-function abrirModalConcurso() {
+function abrirModalConcurso(id = null) {
+  _concursoEditandoId = id
+  const meuConcurso = id ? concursos.find(c => String(c.id) === String(id)) : null
+
   document.getElementById('modal-concurso-titulo').textContent = meuConcurso ? '🎓 Editar Concurso' : '🎓 Cadastrar Concurso'
   document.getElementById('concurso-nome').value = meuConcurso?.nome || ''
   document.getElementById('concurso-cargo').value = meuConcurso?.cargo || ''
@@ -6190,13 +6302,17 @@ async function salvarConcurso() {
   }
 
   try {
-    if (meuConcurso && meuConcurso.id) {
-      const r = await supa.update(TABELA_CONCURSO, meuConcurso.id, dados)
-      if (r) meuConcurso = r[0]
+    if (_concursoEditandoId) {
+      const r = await supa.update(TABELA_CONCURSO, _concursoEditandoId, dados)
+      if (r) {
+        const idx = concursos.findIndex(c => String(c.id) === String(_concursoEditandoId))
+        if (idx >= 0) concursos[idx] = r[0]
+      }
     } else {
       const r = await supa.insert(TABELA_CONCURSO, dados)
-      if (r) meuConcurso = r[0]
+      if (r) concursos.push(r[0])
     }
+    _concursoEditandoId = null
     document.getElementById('modal-concurso').classList.remove('open')
     renderConcurso()
     renderDashboard()
@@ -6210,11 +6326,13 @@ async function salvarConcurso() {
   }
 }
 
-async function excluirConcurso() {
-  if (!meuConcurso || !confirm('Apagar as informações desse concurso? Essa ação não pode ser desfeita.')) return
-  const ok = await supa.delete(TABELA_CONCURSO, meuConcurso.id)
+async function excluirConcurso(id) {
+  const c = concursos.find(c => String(c.id) === String(id))
+  if (!c) return
+  if (!confirm(`Apagar as informações de "${c.nome || c.cargo || 'este concurso'}"? Essa ação não pode ser desfeita.`)) return
+  const ok = await supa.delete(TABELA_CONCURSO, id)
   if (ok) {
-    meuConcurso = null
+    concursos = concursos.filter(c => String(c.id) !== String(id))
     renderConcurso()
     renderDashboard()
     notif('🗑️ Concurso removido.')
@@ -6241,7 +6359,7 @@ async function carregarDados() {
     editalTopicos = ed || []
     redacoes = rd || []
     await migrarModeloCuringaParaMural()
-    meuConcurso = (cc && cc.length) ? cc[0] : null
+    concursos = cc || []
     if (!materias.length) {
       mostrarLoading('Configurando matérias padrão...')
       for (const nome of MATERIAS_PADRAO) {
