@@ -1049,26 +1049,31 @@ for each row execute function restringir_cadastro_email();</pre>
       <!-- ALTERNATIVAS -->
       <div class="form-group">
         <label><i class="fas fa-list-ol" style="margin-right:5px"></i>Alternativas <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional)</span></label>
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+          <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecaoAtiva('bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+          <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecaoAtiva('underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+          <span style="font-size:0.7rem;color:var(--text2)">Selecione um trecho de qualquer alternativa abaixo pra deixar em negrito/sublinhado</span>
+        </div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-weight:700;color:var(--accent);min-width:20px">A)</span>
-            <input type="text" id="alt-a" placeholder="Alternativa A">
+            <div id="alt-a" class="rich-editable" contenteditable="true" data-placeholder="Alternativa A" onkeydown="bloquearEnter(event)" onpaste="tratarColagemLinhaUnica(event)"></div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-weight:700;color:var(--accent);min-width:20px">B)</span>
-            <input type="text" id="alt-b" placeholder="Alternativa B">
+            <div id="alt-b" class="rich-editable" contenteditable="true" data-placeholder="Alternativa B" onkeydown="bloquearEnter(event)" onpaste="tratarColagemLinhaUnica(event)"></div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-weight:700;color:var(--accent);min-width:20px">C)</span>
-            <input type="text" id="alt-c" placeholder="Alternativa C">
+            <div id="alt-c" class="rich-editable" contenteditable="true" data-placeholder="Alternativa C" onkeydown="bloquearEnter(event)" onpaste="tratarColagemLinhaUnica(event)"></div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-weight:700;color:var(--accent);min-width:20px">D)</span>
-            <input type="text" id="alt-d" placeholder="Alternativa D">
+            <div id="alt-d" class="rich-editable" contenteditable="true" data-placeholder="Alternativa D" onkeydown="bloquearEnter(event)" onpaste="tratarColagemLinhaUnica(event)"></div>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <span style="font-weight:700;color:var(--accent);min-width:20px">E)</span>
-            <input type="text" id="alt-e" placeholder="Alternativa E">
+            <div id="alt-e" class="rich-editable" contenteditable="true" data-placeholder="Alternativa E" onkeydown="bloquearEnter(event)" onpaste="tratarColagemLinhaUnica(event)"></div>
           </div>
         </div>
       </div>
@@ -1713,26 +1718,31 @@ for each row execute function restringir_cadastro_email();</pre>
     <!-- ALTERNATIVAS -->
     <div class="form-group">
       <label><i class="fas fa-list-ol" style="margin-right:5px"></i>Alternativas <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional)</span></label>
+      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+        <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecaoAtiva('bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
+        <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecaoAtiva('underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
+        <span style="font-size:0.7rem;color:var(--text2)">Selecione um trecho de qualquer alternativa abaixo pra deixar em negrito/sublinhado</span>
+      </div>
       <div style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-weight:700;color:var(--accent);min-width:20px">A)</span>
-          <input type="text" id="edit-alt-a" placeholder="Alternativa A">
+          <div id="edit-alt-a" class="rich-editable" contenteditable="true" data-placeholder="Alternativa A" onkeydown="bloquearEnter(event)" onpaste="tratarColagemLinhaUnica(event)"></div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-weight:700;color:var(--accent);min-width:20px">B)</span>
-          <input type="text" id="edit-alt-b" placeholder="Alternativa B">
+          <div id="edit-alt-b" class="rich-editable" contenteditable="true" data-placeholder="Alternativa B" onkeydown="bloquearEnter(event)" onpaste="tratarColagemLinhaUnica(event)"></div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-weight:700;color:var(--accent);min-width:20px">C)</span>
-          <input type="text" id="edit-alt-c" placeholder="Alternativa C">
+          <div id="edit-alt-c" class="rich-editable" contenteditable="true" data-placeholder="Alternativa C" onkeydown="bloquearEnter(event)" onpaste="tratarColagemLinhaUnica(event)"></div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-weight:700;color:var(--accent);min-width:20px">D)</span>
-          <input type="text" id="edit-alt-d" placeholder="Alternativa D">
+          <div id="edit-alt-d" class="rich-editable" contenteditable="true" data-placeholder="Alternativa D" onkeydown="bloquearEnter(event)" onpaste="tratarColagemLinhaUnica(event)"></div>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-weight:700;color:var(--accent);min-width:20px">E)</span>
-          <input type="text" id="edit-alt-e" placeholder="Alternativa E">
+          <div id="edit-alt-e" class="rich-editable" contenteditable="true" data-placeholder="Alternativa E" onkeydown="bloquearEnter(event)" onpaste="tratarColagemLinhaUnica(event)"></div>
         </div>
       </div>
     </div>
@@ -3472,11 +3482,11 @@ function textoCompletoQuestao(enunciado, textoApoio, alternativas) {
 function verificarQuestaoDuplicada() {
   const enunciado = htmlParaMarkdown(document.getElementById('enunciado-questao')).trim()
   const textoApoio = htmlParaMarkdown(document.getElementById('texto-apoio-questao')).trim()
-  const altA = document.getElementById('alt-a').value.trim()
-  const altB = document.getElementById('alt-b').value.trim()
-  const altC = document.getElementById('alt-c').value.trim()
-  const altD = document.getElementById('alt-d').value.trim()
-  const altE = document.getElementById('alt-e').value.trim()
+  const altA = lerAlternativa('alt-a')
+  const altB = lerAlternativa('alt-b')
+  const altC = lerAlternativa('alt-c')
+  const altD = lerAlternativa('alt-d')
+  const altE = lerAlternativa('alt-e')
   const box = document.getElementById('duplicata-resultado')
 
   const palavrasNovo = normalizarPalavras([enunciado, textoApoio, altA, altB, altC, altD, altE].join(' '))
@@ -3527,11 +3537,11 @@ async function analisarRelevanciaEdital() {
   const tema = document.getElementById('tema-questao').value.trim()
   const enunciado = htmlParaMarkdown(document.getElementById('enunciado-questao')).trim()
   const textoApoio = htmlParaMarkdown(document.getElementById('texto-apoio-questao')).trim()
-  const altA = document.getElementById('alt-a').value.trim()
-  const altB = document.getElementById('alt-b').value.trim()
-  const altC = document.getElementById('alt-c').value.trim()
-  const altD = document.getElementById('alt-d').value.trim()
-  const altE = document.getElementById('alt-e').value.trim()
+  const altA = lerAlternativa('alt-a')
+  const altB = lerAlternativa('alt-b')
+  const altC = lerAlternativa('alt-c')
+  const altD = lerAlternativa('alt-d')
+  const altE = lerAlternativa('alt-e')
   const gabarito = document.getElementById('gabarito-questao').value
   const anotacao = document.getElementById('anotacao-questao').value.trim()
   const box = document.getElementById('edital-analise-resultado')
@@ -3611,11 +3621,11 @@ async function salvarQuestao() {
   const tema = document.getElementById('tema-questao').value.trim()
   const enunciado = htmlParaMarkdown(document.getElementById('enunciado-questao')).trim()
   const textoApoio = htmlParaMarkdown(document.getElementById('texto-apoio-questao')).trim()
-  const altA = document.getElementById('alt-a').value.trim()
-  const altB = document.getElementById('alt-b').value.trim()
-  const altC = document.getElementById('alt-c').value.trim()
-  const altD = document.getElementById('alt-d').value.trim()
-  const altE = document.getElementById('alt-e').value.trim()
+  const altA = lerAlternativa('alt-a')
+  const altB = lerAlternativa('alt-b')
+  const altC = lerAlternativa('alt-c')
+  const altD = lerAlternativa('alt-d')
+  const altE = lerAlternativa('alt-e')
   const gabarito = document.getElementById('gabarito-questao').value
   const anotacao = document.getElementById('anotacao-questao').value.trim()
   const video = document.getElementById('video-questao').value.trim()
@@ -3648,11 +3658,11 @@ async function salvarQuestao() {
   document.getElementById('bloco-texto-apoio').style.display = 'none'
   document.getElementById('icone-toggle-texto-apoio').style.transform = 'rotate(0deg)'
   document.getElementById('duplicata-resultado').style.display = 'none'
-  document.getElementById('alt-a').value = ''
-  document.getElementById('alt-b').value = ''
-  document.getElementById('alt-c').value = ''
-  document.getElementById('alt-d').value = ''
-  document.getElementById('alt-e').value = ''
+  document.getElementById('alt-a').innerHTML = ''
+  document.getElementById('alt-b').innerHTML = ''
+  document.getElementById('alt-c').innerHTML = ''
+  document.getElementById('alt-d').innerHTML = ''
+  document.getElementById('alt-e').innerHTML = ''
   document.getElementById('gabarito-questao').value = ''
   document.getElementById('anotacao-questao').value = ''
   document.getElementById('video-questao').value = ''
@@ -3779,7 +3789,7 @@ function renderQuestoes() {
           ${['A','B','C','D','E'].filter(l=>alts[l]).map(l=>`
             <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 10px;border-radius:6px;${q.gabarito===l?'background:rgba(34,197,94,0.15);border:1px solid var(--green)':'background:var(--surface2)'}">
               <span style="font-weight:700;color:${q.gabarito===l?'var(--green)':'var(--accent)'};min-width:18px">${l})</span>
-              <span style="font-size:0.85rem;color:var(--text)">${alts[l]}</span>
+              <span style="font-size:0.85rem;color:var(--text)">${formatarTextoInline(alts[l])}</span>
             </div>`).join('')}
         </div>` : ''}
         ${q.anotacao ? `<div class="questao-anotacao"><i class="fas fa-comment-dots" style="color:var(--yellow);margin-right:5px"></i>${q.anotacao}</div>` : ''}
@@ -3999,11 +4009,11 @@ function abrirEditar(id) {
   document.getElementById('edit-icone-toggle-texto-apoio').style.transform = q.texto_apoio ? 'rotate(180deg)' : 'rotate(0deg)'
   document.getElementById('edit-materia').value = q.materia
   document.getElementById('edit-tema').value = q.tema || ''
-  document.getElementById('edit-alt-a').value = alts.A || ''
-  document.getElementById('edit-alt-b').value = alts.B || ''
-  document.getElementById('edit-alt-c').value = alts.C || ''
-  document.getElementById('edit-alt-d').value = alts.D || ''
-  document.getElementById('edit-alt-e').value = alts.E || ''
+  document.getElementById('edit-alt-a').innerHTML = formatarTextoInline(alts.A || '')
+  document.getElementById('edit-alt-b').innerHTML = formatarTextoInline(alts.B || '')
+  document.getElementById('edit-alt-c').innerHTML = formatarTextoInline(alts.C || '')
+  document.getElementById('edit-alt-d').innerHTML = formatarTextoInline(alts.D || '')
+  document.getElementById('edit-alt-e').innerHTML = formatarTextoInline(alts.E || '')
   document.querySelectorAll('#edit-gabarito-btns .gabarito-opt').forEach(b => b.classList.toggle('selected', b.textContent === q.gabarito))
   document.getElementById('edit-gabarito-questao').value = q.gabarito || ''
   document.getElementById('edit-gabarito-label').textContent = q.gabarito || ''
@@ -4072,6 +4082,56 @@ function alinharParagrafo(id, comando) {
   el.focus()
   document.execCommand(comando, false, null)
 }
+
+// ===== FORMATAÇÃO GENÉRICA (usada pelas Alternativas — várias caixas, um só par de botões) =====
+// Aplica negrito/sublinhado na caixa "rich-editable" que estiver com o texto selecionado no momento,
+// não importa qual delas seja — assim um único par de botões formata qualquer alternativa (A a E).
+function formatarSelecaoAtiva(comando) {
+  const sel = window.getSelection()
+  if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
+    notif('Selecione o trecho do texto que deseja formatar', 'error')
+    return
+  }
+  const noh = sel.anchorNode
+  const elemento = noh && noh.nodeType === Node.ELEMENT_NODE ? noh : (noh ? noh.parentElement : null)
+  const editavel = elemento ? elemento.closest('.rich-editable') : null
+  if (!editavel) {
+    notif('Selecione o trecho dentro de uma das alternativas', 'error')
+    return
+  }
+  document.execCommand(comando, false, null)
+}
+
+// Impede Enter dentro das alternativas — são campos de uma linha só, igual um <input>
+function bloquearEnter(event) {
+  if (event.key === 'Enter') event.preventDefault()
+}
+
+// Colagem nas alternativas: junta tudo numa linha só (sem criar parágrafos como no enunciado)
+function tratarColagemLinhaUnica(event) {
+  event.preventDefault()
+  const texto = (event.clipboardData || window.clipboardData).getData('text/plain')
+  if (!texto) return
+  const linhaUnica = texto.replace(/\s*\r?\n\s*/g, ' ').trim()
+  document.execCommand('insertHTML', false, escHtml(linhaUnica))
+}
+
+// Lê uma alternativa (caixa "rich-editable") já convertida pro formato salvo no banco
+// (**negrito**, __sublinhado__), tudo numa linha só.
+function lerAlternativa(id) {
+  return htmlParaMarkdown(document.getElementById(id)).replace(/\s*\n+\s*/g, ' ').trim()
+}
+
+// Converte **negrito**/__sublinhado__ pra HTML em uma linha só (sem <div> de parágrafo) —
+// usado pra popular as caixas de alternativa e pra exibir alternativas já salvas (lista de
+// questões, simulado etc.)
+function formatarTextoInline(texto) {
+  if (!texto) return ''
+  let t = escHtml(texto)
+  t = t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+  t = t.replace(/__(.+?)__/g, '<u>$1</u>')
+  return t
+}
 // Converte o conteúdo digitado (com <b>/<u>/<br>/<div>) de volta para texto simples
 // com marcadores **negrito**, __sublinhado__ e [[center]]...[[/center]] por parágrafo,
 // que é o formato salvo no banco
@@ -4120,11 +4180,11 @@ async function salvarEdicao() {
     materia: document.getElementById('edit-materia').value,
     tema: document.getElementById('edit-tema').value.trim(),
     alternativas: JSON.stringify({
-      A: document.getElementById('edit-alt-a').value.trim(),
-      B: document.getElementById('edit-alt-b').value.trim(),
-      C: document.getElementById('edit-alt-c').value.trim(),
-      D: document.getElementById('edit-alt-d').value.trim(),
-      E: document.getElementById('edit-alt-e').value.trim(),
+      A: lerAlternativa('edit-alt-a'),
+      B: lerAlternativa('edit-alt-b'),
+      C: lerAlternativa('edit-alt-c'),
+      D: lerAlternativa('edit-alt-d'),
+      E: lerAlternativa('edit-alt-e'),
     }),
     gabarito: document.getElementById('edit-gabarito-questao').value.trim(),
     anotacao: document.getElementById('edit-anotacao').value.trim(),
@@ -4289,7 +4349,7 @@ function renderSimuladoQuestao() {
       ${['A','B','C','D','E'].filter(l => alts[l]).map(l => `
         <button class="alt-btn" id="alt-btn-${l}" onclick="responderAlternativa('${l}')">
           <span class="alt-letra">${l})</span>
-          <span>${alts[l]}</span>
+          <span>${formatarTextoInline(alts[l])}</span>
         </button>`).join('')}
     </div>`
   } else if (ehCertoErrado) {
@@ -4743,11 +4803,11 @@ function ocrProcessarTexto(texto) {
   // PREENCHER ALTERNATIVAS
   const temAlts = Object.values(alternativas).some(v => v)
   if (temAlts) {
-    if (alternativas.A) document.getElementById('alt-a').value = alternativas.A.trim()
-    if (alternativas.B) document.getElementById('alt-b').value = alternativas.B.trim()
-    if (alternativas.C) document.getElementById('alt-c').value = alternativas.C.trim()
-    if (alternativas.D) document.getElementById('alt-d').value = alternativas.D.trim()
-    if (alternativas.E) document.getElementById('alt-e').value = alternativas.E.trim()
+    if (alternativas.A) document.getElementById('alt-a').textContent = alternativas.A.trim()
+    if (alternativas.B) document.getElementById('alt-b').textContent = alternativas.B.trim()
+    if (alternativas.C) document.getElementById('alt-c').textContent = alternativas.C.trim()
+    if (alternativas.D) document.getElementById('alt-d').textContent = alternativas.D.trim()
+    if (alternativas.E) document.getElementById('alt-e').textContent = alternativas.E.trim()
   }
 
   // AVISOS INTELIGENTES
@@ -5861,6 +5921,25 @@ function filtrarQuestoesPDF() {
   return { lista: questoes, titulo: 'Todas as Questões' }
 }
 
+// ===== TEXTO RICO NO PDF (negrito/sublinhado de verdade, não só limpar os marcadores) =====
+// Quebra um texto com marcadores **negrito** e __sublinhado__ numa lista de "tokens"
+// (palavras e espaços), cada um já sabendo se deve sair em negrito/sublinhado — usado
+// pra desenhar o PDF palavra por palavra, com quebra de linha manual.
+function tokenizarTextoFormatado(texto) {
+  const tokens = []
+  const partes = String(texto || '').split(/(\*\*.+?\*\*|__.+?__)/g).filter(p => p !== '')
+  partes.forEach(parte => {
+    let negrito = false, sublinhado = false, conteudo = parte
+    if (/^\*\*.+\*\*$/.test(parte)) { negrito = true; conteudo = parte.slice(2, -2) }
+    else if (/^__.+__$/.test(parte)) { sublinhado = true; conteudo = parte.slice(2, -2) }
+    conteudo.split(/(\s+)/).forEach(pedaco => {
+      if (pedaco === '') return
+      tokens.push({ texto: pedaco, negrito, sublinhado, espaco: /^\s+$/.test(pedaco) })
+    })
+  })
+  return tokens
+}
+
 function exportarQuestoesPDF() {
   const { lista, titulo } = filtrarQuestoesPDF()
   if (!lista.length) { notif('Nenhuma questão encontrada para esse filtro.', 'error'); return }
@@ -5888,6 +5967,63 @@ function exportarQuestoesPDF() {
     }
   }
 
+  // Desenha um texto com negrito/sublinhado DE VERDADE (fonte em negrito e linha
+  // desenhada embaixo), quebrando linha automaticamente pra caber em "largura", e
+  // paginando via novaLinha(). "prefixo" (ex: "1." ou "A)") sai antes do texto, na
+  // mesma linha, sem negrito/sublinhado.
+  function escreverTextoRico(texto, x, largura, prefixo, alturaLinha) {
+    alturaLinha = alturaLinha || 14
+    const tokens = tokenizarTextoFormatado(texto)
+    doc.setFont(undefined, 'normal')
+    const prefixoLargura = prefixo ? doc.getTextWidth(prefixo + ' ') : 0
+
+    let linha = []
+    let larguraLinha = 0
+    let primeiraLinha = true
+    let larguraDisponivel = prefixo ? (largura - prefixoLargura) : largura
+
+    function medir(tok) {
+      doc.setFont(undefined, tok.negrito ? 'bold' : 'normal')
+      return doc.getTextWidth(tok.texto)
+    }
+
+    function desenhar() {
+      novaLinha(alturaLinha)
+      let cx = x
+      if (primeiraLinha && prefixo) {
+        doc.setFont(undefined, 'normal')
+        doc.text(prefixo, cx, y)
+        cx += prefixoLargura
+      }
+      linha.forEach(tok => {
+        doc.setFont(undefined, tok.negrito ? 'bold' : 'normal')
+        doc.text(tok.texto, cx, y)
+        const w = doc.getTextWidth(tok.texto)
+        if (tok.sublinhado && tok.texto.trim()) {
+          doc.setDrawColor(20)
+          doc.line(cx, y + 2, cx + w, y + 2)
+        }
+        cx += w
+      })
+      doc.setFont(undefined, 'normal')
+      y += alturaLinha
+      primeiraLinha = false
+      linha = []
+      larguraLinha = 0
+      larguraDisponivel = largura
+    }
+
+    tokens.forEach(tok => {
+      const w = medir(tok)
+      if (larguraLinha + w > larguraDisponivel && linha.length) desenhar()
+      if (larguraLinha === 0 && tok.espaco) return // não inicia linha nova com espaço
+      linha.push(tok)
+      larguraLinha += w
+    })
+    if (linha.length || primeiraLinha) desenhar()
+    doc.setFont(undefined, 'normal')
+  }
+
   // Capa/cabeçalho
   doc.setFontSize(18); doc.setTextColor(20)
   doc.text(titulo, margem, y); y += 22
@@ -5903,17 +6039,14 @@ function exportarQuestoesPDF() {
     y += 14
 
     doc.setFontSize(11); doc.setTextColor(20)
-    const enunciadoLimpo = (q.enunciado || '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1')
-    const enunciado = doc.splitTextToSize(`${i + 1}. ${enunciadoLimpo}`, larguraUtil)
-    enunciado.forEach(linha => { novaLinha(15); doc.text(linha, margem, y); y += 15 })
+    escreverTextoRico(q.enunciado || '', margem, larguraUtil, `${i + 1}.`, 15)
     y += 4
 
     const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
     doc.setFontSize(10); doc.setTextColor(20)
     ;['A', 'B', 'C', 'D', 'E'].forEach(letra => {
       if (!alts[letra]) return
-      const linhas = doc.splitTextToSize(`${letra}) ${alts[letra]}`, larguraUtil - 10)
-      linhas.forEach(l => { novaLinha(14); doc.text(l, margem + 10, y); y += 14 })
+      escreverTextoRico(alts[letra], margem + 10, larguraUtil - 10, `${letra})`, 14)
     })
 
     if (incluirGabarito && q.gabarito) {
