@@ -423,6 +423,57 @@
   }
   .rich-editable:focus { border-color: var(--accent); }
   .rich-editable:empty:before { content: attr(data-placeholder); color: var(--text2); }
+
+  /* ================================================================
+     MOBILE — ajustes de usabilidade em telas pequenas/tablets
+     ================================================================ */
+  @media (max-width: 768px) {
+    /* Evita que o navegador dê zoom automático ao tocar num campo de
+       texto (acontece quando a fonte do campo é menor que 16px) */
+    input, select, textarea, .rich-editable { font-size: 16px; }
+
+    /* Logo mais enxuta pra sobrar espaço pros ícones do menu */
+    .nav-logo { font-size: 0.9rem; white-space: nowrap; flex-shrink: 0; }
+    nav { padding: 0 10px; gap: 8px; }
+
+    /* Menu principal: em vez de espremer ou cortar as abas, deixa
+       rolar horizontalmente — todas continuam alcançáveis com o dedo,
+       e a aba ativa é centralizada automaticamente ao trocar de página */
+    .nav-tabs {
+      overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap;
+      -webkit-overflow-scrolling: touch; scrollbar-width: none;
+      padding-bottom: 2px; gap: 2px;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .nav-tab {
+      flex: 0 0 auto; padding: 10px 12px; min-width: 42px; min-height: 42px;
+    }
+    .nav-sino-wrap { flex: 0 0 auto; }
+
+    /* Cards com grade fixa de 3/4 colunas ficam apertados demais num
+       celular — passam a quebrar em 2 colunas (com !important pra
+       vencer o style inline usado em algumas telas) */
+    .stats-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; }
+
+    /* Modais viram uma "folha" que sobe de baixo, ocupando quase a
+       tela toda — mais fácil de ler e tocar do que uma caixinha
+       pequena centralizada */
+    .modal-overlay { align-items: flex-end; padding: 0; }
+    .modal { max-width: 100%; width: 100%; max-height: 92vh; border-radius: 16px 16px 0 0; }
+
+    /* Botões e chips maiores — mais fácil de acertar com o dedo */
+    .btn { min-height: 42px; }
+    .filtro-btn { min-height: 34px; padding: 7px 14px; }
+    .item-chip button, .chip-del { min-width: 32px; min-height: 32px; }
+
+    main { padding: 18px 12px; }
+    .card { padding: 16px; }
+  }
+
+  @media (max-width: 420px) {
+    .dash-hero { padding: 18px 16px; }
+    .dash-hero-titulo { font-size: 1.25rem; }
+  }
 </style>
 </head>
 <body>
@@ -2560,7 +2611,11 @@ function goPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'))
   document.getElementById('page-' + id).classList.add('active')
-  document.querySelectorAll('.nav-tab')[PAGES.indexOf(id)].classList.add('active')
+  const abaAtiva = document.querySelectorAll('.nav-tab')[PAGES.indexOf(id)]
+  abaAtiva.classList.add('active')
+  // No celular o menu rola na horizontal — garante que a aba escolhida
+  // fique visível na tela, mesmo que esteja fora da área visível agora
+  abaAtiva.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
   atualizarSinoConcurso()
   if (id === 'dashboard') renderDashboard()
   if (id === 'questoes') renderQuestoes()
