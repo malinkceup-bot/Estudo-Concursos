@@ -2565,6 +2565,11 @@ const MATERIAS_PADRAO = [
 let materias = []
 let questoes = []
 let mapas = []
+// Temas bloqueados (não são uma tabela própria — temas são só um campo de texto
+// nas Questões/Mapas — então guardamos a lista de nomes bloqueados na tabela
+// "Configurações", igual já é feito com o Cloudinary). Bloquear um tema some
+// com as questões/mapas dele em todo o sistema, igual acontece com matéria.
+let temasBloqueados = []
 let editalTopicos = []
 let ultimaAnaliseEdital = null
 let redacoes = []
@@ -2644,11 +2649,11 @@ function materiasBloqueadasSet() {
 }
 function questoesVisiveis() {
   const bloqueadas = materiasBloqueadasSet()
-  return bloqueadas.size ? questoes.filter(q => !bloqueadas.has(q.materia)) : questoes
+  return questoes.filter(q => !bloqueadas.has(q.materia) && !temasBloqueados.includes(q.tema))
 }
 function mapasVisiveis() {
   const bloqueadas = materiasBloqueadasSet()
-  return bloqueadas.size ? mapas.filter(m => !bloqueadas.has(m.materia)) : mapas
+  return mapas.filter(m => !bloqueadas.has(m.materia) && !temasBloqueados.includes(m.tema))
 }
 
 function popularSelects() {
@@ -4574,12 +4579,14 @@ function getTemasCadastrados() {
 }
 
 // Igual getTemasCadastrados, mas junto com a matéria mais usada por esse tema
-// (um tema pode ter sido usado em mais de uma matéria; aqui mostramos a predominante)
+// (um tema pode ter sido usado em mais de uma matéria; aqui mostramos a predominante).
+// Temas bloqueados ficam de fora — não faz sentido sugerir um tema que não cai
+// no concurso atual na hora de marcar uma questão/mapa novo.
 function getTemasComMateria() {
   const mapa = {}
   const registrar = (tema, materia) => {
     tema = tema && tema.trim()
-    if (!tema) return
+    if (!tema || temasBloqueados.includes(tema)) return
     if (!mapa[tema]) mapa[tema] = { tema, count: 0, materias: {} }
     mapa[tema].count++
     materia = materia && materia.trim()
@@ -5411,9 +5418,16 @@ async function salvarConfiguracaoSupabase(chave, valor) {
       // Inserir
       await supa.insert(TABELA_CONFIG, { chave, valor })
     }
+    localStorage.setItem(chave, valor)
   } catch(e) {
     console.error('Erro ao salvar configuração:', e)
   }
+}
+
+// Salva a lista de temas bloqueados no Supabase (chave "temas_bloqueados" na
+// tabela Configurações), pra funcionar em qualquer dispositivo que você logar.
+async function salvarTemasBloqueados() {
+  await salvarConfiguracaoSupabase('temas_bloqueados', JSON.stringify(temasBloqueados))
 }
 
 async function carregarConfiguracoesSupabase() {
@@ -5637,13 +5651,17 @@ function renderTemasConfig() {
           <span class="grupo-count">${itensGrupo.length} ${itensGrupo.length !== 1 ? 'temas' : 'tema'}</span>
         </div>
         <div class="grupo-corpo chips-wrap" style="display:${aberto ? 'flex' : 'none'}">
-          ${itensGrupo.map(it => `
-            <div class="item-chip">
-              <span>${it.tema}</span>
+          ${itensGrupo.map(it => {
+            const bloqueado = temasBloqueados.includes(it.tema)
+            return `
+            <div class="item-chip" style="${bloqueado ? 'opacity:0.55' : ''}">
+              <span>${it.tema}${bloqueado ? ' <i class="fas fa-lock" style="font-size:0.65rem;margin-left:2px" title="Bloqueado"></i>' : ''}</span>
               <span class="chip-count">${it.count}</span>
+              <button onclick="event.stopPropagation();toggleTema('${escAttr(it.tema)}')" title="${bloqueado ? 'Desbloquear (voltar a mostrar nas Questões/Mapas)' : 'Bloquear (ocultar das Questões/Mapas — útil quando não cai no concurso atual)'}"><i class="fas ${bloqueado ? 'fa-lock' : 'fa-lock-open'}"></i></button>
               <button onclick="event.stopPropagation();abrirEditarTema('${escAttr(it.tema)}')" title="Editar"><i class="fas fa-edit"></i></button>
               <button class="chip-del" onclick="event.stopPropagation();removerTema('${escAttr(it.tema)}')" title="Remover"><i class="fas fa-trash"></i></button>
-            </div>`).join('')}
+            </div>`
+          }).join('')}
         </div>
       </div>`
   }).join('')
@@ -5702,6 +5720,18 @@ async function confirmarEdicaoNome() {
       await supa.update(TABELA_QUESTOES, q.id, { tema: novoNome })
       q.tema = novoNome
     }
+    // Atualizar tema em todos os mapas
+    const mapasAfetados = mapas.filter(m => m.tema === _editarMateriaNomeAntigo)
+    for (const m of mapasAfetados) {
+      await supa.update(TABELA_MAPAS, m.id, { tema: novoNome })
+      m.tema = novoNome
+    }
+    // Se o tema renomeado estava bloqueado, o bloqueio segue pro novo nome
+    if (temasBloqueados.includes(_editarMateriaNomeAntigo)) {
+      temasBloqueados = temasBloqueados.filter(t => t !== _editarMateriaNomeAntigo)
+      temasBloqueados.push(novoNome)
+      await salvarTemasBloqueados()
+    }
     notif(`✅ Tema renomeado! ${questoesAfetadas.length} ${questoesAfetadas.length !== 1 ? 'questões atualizadas' : 'questão atualizada'}!`)
   } else {
     // Atualizar nome da matéria no Supabase
@@ -5730,6 +5760,27 @@ async function confirmarEdicaoNome() {
   renderDashboard()
 }
 
+// ===== BLOQUEAR/DESBLOQUEAR TEMA =====
+// Mesma lógica do bloqueio de matéria, só que por tema: útil quando a matéria
+// inteira cai no concurso, mas um tema específico dela não é cobrado. Bloquear
+// só esconde (Questões, Mapas, Dashboard, Simulado) — nada é apagado, e só
+// desbloqueia de novo aqui em Config.
+async function toggleTema(tema) {
+  const bloqueado = temasBloqueados.includes(tema)
+  if (bloqueado) {
+    temasBloqueados = temasBloqueados.filter(t => t !== tema)
+  } else {
+    temasBloqueados.push(tema)
+  }
+  await salvarTemasBloqueados()
+  notif(bloqueado ? `🔓 Tema "${tema}" desbloqueado!` : `🔒 Tema "${tema}" bloqueado — não vai mais aparecer nas Questões/Mapas.`)
+  renderConfig()
+  popularSelects()
+  if (document.getElementById('page-questoes')?.classList.contains('active')) renderQuestoes()
+  if (document.getElementById('page-mapas')?.classList.contains('active')) renderMapas()
+  renderDashboard()
+}
+
 async function removerTema(tema) {
   _materiaParaRemover = null
   const count = questoes.filter(q => q.tema === tema).length
@@ -5745,6 +5796,10 @@ async function removerTema(tema) {
     }
     esconderLoading()
     document.getElementById('modal-confirmar').classList.remove('open')
+    if (temasBloqueados.includes(tema)) {
+      temasBloqueados = temasBloqueados.filter(t => t !== tema)
+      await salvarTemasBloqueados()
+    }
     notif('🗑️ Tema removido!')
     renderConfig()
   }
@@ -6556,8 +6611,9 @@ async function carregarDados() {
       }
     }
 
-    // Carregar configurações do Supabase (Cloudinary etc)
+    // Carregar configurações do Supabase (Cloudinary, temas bloqueados etc)
     await carregarConfiguracoesSupabase()
+    try { temasBloqueados = JSON.parse(localStorage.getItem('temas_bloqueados') || '[]') } catch(e) { temasBloqueados = [] }
 
     const el = document.getElementById('usuario-email')
     if (el && usuarioAtual) el.textContent = usuarioAtual.email
