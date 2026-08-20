@@ -892,6 +892,7 @@ for each row execute function restringir_cadastro_email();</pre>
     <button class="nav-tab" onclick="goPage('cadastro')"><i class="fas fa-plus"></i> <span>Cadastrar</span></button>
     <button class="nav-tab" onclick="goPage('questoes')"><i class="fas fa-list"></i> <span>Questões</span></button>
     <button class="nav-tab" onclick="goPage('simulado')"><i class="fas fa-brain"></i> <span>Simulado</span></button>
+    <button class="nav-tab" onclick="goPage('flashcards')"><i class="fas fa-bolt"></i> <span>Flashcards</span></button>
     <button class="nav-tab" onclick="goPage('mapas')"><i class="fas fa-image"></i> <span>Mapas</span></button>
     <button class="nav-tab" onclick="goPage('edital')"><i class="fas fa-book-open"></i> <span>Edital</span></button>
     <button class="nav-tab" onclick="goPage('redacao')"><i class="fas fa-feather-alt"></i> <span>Redação</span></button>
@@ -1316,6 +1317,79 @@ for each row execute function restringir_cadastro_email();</pre>
         <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px">Simulado Concluído!</div>
         <div id="simulado-resultado" style="color:var(--text2);margin-bottom:20px"></div>
         <button class="btn btn-primary" onclick="resetSimulado()"><i class="fas fa-redo"></i> Novo Simulado</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLASHCARDS -->
+  <div class="page" id="page-flashcards">
+    <div id="flash-config">
+      <div class="card">
+        <div class="card-title"><span class="card-title-icon" style="background:rgba(234,179,8,0.15);color:var(--yellow)"><i class="fas fa-bolt"></i></span>Flashcards</div>
+        <div style="font-size:0.8rem;color:var(--text2);margin-bottom:16px">Revisão rápida: aparece a questão, você responde, já vê o gabarito e o comentário, e passa pra próxima. Ideal pra revisar uma matéria/tema específico em pouco tempo.</div>
+
+        <div class="form-group">
+          <label>Matéria</label>
+          <select id="flash-materia" onchange="atualizarFlashTemas()"></select>
+        </div>
+
+        <div class="form-group">
+          <label>Tema (opcional)</label>
+          <select id="flash-tema">
+            <option value="">Todos os temas</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Incluir questões já dominadas?</label>
+          <select id="flash-incluir-dom">
+            <option value="nao">Não — só pendentes</option>
+            <option value="sim">Sim — todas</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary btn-full" onclick="iniciarFlashcards()">
+          <i class="fas fa-bolt"></i> Começar Flashcards
+        </button>
+      </div>
+    </div>
+
+    <div id="flash-ativo" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div class="simulado-progress" id="flash-progress" style="margin-bottom:0"></div>
+        <button class="btn btn-ghost btn-sm" onclick="cancelarFlashcards()" style="color:var(--red);border-color:var(--red)">
+          <i class="fas fa-times"></i> Encerrar
+        </button>
+      </div>
+
+      <div style="background:var(--surface2);border-radius:6px;height:6px;margin-bottom:16px;overflow:hidden">
+        <div id="flash-barra" style="background:var(--yellow);height:6px;border-radius:6px;transition:width 0.3s;width:0%"></div>
+      </div>
+
+      <div id="flash-card-atual"></div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+        <button class="btn btn-ghost" onclick="pularFlashcard()" id="btn-pular-flash">
+          <i class="fas fa-forward"></i> Pular
+        </button>
+      </div>
+
+      <div id="flash-acoes" style="display:none;margin-top:12px">
+        <div id="flash-feedback" style="margin-bottom:12px"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="proximoFlashcard()">
+            <i class="fas fa-arrow-right"></i> Próxima
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="flash-fim" style="display:none">
+      <div class="card" style="text-align:center">
+        <div style="font-size:3rem;margin-bottom:12px">⚡</div>
+        <div style="font-size:1.2rem;font-weight:700;margin-bottom:8px">Flashcards concluídos!</div>
+        <div id="flash-resultado" style="color:var(--text2);margin-bottom:20px"></div>
+        <button class="btn btn-primary" onclick="resetFlashcards()"><i class="fas fa-redo"></i> Nova Rodada</button>
       </div>
     </div>
   </div>
@@ -2611,7 +2685,7 @@ function esconderLoading() {
 }
 
 // ===== NAVEGAÇÃO =====
-const PAGES = ['dashboard','cadastro','questoes','simulado','mapas','edital','redacao','concurso','config']
+const PAGES = ['dashboard','cadastro','questoes','simulado','flashcards','mapas','edital','redacao','concurso','config']
 function goPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'))
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'))
@@ -2675,6 +2749,17 @@ function popularSelects() {
       </button>`).join('')
   }
   renderSimuladoTemas()
+
+  // Select de matéria dos Flashcards (só matérias que têm alguma questão visível)
+  const flashMateriaEl = document.getElementById('flash-materia')
+  if (flashMateriaEl) {
+    const materiasComQuestao = [...new Set(questoesVisiveis().map(q => q.materia).filter(Boolean))].sort()
+    const valorAtual = flashMateriaEl.value
+    flashMateriaEl.innerHTML = '<option value="">Todas as matérias</option>' +
+      materiasComQuestao.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('')
+    if (materiasComQuestao.includes(valorAtual)) flashMateriaEl.value = valorAtual
+    atualizarFlashTemas()
+  }
 }
 
 // ===== ESCAPE SEGURO PARA onclick ("..." + JS string '...') =====
@@ -4264,6 +4349,7 @@ let simuladoLista = [], simuladoIdx = 0, simuladoAcertos = 0, simuladoErros = 0,
 let simuladoMatSelecionadas = []
 let simuladoTemasSelecionados = []
 let simuladoTimerSegundos = 0
+let flashLista = [], flashIdx = 0, flashAcertos = 0, flashErros = 0, flashRespondida = false
 let simuladoTimerInterval = null
 
 function toggleSimuladoMateria(btn, nome) {
@@ -4565,6 +4651,203 @@ function resetSimulado() {
 function cancelarSimulado() {
   if (!confirm('Cancelar o simulado? Seu progresso atual será perdido.')) return
   resetSimulado()
+}
+
+// ===== FLASHCARDS (revisão rápida por matéria/tema) =====
+// Popula o select de Tema dos Flashcards de acordo com a matéria escolhida
+// (ou com todas as matérias visíveis, se "Todas as matérias" estiver selecionado).
+function atualizarFlashTemas() {
+  const temaEl = document.getElementById('flash-tema')
+  if (!temaEl) return
+  const materiaEscolhida = document.getElementById('flash-materia').value
+  let base = questoesVisiveis()
+  if (materiaEscolhida) base = base.filter(q => q.materia === materiaEscolhida)
+  const temas = [...new Set(base.map(q => q.tema).filter(t => t && t.trim()))].sort()
+  const valorAtual = temaEl.value
+  temaEl.innerHTML = '<option value="">Todos os temas</option>' +
+    temas.map(t => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('')
+  if (temas.includes(valorAtual)) temaEl.value = valorAtual
+}
+
+function iniciarFlashcards() {
+  const materiaEscolhida = document.getElementById('flash-materia').value
+  const temaEscolhido = document.getElementById('flash-tema').value
+  const inclDom = document.getElementById('flash-incluir-dom').value === 'sim'
+
+  let lista = questoesVisiveis()
+  if (materiaEscolhida) lista = lista.filter(q => q.materia === materiaEscolhida)
+  if (temaEscolhido) lista = lista.filter(q => q.tema === temaEscolhido)
+  if (!inclDom) lista = lista.filter(q => !q.dominada)
+  if (!lista.length) { notif('Nenhuma questão encontrada com esse filtro!', 'error'); return }
+
+  flashLista = lista.sort(() => Math.random() - 0.5)
+  flashIdx = 0; flashAcertos = 0; flashErros = 0; flashRespondida = false
+
+  document.getElementById('flash-config').style.display = 'none'
+  document.getElementById('flash-ativo').style.display = 'block'
+  document.getElementById('flash-fim').style.display = 'none'
+  renderFlashcard()
+}
+
+function atualizarBarraFlash() {
+  const pct = (flashIdx / flashLista.length) * 100
+  document.getElementById('flash-barra').style.width = pct + '%'
+  document.getElementById('flash-progress').textContent =
+    `Card ${flashIdx + 1} de ${flashLista.length} — ✅ ${flashAcertos} acertos · ❌ ${flashErros} erros`
+  const btnPular = document.getElementById('btn-pular-flash')
+  if (btnPular) btnPular.disabled = flashIdx >= flashLista.length - 1
+}
+
+function renderFlashcard() {
+  flashRespondida = false
+  document.getElementById('flash-acoes').style.display = 'none'
+  document.getElementById('flash-feedback').innerHTML = ''
+  atualizarBarraFlash()
+
+  const q = flashLista[flashIdx]
+  const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
+  const temAlts = Object.values(alts).some(v => v)
+  const ehCertoErrado = q.gabarito === 'Certo' || q.gabarito === 'Errado'
+
+  let alternativasHTML = ''
+  if (temAlts) {
+    alternativasHTML = `<div id="flash-alts-container" style="display:flex;flex-direction:column;margin-bottom:8px">
+      ${['A','B','C','D','E'].filter(l => alts[l]).map(l => `
+        <button class="alt-btn" id="flash-alt-btn-${l}" onclick="responderFlashAlternativa('${l}')">
+          <span class="alt-letra">${l})</span>
+          <span>${formatarTextoInline(alts[l])}</span>
+        </button>`).join('')}
+    </div>`
+  } else if (ehCertoErrado) {
+    alternativasHTML = `<div class="cert-errad-btns" id="flash-alts-container">
+      <button class="cert-btn" id="flash-alt-btn-Certo" onclick="responderFlashAlternativa('Certo')">✅ Certo</button>
+      <button class="cert-btn" id="flash-alt-btn-Errado" onclick="responderFlashAlternativa('Errado')">❌ Errado</button>
+    </div>`
+  } else {
+    alternativasHTML = `<button class="btn btn-ghost btn-full" onclick="responderFlashSemAlternativa()" style="margin-bottom:8px">
+      <i class="fas fa-eye"></i> Ver Gabarito
+    </button>`
+  }
+
+  document.getElementById('flash-card-atual').innerHTML = `
+    <div class="simulado-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        ${tagMateria(q.materia)}
+        <span style="font-size:0.75rem;color:var(--text2)">${q.data || ''}</span>
+      </div>
+      ${q.tema ? `<div style="font-size:0.78rem;color:var(--accent);margin-bottom:10px"><i class="fas fa-tag" style="margin-right:4px"></i>${q.tema}</div>` : ''}
+      ${q.texto_apoio ? `<div style="font-size:0.88rem;color:var(--text2);line-height:1.6;margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--text2);white-space:pre-wrap"><div style="font-size:0.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px"><i class="fas fa-file-lines"></i> Texto de apoio</div>${formatarEnunciado(q.texto_apoio)}</div>` : ''}
+      ${q.enunciado ? `<div style="font-size:0.95rem;color:var(--text);line-height:1.6;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--yellow);white-space:pre-wrap">${formatarEnunciado(q.enunciado)}</div>` : '<div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px;font-style:italic">Selecione sua resposta:</div>'}
+      ${alternativasHTML}
+    </div>`
+}
+
+async function responderFlashAlternativa(escolha) {
+  if (flashRespondida) return
+  flashRespondida = true
+
+  const q = flashLista[flashIdx]
+  const acertou = escolha === q.gabarito
+
+  document.querySelectorAll('#flash-alts-container .alt-btn, #flash-alts-container .cert-btn').forEach(b => b.disabled = true)
+
+  const btnEscolhido = document.getElementById(`flash-alt-btn-${escolha}`)
+  const btnCorreto = document.getElementById(`flash-alt-btn-${q.gabarito}`)
+
+  if (acertou) { btnEscolhido?.classList.add('correta') }
+  else { btnEscolhido?.classList.add('errada'); btnCorreto?.classList.add('correta') }
+
+  const feedbackEl = document.getElementById('flash-feedback')
+  feedbackEl.innerHTML = `
+    <div class="simulado-feedback-box ${acertou ? 'acerto' : 'erro'}">
+      ${acertou ? '✅ Resposta correta!' : `❌ Resposta errada! O gabarito é: <strong>${q.gabarito}</strong>`}
+    </div>
+    ${q.anotacao ? `<div class="gabarito-info"><i class="fas fa-comment-dots" style="color:var(--yellow);margin-right:6px"></i>${q.anotacao}</div>` : ''}
+    ${q.video ? `<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm" style="margin-top:8px"><i class="fas fa-play"></i> Ver Vídeo</a>` : ''}`
+
+  document.getElementById('flash-acoes').style.display = 'block'
+
+  if (acertou) {
+    flashAcertos++
+    atualizarDominada(q.id, true)
+    const novasTentativas = (q.tentativas || 0) + 1
+    const novosAcertos = (q.acertos || 0) + 1
+    await supa.update(TABELA_QUESTOES, q.id, { tentativas: novasTentativas, acertos: novosAcertos })
+    q.tentativas = novasTentativas; q.acertos = novosAcertos
+  } else {
+    flashErros++
+    atualizarDominada(q.id, false)
+    const novasTentativas = (q.tentativas || 0) + 1
+    await supa.update(TABELA_QUESTOES, q.id, { tentativas: novasTentativas })
+    q.tentativas = novasTentativas
+  }
+}
+
+function responderFlashSemAlternativa() {
+  if (flashRespondida) return
+  flashRespondida = true
+  const q = flashLista[flashIdx]
+  const card = document.getElementById('flash-card-atual').querySelector('.simulado-card')
+  card.innerHTML += `<div style="background:rgba(234,179,8,0.1);border:1px solid var(--yellow);border-radius:8px;padding:12px;margin-top:8px">
+    <strong style="color:var(--yellow)">Gabarito: ${q.gabarito}</strong>
+    ${q.anotacao ? `<div style="font-size:0.85rem;color:var(--text2);margin-top:6px;line-height:1.6;white-space:pre-wrap">${q.anotacao}</div>` : ''}
+  </div>`
+  document.getElementById('flash-feedback').innerHTML = `
+    <div style="font-size:0.9rem;font-weight:600;margin-bottom:8px;color:var(--text2)">Você acertou?</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-success" onclick="confirmarFlashSemAlternativa(true)"><i class="fas fa-check"></i> Sim!</button>
+      <button class="btn btn-danger" onclick="confirmarFlashSemAlternativa(false)"><i class="fas fa-times"></i> Não</button>
+    </div>`
+  document.getElementById('flash-acoes').style.display = 'block'
+  document.querySelector('#flash-acoes .btn-primary').style.display = 'none'
+}
+
+function confirmarFlashSemAlternativa(acertou) {
+  const q = flashLista[flashIdx]
+  if (acertou) {
+    flashAcertos++
+    atualizarDominada(q.id, true)
+    document.getElementById('flash-feedback').innerHTML = `<div class="simulado-feedback-box acerto">✅ Ótimo! Marcada como dominada!</div>`
+  } else {
+    flashErros++
+    atualizarDominada(q.id, false)
+    document.getElementById('flash-feedback').innerHTML = `<div class="simulado-feedback-box erro">❌ Voltou para pendente. Continue praticando!</div>`
+  }
+  document.querySelector('#flash-acoes .btn-primary').style.display = 'inline-flex'
+}
+
+function pularFlashcard() {
+  if (flashIdx >= flashLista.length - 1) return
+  flashIdx++
+  renderFlashcard()
+}
+
+function proximoFlashcard() {
+  flashIdx++
+  if (flashIdx >= flashLista.length) {
+    document.getElementById('flash-ativo').style.display = 'none'
+    document.getElementById('flash-fim').style.display = 'block'
+    const total = flashAcertos + flashErros
+    const pct = total ? Math.round((flashAcertos / total) * 100) : 0
+    document.getElementById('flash-resultado').innerHTML = `
+      <div style="font-size:2rem;font-weight:700;color:${pct>=70?'var(--green)':pct>=40?'var(--yellow)':'var(--red)'}">${pct}%</div>
+      <div style="margin-top:6px">✅ ${flashAcertos} acertos · ❌ ${flashErros} erros de ${flashLista.length} cards</div>
+      <div style="font-size:0.85rem;margin-top:8px;color:var(--text2)">${pct>=70?'Mandou bem! 🎉':pct>=40?'Bom ritmo! 💪':'Vale a pena revisar esse tema com calma! 📚'}</div>`
+    renderDashboard()
+    return
+  }
+  renderFlashcard()
+}
+
+function resetFlashcards() {
+  document.getElementById('flash-config').style.display = 'block'
+  document.getElementById('flash-ativo').style.display = 'none'
+  document.getElementById('flash-fim').style.display = 'none'
+}
+
+function cancelarFlashcards() {
+  if (!confirm('Encerrar os flashcards? Seu progresso atual será perdido.')) return
+  resetFlashcards()
 }
 
 // ===== SISTEMA DE TAGS DE TEMA =====
