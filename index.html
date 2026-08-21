@@ -407,6 +407,22 @@
   .item-chip button:hover { color: var(--accent); background: rgba(255,255,255,0.06); }
   .item-chip button.chip-del:hover { color: var(--red); }
 
+  /* Linha de matéria em Config — mesmo visual dos cabeçalhos de grupo dos
+     Temas, só que sem expandir/recolher (não tem sub-lista pra mostrar) */
+  .item-chip-linha {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 8px 8px 14px; font-size: 0.85rem;
+    margin-bottom: 8px;
+  }
+  .item-chip-linha .chip-count { color: var(--text2); font-size: 0.72rem; white-space: nowrap; }
+  .item-chip-linha button {
+    background: none; border: none; color: var(--text2); cursor: pointer;
+    padding: 6px 9px; font-size: 0.78rem; border-radius: 8px; line-height: 1;
+  }
+  .item-chip-linha button:hover { color: var(--accent); background: rgba(255,255,255,0.06); }
+  .item-chip-linha button.chip-del:hover { color: var(--red); }
+
   .notif { position: fixed; bottom: 20px; right: 20px; background: var(--green); color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 0.85rem; font-weight: 600; z-index: 9999; transform: translateY(100px); transition: transform 0.3s; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
   .notif.show { transform: translateY(0); }
   .notif.error { background: var(--red); }
@@ -469,6 +485,7 @@
     .btn { min-height: 42px; }
     .filtro-btn { min-height: 34px; padding: 7px 14px; }
     .item-chip button, .chip-del { min-width: 32px; min-height: 32px; }
+    .item-chip-linha button { min-width: 34px; min-height: 34px; }
 
     main { padding: 18px 12px; }
     .card { padding: 16px; }
@@ -5816,27 +5833,31 @@ function resetarConfig() {
 }
 
 function renderConfig() {
-  // Matérias
+  // Matérias — mesmo padrão visual dos Temas, em ordem alfabética
   const el = document.getElementById('lista-materias-config')
   const buscaMat = (document.getElementById('busca-materias-config')?.value || '').trim().toLowerCase()
-  const materiasFiltradas = buscaMat ? materias.filter(m => m.nome.toLowerCase().includes(buscaMat)) : materias
+  const materiasFiltradas = (buscaMat ? materias.filter(m => m.nome.toLowerCase().includes(buscaMat)) : materias)
+    .slice()
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
 
   if (!materias.length) {
     el.innerHTML = '<div style="color:var(--text2);font-size:0.85rem">Nenhuma matéria cadastrada.</div>'
   } else if (!materiasFiltradas.length) {
     el.innerHTML = '<div style="color:var(--text2);font-size:0.85rem">Nenhuma matéria encontrada para essa busca.</div>'
   } else {
-    el.className = 'chips-wrap'
+    el.className = ''
     el.innerHTML = materiasFiltradas.map((m) => {
       const count = questoes.filter(q => q.materia === m.nome).length
       const bloqueada = m.ativa === false
       return `
-      <div class="item-chip" style="${bloqueada ? 'opacity:0.55' : ''}">
-        <span>${m.nome}${bloqueada ? ' <i class="fas fa-lock" style="font-size:0.65rem;margin-left:2px" title="Bloqueada"></i>' : ''}</span>
-        <span class="chip-count">${count}</span>
-        <button onclick="toggleMateria('${m.id}')" title="${bloqueada ? 'Desbloquear (voltar a mostrar nos formulários)' : 'Bloquear (ocultar dos formulários — útil quando não cai no concurso atual)'}"><i class="fas ${bloqueada ? 'fa-lock' : 'fa-lock-open'}"></i></button>
-        <button onclick="abrirEditarMateria('${m.id}','${escAttr(m.nome)}')" title="Editar"><i class="fas fa-edit"></i></button>
-        <button class="chip-del" onclick="removerMateria('${m.id}')" title="Remover"><i class="fas fa-trash"></i></button>
+      <div class="item-chip-linha" style="${bloqueada ? 'opacity:0.6' : ''}">
+        <span><i class="fas fa-lock${bloqueada ? '' : '-open'}" style="font-size:0.68rem;margin-right:8px;color:${bloqueada ? 'var(--text2)' : 'var(--accent)'}"></i>${m.nome}${bloqueada ? ' <span style="font-size:0.68rem;color:var(--text2)">(bloqueada)</span>' : ''}</span>
+        <div style="display:flex;align-items:center;gap:2px">
+          <span class="chip-count">${count} ${count !== 1 ? 'questões' : 'questão'}</span>
+          <button onclick="toggleMateria('${m.id}')" title="${bloqueada ? 'Desbloquear (voltar a mostrar nos formulários)' : 'Bloquear (ocultar dos formulários — útil quando não cai no concurso atual)'}"><i class="fas ${bloqueada ? 'fa-lock' : 'fa-lock-open'}"></i></button>
+          <button onclick="abrirEditarMateria('${m.id}','${escAttr(m.nome)}')" title="Editar"><i class="fas fa-edit"></i></button>
+          <button class="chip-del" onclick="removerMateria('${m.id}')" title="Remover"><i class="fas fa-trash"></i></button>
+        </div>
       </div>`
     }).join('')
   }
@@ -5979,11 +6000,12 @@ function renderTemasConfig() {
     grupos[materiaPrincipal].push({ tema: t, count: questoesDoTema.length })
   })
 
-  const ordemMaterias = materias.map(m => m.nome)
+  const ordemMaterias = materias.slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })).map(m => m.nome)
   const nomesGrupos = Object.keys(grupos).sort((a, b) => {
     if (a === 'Sem matéria') return 1
     if (b === 'Sem matéria') return -1
     const ia = ordemMaterias.indexOf(a), ib = ordemMaterias.indexOf(b)
+    if (ia === -1 && ib === -1) return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
     return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib)
   })
 
@@ -6650,6 +6672,8 @@ function textoContagemConcurso(dias, rotulo) {
   return `Faltam ${dias} dias`
 }
 
+let concursoAbertoId = null
+
 function renderConcurso() {
   const el = document.getElementById('concurso-conteudo')
   if (!el) return
@@ -6662,6 +6686,18 @@ function renderConcurso() {
         <div style="color:var(--text2);font-size:0.85rem;margin-bottom:20px;max-width:420px;margin-left:auto;margin-right:auto">Cadastre o cargo, as datas e a composição da prova pra acompanhar tudo num só lugar — e ser avisado assim que a data estiver chegando.</div>
         <button class="btn btn-primary" onclick="abrirModalConcurso()"><i class="fas fa-plus"></i> Cadastrar meu concurso</button>
       </div>`
+    return
+  }
+
+  // Se tem um concurso aberto em detalhe, mostra só ele (completo) — os demais
+  // ficam escondidos até você clicar em "Voltar pra lista"
+  const concursoAberto = concursoAbertoId ? concursos.find(c => String(c.id) === String(concursoAbertoId)) : null
+  if (concursoAberto) {
+    el.innerHTML = `
+      <div style="margin-bottom:14px">
+        <button class="btn btn-ghost" style="padding:8px 16px;font-size:0.85rem" onclick="fecharConcursoAberto()"><i class="fas fa-arrow-left"></i> Voltar pra lista</button>
+      </div>
+      ${renderCardConcurso(concursoAberto)}`
     return
   }
 
@@ -6678,8 +6714,51 @@ function renderConcurso() {
       <button class="btn btn-primary" style="padding:8px 16px;font-size:0.85rem" onclick="abrirModalConcurso()"><i class="fas fa-plus"></i> Adicionar outro concurso</button>
     </div>`
 
-  el.innerHTML = botaoAdicionar + comAlvo.map(({ c }) => renderCardConcurso(c)).join('<div style="height:16px"></div>')
+  el.innerHTML = botaoAdicionar + comAlvo.map(({ c }) => renderCardConcursoMinimizado(c)).join('<div style="height:10px"></div>')
 }
+
+function abrirConcurso(id) {
+  concursoAbertoId = id
+  renderConcurso()
+}
+
+function fecharConcursoAberto() {
+  concursoAbertoId = null
+  renderConcurso()
+}
+
+// Card resumido (minimizado) — mostra só o essencial pra reconhecer o concurso
+// na lista; clicar nele abre a versão completa com todos os detalhes.
+function renderCardConcursoMinimizado(meuConcurso) {
+  const diasProva = diasRestantes(meuConcurso.data_prova)
+  const diasLocais = diasRestantes(meuConcurso.data_locais)
+  const diasMaisUrgente = (diasLocais !== null && diasLocais >= 0) ? diasLocais : diasProva
+  const focado = meuConcurso.id === concursoFocadoId
+
+  return `
+    <div class="card" style="cursor:pointer;padding:16px;${focado ? 'border:1px solid var(--accent)' : ''}" onclick="abrirConcurso('${meuConcurso.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1">
+          <span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent);flex-shrink:0"><i class="fas fa-graduation-cap"></i></span>
+          <div style="min-width:0">
+            <div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              ${escHtml(meuConcurso.nome || meuConcurso.cargo || 'Meu concurso')}
+              ${focado ? `<span style="font-size:0.62rem;font-weight:700;background:rgba(79,142,247,0.15);color:var(--accent);padding:2px 8px;border-radius:20px;margin-left:6px;vertical-align:middle"><i class="fas fa-crosshairs"></i> Em foco</span>` : ''}
+            </div>
+            <div style="font-size:0.78rem;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+              ${meuConcurso.nome && meuConcurso.cargo ? escHtml(meuConcurso.cargo) + ' · ' : ''}${meuConcurso.data_prova ? `Prova: ${formatarDataBR(meuConcurso.data_prova)}` : 'Data da prova não definida'}
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0" onclick="event.stopPropagation()">
+          ${diasMaisUrgente !== null ? `<span style="font-size:0.75rem;font-weight:700;color:${corUrgenciaConcurso(diasMaisUrgente)};white-space:nowrap">${textoContagemConcurso(diasMaisUrgente, '').trim()}</span>` : ''}
+          <button class="btn btn-ghost" style="padding:6px 10px;font-size:0.78rem" onclick="excluirConcurso('${meuConcurso.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
+          <i class="fas fa-chevron-right" style="color:var(--text2)"></i>
+        </div>
+      </div>
+    </div>`
+}
+
 
 function renderCardConcurso(meuConcurso) {
   const diasLocais = diasRestantes(meuConcurso.data_locais)
@@ -7029,6 +7108,7 @@ async function excluirConcurso(id) {
   const ok = await supa.delete(TABELA_CONCURSO, id)
   if (ok) {
     concursos = concursos.filter(c => String(c.id) !== String(id))
+    if (String(concursoAbertoId) === String(id)) concursoAbertoId = null
     renderConcurso()
     renderDashboard()
     notif('🗑️ Concurso removido.')
