@@ -424,6 +424,23 @@
   .rich-editable:focus { border-color: var(--accent); }
   .rich-editable:empty:before { content: attr(data-placeholder); color: var(--text2); }
 
+  /* Recuo de primeira linha do parágrafo (botão "Recuar parágrafo") — 28px
+     consistentes, em vez de depender de espaços digitados manualmente */
+  .paragrafo-recuado { text-indent: 28px; }
+
+  /* Régua visual: duas linhas verticais finas dentro da caixa de texto.
+     A cinza marca a margem (onde um parágrafo normal começa); a colorida
+     marca o ponto de recuo (onde um parágrafo recuado deve começar) —
+     ajuda a conferir visualmente se os parágrafos estão alinhados entre si. */
+  .rich-editable-guia {
+    background-image:
+      linear-gradient(to right, rgba(148,163,184,0.45) 0, rgba(148,163,184,0.45) 1px, transparent 1px),
+      linear-gradient(to right, var(--accent) 0, var(--accent) 1.5px, transparent 1.5px);
+    background-position: 12px 0, 40px 0;
+    background-repeat: no-repeat, no-repeat;
+    background-size: 1px 100%, 1.5px 100%;
+  }
+
   /* ================================================================
      MOBILE — ajustes de usabilidade em telas pequenas/tablets
      ================================================================ */
@@ -1071,9 +1088,10 @@ for each row execute function restringir_cadastro_email();</pre>
             <span style="width:1px;background:var(--border);margin:2px 2px"></span>
             <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('texto-apoio-questao','justifyLeft')" title="Alinhar à esquerda" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-left"></i></button>
             <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('texto-apoio-questao','justifyCenter')" title="Centralizar (útil pra poemas)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
+            <button type="button" onmousedown="event.preventDefault()" onclick="recuarParagrafo('texto-apoio-questao')" title="Recuar/tirar recuo do parágrafo (clique de novo pra desfazer)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-indent"></i></button>
           </div>
-          <div style="font-size:0.7rem;color:var(--text2);margin-bottom:6px">Selecione um trecho pra negrito/sublinhado. Clique numa linha e use os botões de alinhamento pra centralizar (poemas etc). Enter cria um novo parágrafo.</div>
-          <div id="texto-apoio-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o texto/trecho que a questão pede para interpretar..." style="min-height:140px" onpaste="tratarColagem(event)"></div>
+          <div style="font-size:0.7rem;color:var(--text2);margin-bottom:6px">Selecione um trecho pra negrito/sublinhado. Clique numa linha e use os botões de alinhamento pra centralizar (poemas etc) ou recuar o parágrafo. Enter cria um novo parágrafo. <span style="color:#94a3b8">▏linha cinza</span> = margem · <span style="color:var(--accent)">▏linha colorida</span> = recuo — use como régua pra ver se os parágrafos estão alinhados.</div>
+          <div id="texto-apoio-questao" class="rich-editable rich-editable-guia" contenteditable="true" data-placeholder="Cole aqui o texto/trecho que a questão pede para interpretar..." style="min-height:140px" onpaste="tratarColagem(event)"></div>
         </div>
       </div>
 
@@ -1086,8 +1104,9 @@ for each row execute function restringir_cadastro_email();</pre>
           <span style="width:1px;background:var(--border);margin:2px 2px"></span>
           <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('enunciado-questao','justifyLeft')" title="Alinhar à esquerda" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-left"></i></button>
           <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('enunciado-questao','justifyCenter')" title="Centralizar" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
+          <button type="button" onmousedown="event.preventDefault()" onclick="recuarParagrafo('enunciado-questao')" title="Recuar/tirar recuo do parágrafo (clique de novo pra desfazer)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-indent"></i></button>
         </div>
-        <div id="enunciado-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o enunciado da questão ou um resumo do que ela pede..." style="min-height:120px" onpaste="tratarColagem(event)"></div>
+        <div id="enunciado-questao" class="rich-editable rich-editable-guia" contenteditable="true" data-placeholder="Cole aqui o enunciado da questão ou um resumo do que ela pede..." style="min-height:120px" onpaste="tratarColagem(event)"></div>
       </div>
 
       <!-- VERIFICADOR DE DUPLICATA -->
@@ -1810,8 +1829,9 @@ for each row execute function restringir_cadastro_email();</pre>
           <span style="width:1px;background:var(--border);margin:2px 2px"></span>
           <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-texto-apoio','justifyLeft')" title="Alinhar à esquerda" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-left"></i></button>
           <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-texto-apoio','justifyCenter')" title="Centralizar (útil pra poemas)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
+          <button type="button" onmousedown="event.preventDefault()" onclick="recuarParagrafo('edit-texto-apoio')" title="Recuar/tirar recuo do parágrafo (clique de novo pra desfazer)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-indent"></i></button>
         </div>
-        <div id="edit-texto-apoio" class="rich-editable" contenteditable="true" data-placeholder="Texto/trecho que a questão pede para interpretar..." style="min-height:130px" onpaste="tratarColagem(event)"></div>
+        <div id="edit-texto-apoio" class="rich-editable rich-editable-guia" contenteditable="true" data-placeholder="Texto/trecho que a questão pede para interpretar..." style="min-height:130px" onpaste="tratarColagem(event)"></div>
       </div>
     </div>
     <div class="form-group">
@@ -1824,8 +1844,9 @@ for each row execute function restringir_cadastro_email();</pre>
         <span style="width:1px;background:var(--border);margin:2px 2px"></span>
         <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-enunciado','justifyLeft')" title="Alinhar à esquerda" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-left"></i></button>
         <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-enunciado','justifyCenter')" title="Centralizar" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
+        <button type="button" onmousedown="event.preventDefault()" onclick="recuarParagrafo('edit-enunciado')" title="Recuar/tirar recuo do parágrafo (clique de novo pra desfazer)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-indent"></i></button>
       </div>
-      <div id="edit-enunciado" class="rich-editable" contenteditable="true" data-placeholder="Enunciado da questão..." style="min-height:130px" onpaste="tratarColagem(event)"></div>
+      <div id="edit-enunciado" class="rich-editable rich-editable-guia" contenteditable="true" data-placeholder="Enunciado da questão..." style="min-height:130px" onpaste="tratarColagem(event)"></div>
     </div>
     <div class="form-group"><label>Matéria</label><select id="edit-materia"></select></div>
     <div class="form-group">
@@ -4228,6 +4249,36 @@ function alinharParagrafo(id, comando) {
   document.execCommand(comando, false, null)
 }
 
+// Acha o "parágrafo" (div) onde está o cursor agora — sobe a árvore do DOM a
+// partir da seleção até achar um elemento que seja filho DIRETO da caixa de
+// texto (é assim que o navegador organiza cada parágrafo dentro do contenteditable).
+function encontrarParagrafoAtual(el) {
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0) return null
+  let node = sel.anchorNode
+  while (node && node !== el) {
+    if (node.nodeType === Node.ELEMENT_NODE && node.parentElement === el) return node
+    node = node.parentNode
+  }
+  return null
+}
+
+// Liga/desliga o recuo de primeira linha do parágrafo onde está o cursor —
+// clique de novo no mesmo parágrafo pra desfazer. Usa "formatBlock" primeiro
+// pra garantir que o navegador já organizou o texto em um <div> de parágrafo
+// (senão, num campo recém-começado sem Enter ainda, não haveria um pra recuar).
+function recuarParagrafo(id) {
+  const el = document.getElementById(id)
+  el.focus()
+  document.execCommand('formatBlock', false, 'div')
+  const paragrafo = encontrarParagrafoAtual(el)
+  if (!paragrafo) {
+    notif('Clique dentro do parágrafo que deseja recuar', 'error')
+    return
+  }
+  paragrafo.classList.toggle('paragrafo-recuado')
+}
+
 // ===== FORMATAÇÃO GENÉRICA (usada pelas Alternativas — várias caixas, um só par de botões) =====
 // Aplica negrito/sublinhado na caixa "rich-editable" que estiver com o texto selecionado no momento,
 // não importa qual delas seja — assim um único par de botões formata qualquer alternativa (A a E).
@@ -4294,8 +4345,12 @@ function htmlParaMarkdown(el) {
         else if (tag === 'div' || tag === 'p') {
           if (out.length > 0 && !out.endsWith('\n')) out += '\n'
           const centralizado = child.style && child.style.textAlign === 'center'
+          const recuado = child.classList && child.classList.contains('paragrafo-recuado')
           const conteudo = walk(child)
-          out += (centralizado && conteudo.trim() ? `[[center]]${conteudo}[[/center]]` : conteudo) + '\n'
+          let linhaFinal = conteudo
+          if (centralizado && conteudo.trim()) linhaFinal = `[[center]]${conteudo}[[/center]]`
+          else if (recuado && conteudo.trim()) linhaFinal = `[[indent]]${conteudo}[[/indent]]`
+          out += linhaFinal + '\n'
         }
         else out += walk(child)
       }
@@ -4304,17 +4359,22 @@ function htmlParaMarkdown(el) {
   }
   return walk(el).replace(/\n+$/, '')
 }
-// Converte **negrito**, __sublinhado__ e [[center]]...[[/center]] em HTML,
-// um <div> por linha (preserva parágrafos e permite centralizar poemas etc)
+// Converte **negrito**, __sublinhado__, [[center]]...[[/center]] e [[indent]]...[[/indent]]
+// em HTML, um <div> por linha (preserva parágrafos, permite centralizar poemas e
+// recuar parágrafos)
 function formatarEnunciado(texto) {
   if (!texto) return ''
   return texto.split('\n').map(linha => {
-    const m = linha.match(/^\[\[center\]\](.*)\[\[\/center\]\]$/)
-    const centralizado = !!m
-    let t = escHtml(m ? m[1] : linha)
+    const mCenter = linha.match(/^\[\[center\]\](.*)\[\[\/center\]\]$/)
+    const mIndent = linha.match(/^\[\[indent\]\](.*)\[\[\/indent\]\]$/)
+    const centralizado = !!mCenter
+    const recuado = !!mIndent
+    const conteudoBruto = mCenter ? mCenter[1] : (mIndent ? mIndent[1] : linha)
+    let t = escHtml(conteudoBruto)
     t = t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
     t = t.replace(/__(.+?)__/g, '<u>$1</u>')
-    return `<div${centralizado ? ' style="text-align:center"' : ''}>${t || '<br>'}</div>`
+    const atributo = centralizado ? ' style="text-align:center"' : (recuado ? ' class="paragrafo-recuado"' : '')
+    return `<div${atributo}>${t || '<br>'}</div>`
   }).join('')
 }
 async function salvarEdicao() {
@@ -6363,9 +6423,11 @@ function exportarQuestoesPDF() {
   // Desenha um texto com negrito/sublinhado DE VERDADE (fonte em negrito e linha
   // desenhada embaixo), quebrando linha automaticamente pra caber em "largura", e
   // paginando via novaLinha(). "prefixo" (ex: "1." ou "A)") sai antes do texto, na
-  // mesma linha, sem negrito/sublinhado.
-  function escreverTextoRico(texto, x, largura, prefixo, alturaLinha) {
+  // mesma linha, sem negrito/sublinhado. "recuoPrimeiraLinha" empurra só a primeira
+  // linha pra direita (equivalente ao recuo de parágrafo do editor).
+  function escreverTextoRico(texto, x, largura, prefixo, alturaLinha, recuoPrimeiraLinha) {
     alturaLinha = alturaLinha || 14
+    recuoPrimeiraLinha = recuoPrimeiraLinha || 0
     const tokens = tokenizarTextoFormatado(texto)
     doc.setFont(undefined, 'normal')
     const prefixoLargura = prefixo ? doc.getTextWidth(prefixo + ' ') : 0
@@ -6373,7 +6435,7 @@ function exportarQuestoesPDF() {
     let linha = []
     let larguraLinha = 0
     let primeiraLinha = true
-    let larguraDisponivel = prefixo ? (largura - prefixoLargura) : largura
+    let larguraDisponivel = largura - prefixoLargura - recuoPrimeiraLinha
 
     function medir(tok) {
       doc.setFont(undefined, tok.negrito ? 'bold' : 'normal')
@@ -6383,10 +6445,13 @@ function exportarQuestoesPDF() {
     function desenhar() {
       novaLinha(alturaLinha)
       let cx = x
-      if (primeiraLinha && prefixo) {
-        doc.setFont(undefined, 'normal')
-        doc.text(prefixo, cx, y)
-        cx += prefixoLargura
+      if (primeiraLinha) {
+        if (prefixo) {
+          doc.setFont(undefined, 'normal')
+          doc.text(prefixo, cx, y)
+          cx += prefixoLargura
+        }
+        cx += recuoPrimeiraLinha
       }
       linha.forEach(tok => {
         doc.setFont(undefined, tok.negrito ? 'bold' : 'normal')
@@ -6417,6 +6482,27 @@ function exportarQuestoesPDF() {
     doc.setFont(undefined, 'normal')
   }
 
+  // Desenha um campo com vários parágrafos (separados por quebra de linha),
+  // respeitando o recuo de parágrafo ([[indent]]) e removendo a marcação de
+  // centralização ([[center]]) — no PDF tudo sai alinhado à esquerda, mas sem
+  // deixar as marcações aparecerem como texto literal. "prefixo" (ex: "1.") só
+  // aparece no primeiro parágrafo.
+  function escreverCampoComParagrafos(texto, x, largura, prefixo, alturaLinha) {
+    const paragrafos = String(texto || '').split('\n').filter(p => p.trim() !== '')
+    if (!paragrafos.length) {
+      if (prefixo) escreverTextoRico('', x, largura, prefixo, alturaLinha, 0)
+      return
+    }
+    paragrafos.forEach((paragrafoBruto, idx) => {
+      const mCenter = paragrafoBruto.match(/^\[\[center\]\](.*)\[\[\/center\]\]$/)
+      const mIndent = paragrafoBruto.match(/^\[\[indent\]\](.*)\[\[\/indent\]\]$/)
+      const paragrafoLimpo = mCenter ? mCenter[1] : (mIndent ? mIndent[1] : paragrafoBruto)
+      const recuo = mIndent ? 20 : 0
+      escreverTextoRico(paragrafoLimpo, x, largura, idx === 0 ? prefixo : null, alturaLinha, recuo)
+      if (idx < paragrafos.length - 1) y += 4
+    })
+  }
+
   // Capa/cabeçalho
   doc.setFontSize(18); doc.setTextColor(20)
   doc.text(titulo, margem, y); y += 22
@@ -6432,7 +6518,7 @@ function exportarQuestoesPDF() {
     y += 14
 
     doc.setFontSize(11); doc.setTextColor(20)
-    escreverTextoRico(q.enunciado || '', margem, larguraUtil, `${i + 1}.`, 15)
+    escreverCampoComParagrafos(q.enunciado || '', margem, larguraUtil, `${i + 1}.`, 15)
     y += 4
 
     const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
