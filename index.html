@@ -428,19 +428,6 @@
      consistentes, em vez de depender de espaços digitados manualmente */
   .paragrafo-recuado { text-indent: 28px; }
 
-  /* Régua visual: duas linhas verticais finas dentro da caixa de texto.
-     A cinza marca a margem (onde um parágrafo normal começa); a colorida
-     marca o ponto de recuo (onde um parágrafo recuado deve começar) —
-     ajuda a conferir visualmente se os parágrafos estão alinhados entre si. */
-  .rich-editable-guia {
-    background-image:
-      linear-gradient(to right, rgba(148,163,184,0.45) 0, rgba(148,163,184,0.45) 1px, transparent 1px),
-      linear-gradient(to right, var(--accent) 0, var(--accent) 1.5px, transparent 1.5px);
-    background-position: 12px 0, 40px 0;
-    background-repeat: no-repeat, no-repeat;
-    background-size: 1px 100%, 1.5px 100%;
-  }
-
   /* ================================================================
      MOBILE — ajustes de usabilidade em telas pequenas/tablets
      ================================================================ */
@@ -1090,8 +1077,8 @@ for each row execute function restringir_cadastro_email();</pre>
             <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('texto-apoio-questao','justifyCenter')" title="Centralizar (útil pra poemas)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
             <button type="button" onmousedown="event.preventDefault()" onclick="recuarParagrafo('texto-apoio-questao')" title="Recuar/tirar recuo do parágrafo (clique de novo pra desfazer)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-indent"></i></button>
           </div>
-          <div style="font-size:0.7rem;color:var(--text2);margin-bottom:6px">Selecione um trecho pra negrito/sublinhado. Clique numa linha e use os botões de alinhamento pra centralizar (poemas etc) ou recuar o parágrafo. Enter cria um novo parágrafo. <span style="color:#94a3b8">▏linha cinza</span> = margem · <span style="color:var(--accent)">▏linha colorida</span> = recuo — use como régua pra ver se os parágrafos estão alinhados.</div>
-          <div id="texto-apoio-questao" class="rich-editable rich-editable-guia" contenteditable="true" data-placeholder="Cole aqui o texto/trecho que a questão pede para interpretar..." style="min-height:140px" onpaste="tratarColagem(event)"></div>
+          <div style="font-size:0.7rem;color:var(--text2);margin-bottom:6px">Selecione um trecho pra negrito/sublinhado. Clique numa linha e use os botões de alinhamento pra centralizar (poemas etc) ou recuar o parágrafo — ou aperte <strong>Tab</strong> bem no começo da linha pra recuar na hora, sem precisar rolar a tela. Enter cria um novo parágrafo.</div>
+          <div id="texto-apoio-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o texto/trecho que a questão pede para interpretar..." style="min-height:140px" onpaste="tratarColagem(event)" onkeydown="handleTabRecuo(event, this.id)"></div>
         </div>
       </div>
 
@@ -1106,7 +1093,7 @@ for each row execute function restringir_cadastro_email();</pre>
           <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('enunciado-questao','justifyCenter')" title="Centralizar" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
           <button type="button" onmousedown="event.preventDefault()" onclick="recuarParagrafo('enunciado-questao')" title="Recuar/tirar recuo do parágrafo (clique de novo pra desfazer)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-indent"></i></button>
         </div>
-        <div id="enunciado-questao" class="rich-editable rich-editable-guia" contenteditable="true" data-placeholder="Cole aqui o enunciado da questão ou um resumo do que ela pede..." style="min-height:120px" onpaste="tratarColagem(event)"></div>
+        <div id="enunciado-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o enunciado da questão ou um resumo do que ela pede..." style="min-height:120px" onpaste="tratarColagem(event)" onkeydown="handleTabRecuo(event, this.id)"></div>
       </div>
 
       <!-- VERIFICADOR DE DUPLICATA -->
@@ -1831,7 +1818,7 @@ for each row execute function restringir_cadastro_email();</pre>
           <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-texto-apoio','justifyCenter')" title="Centralizar (útil pra poemas)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
           <button type="button" onmousedown="event.preventDefault()" onclick="recuarParagrafo('edit-texto-apoio')" title="Recuar/tirar recuo do parágrafo (clique de novo pra desfazer)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-indent"></i></button>
         </div>
-        <div id="edit-texto-apoio" class="rich-editable rich-editable-guia" contenteditable="true" data-placeholder="Texto/trecho que a questão pede para interpretar..." style="min-height:130px" onpaste="tratarColagem(event)"></div>
+        <div id="edit-texto-apoio" class="rich-editable" contenteditable="true" data-placeholder="Texto/trecho que a questão pede para interpretar..." style="min-height:130px" onpaste="tratarColagem(event)" onkeydown="handleTabRecuo(event, this.id)"></div>
       </div>
     </div>
     <div class="form-group">
@@ -1846,7 +1833,7 @@ for each row execute function restringir_cadastro_email();</pre>
         <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-enunciado','justifyCenter')" title="Centralizar" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
         <button type="button" onmousedown="event.preventDefault()" onclick="recuarParagrafo('edit-enunciado')" title="Recuar/tirar recuo do parágrafo (clique de novo pra desfazer)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-indent"></i></button>
       </div>
-      <div id="edit-enunciado" class="rich-editable rich-editable-guia" contenteditable="true" data-placeholder="Enunciado da questão..." style="min-height:130px" onpaste="tratarColagem(event)"></div>
+      <div id="edit-enunciado" class="rich-editable" contenteditable="true" data-placeholder="Enunciado da questão..." style="min-height:130px" onpaste="tratarColagem(event)" onkeydown="handleTabRecuo(event, this.id)"></div>
     </div>
     <div class="form-group"><label>Matéria</label><select id="edit-materia"></select></div>
     <div class="form-group">
@@ -4277,6 +4264,25 @@ function recuarParagrafo(id) {
     return
   }
   paragrafo.classList.toggle('paragrafo-recuado')
+}
+
+// Atalho pra textos longos: aperta Tab bem no COMEÇO de um parágrafo (nada de
+// texto antes do cursor nele) e já recua na hora — sem precisar rolar a tela
+// até o botão. Tab em qualquer outro ponto do texto não faz nada (só evita
+// pular o foco pra fora da caixa, que é o comportamento padrão do Tab).
+function handleTabRecuo(event, id) {
+  if (event.key !== 'Tab') return
+  event.preventDefault()
+  const el = document.getElementById(id)
+  const sel = window.getSelection()
+  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return
+  const paragrafo = encontrarParagrafoAtual(el) || el
+  const range = document.createRange()
+  range.selectNodeContents(paragrafo)
+  range.setEnd(sel.anchorNode, sel.anchorOffset)
+  const textoAntesDoCursor = range.toString()
+  if (textoAntesDoCursor.length > 0) return // só recua se o cursor estiver bem no início do parágrafo
+  recuarParagrafo(id)
 }
 
 // ===== FORMATAÇÃO GENÉRICA (usada pelas Alternativas — várias caixas, um só par de botões) =====
