@@ -2652,6 +2652,9 @@ let mapas = []
 // "Configurações", igual já é feito com o Cloudinary). Bloquear um tema some
 // com as questões/mapas dele em todo o sistema, igual acontece com matéria.
 let temasBloqueados = []
+// Concurso "em foco" no momento — quando você foca um concurso (aba Concurso),
+// as matérias dele ficam desbloqueadas e o resto é bloqueado automaticamente.
+let concursoFocadoId = null
 let editalTopicos = []
 let ultimaAnaliseEdital = null
 let redacoes = []
@@ -6721,13 +6724,19 @@ function renderCardConcurso(meuConcurso) {
   }
 
   return `
-    <div class="card">
+    <div class="card" style="${meuConcurso.id === concursoFocadoId ? 'border:1px solid var(--accent);box-shadow:0 0 0 1px var(--accent)' : ''}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:16px">
         <div>
-          <div class="card-title" style="margin-bottom:0"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-graduation-cap"></i></span>${escHtml(meuConcurso.nome || meuConcurso.cargo || 'Meu concurso')}</div>
+          <div class="card-title" style="margin-bottom:0">
+            <span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-graduation-cap"></i></span>${escHtml(meuConcurso.nome || meuConcurso.cargo || 'Meu concurso')}
+            ${meuConcurso.id === concursoFocadoId ? `<span style="font-size:0.68rem;font-weight:700;background:rgba(79,142,247,0.15);color:var(--accent);padding:3px 9px;border-radius:20px;margin-left:8px;vertical-align:middle"><i class="fas fa-crosshairs"></i> Em foco</span>` : ''}
+          </div>
           ${(meuConcurso.nome && meuConcurso.cargo) || meuConcurso.banca ? `<div style="font-size:0.78rem;color:var(--text2);margin-top:4px;margin-left:38px">${meuConcurso.nome && meuConcurso.cargo ? escHtml(meuConcurso.cargo) : ''}${meuConcurso.nome && meuConcurso.cargo && meuConcurso.banca ? ' · ' : ''}${meuConcurso.banca ? `Banca: ${escHtml(meuConcurso.banca)}` : ''}</div>` : ''}
         </div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${meuConcurso.id === concursoFocadoId
+            ? `<button class="btn btn-ghost" style="padding:6px 12px;font-size:0.8rem" onclick="removerFocoConcurso()"><i class="fas fa-crosshairs"></i> Remover foco</button>`
+            : (materiasArr.length ? `<button class="btn btn-primary" style="padding:6px 12px;font-size:0.8rem" onclick="focarConcurso('${meuConcurso.id}')"><i class="fas fa-crosshairs"></i> Focar neste concurso</button>` : '')}
           <button class="btn btn-ghost" style="padding:6px 12px;font-size:0.8rem" onclick="abrirModalConcurso('${meuConcurso.id}')"><i class="fas fa-edit"></i> Editar</button>
           <button class="btn btn-danger" style="padding:6px 12px;font-size:0.8rem" onclick="excluirConcurso('${meuConcurso.id}')"><i class="fas fa-trash"></i></button>
         </div>
@@ -6795,6 +6804,75 @@ function renderCardConcurso(meuConcurso) {
         </div>` : `<div style="color:var(--text2);font-size:0.85rem">Nenhuma matéria detalhada ainda.</div>`}
     </div>`
 }
+
+// ===== FOCAR NUM CONCURSO (aba Concurso) =====
+// Desbloqueia automaticamente só as matérias que caem naquele concurso, e
+// bloqueia o resto — a mesma lógica de bloqueio manual de Config, só que
+// aplicada de uma vez com base na lista de matérias que você já cadastrou
+// pro concurso. Os temas continuam sendo bloqueados manualmente, do jeito
+// que já é hoje (o concurso não guarda tema, só matéria).
+async function focarConcurso(id) {
+  const concurso = concursos.find(c => String(c.id) === String(id))
+  if (!concurso) return
+  const materiasArr = Array.isArray(concurso.materias) ? concurso.materias : []
+  const nomesRelevantes = new Set(materiasArr.map(m => (m.materia || '').trim()).filter(Boolean))
+  if (!nomesRelevantes.size) { notif('Esse concurso ainda não tem matérias cadastradas!', 'error'); return }
+
+  const materiasFaltando = [...nomesRelevantes].filter(nome => !materias.some(m => m.nome === nome))
+  const vaoDesbloquear = materias.filter(m => nomesRelevantes.has(m.nome) && m.ativa === false)
+  const vaoBloquear = materias.filter(m => !nomesRelevantes.has(m.nome) && m.ativa !== false)
+
+  const partesResumo = []
+  if (materiasFaltando.length) partesResumo.push(`${materiasFaltando.length} matéria${materiasFaltando.length !== 1 ? 's' : ''} nova${materiasFaltando.length !== 1 ? 's' : ''} será${materiasFaltando.length !== 1 ? 'ão' : ''} criada${materiasFaltando.length !== 1 ? 's' : ''}`)
+  if (vaoDesbloquear.length) partesResumo.push(`${vaoDesbloquear.length} desbloqueada${vaoDesbloquear.length !== 1 ? 's' : ''}`)
+  if (vaoBloquear.length) partesResumo.push(`${vaoBloquear.length} bloqueada${vaoBloquear.length !== 1 ? 's' : ''}`)
+
+  const resumo = partesResumo.length ? partesResumo.join(', ') + '.' : 'Nenhuma mudança nas matérias — já está tudo certo.'
+  if (!confirm(`Focar em "${concurso.nome || concurso.cargo || 'este concurso'}"?\n\nSó as matérias dele vão ficar visíveis nas Questões, Mapas, Dashboard e Simulado. As demais somem (nada é apagado — dá pra desbloquear de novo em Config quando quiser).\n\n${resumo}`)) return
+
+  mostrarLoading('Focando no concurso...')
+
+  // Cria matérias que estão na lista do concurso mas ainda não existem no seu cadastro
+  for (const nome of materiasFaltando) {
+    const resultado = await supa.insert(TABELA_MATERIAS, { nome, ativa: true })
+    if (resultado) materias.push(resultado[0])
+  }
+
+  // Desbloqueia as relevantes / bloqueia as demais
+  for (const m of materias) {
+    const deveEstarAtiva = nomesRelevantes.has(m.nome)
+    if (m.ativa === false && deveEstarAtiva) {
+      await supa.update(TABELA_MATERIAS, m.id, { ativa: true })
+      m.ativa = true
+    } else if (m.ativa !== false && !deveEstarAtiva) {
+      await supa.update(TABELA_MATERIAS, m.id, { ativa: false })
+      m.ativa = false
+    }
+  }
+
+  concursoFocadoId = id
+  localStorage.setItem('concurso_focado_id', id)
+  await salvarConfiguracaoSupabase('concurso_focado_id', id)
+
+  esconderLoading()
+  notif(`🎯 Foco ativado em "${concurso.nome || concurso.cargo}"!`)
+  renderConfig()
+  popularSelects()
+  renderConcurso()
+  renderDashboard()
+  if (document.getElementById('page-questoes')?.classList.contains('active')) renderQuestoes()
+  if (document.getElementById('page-mapas')?.classList.contains('active')) renderMapas()
+}
+
+function removerFocoConcurso() {
+  if (!confirm('Remover o foco deste concurso?\n\nAs matérias que estão bloqueadas/desbloqueadas agora CONTINUAM do jeito que estão — isso só tira o destaque "Em foco" do card. Ajuste os bloqueios manualmente em Config se quiser.')) return
+  concursoFocadoId = null
+  localStorage.removeItem('concurso_focado_id')
+  salvarConfiguracaoSupabase('concurso_focado_id', '')
+  notif('Foco removido.')
+  renderConcurso()
+}
+
 
 let _concursoLinhaId = 0
 
@@ -6989,6 +7067,7 @@ async function carregarDados() {
     // Carregar configurações do Supabase (Cloudinary, temas bloqueados etc)
     await carregarConfiguracoesSupabase()
     try { temasBloqueados = JSON.parse(localStorage.getItem('temas_bloqueados') || '[]') } catch(e) { temasBloqueados = [] }
+    concursoFocadoId = localStorage.getItem('concurso_focado_id') || null
 
     const el = document.getElementById('usuario-email')
     if (el && usuarioAtual) el.textContent = usuarioAtual.email
