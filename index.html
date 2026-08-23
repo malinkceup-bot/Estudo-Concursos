@@ -1054,7 +1054,10 @@ for each row execute function restringir_cadastro_email();</pre>
       <!-- MATÉRIA -->
       <div class="form-group">
         <label><i class="fas fa-book" style="margin-right:5px"></i>Matéria</label>
-        <select id="materia-questao"></select>
+        <div style="position:relative">
+          <input type="text" id="materia-questao" placeholder="Digite pra buscar a matéria..." oninput="filtrarMateriasDropdown(this.value,'materia-questao','materia-questao-dropdown')" onfocus="mostrarMateriasDropdown('materia-questao','materia-questao-dropdown')" onblur="validarMateriaDigitada('materia-questao','materia-questao-dropdown')" autocomplete="off">
+          <div id="materia-questao-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-radius:8px;max-height:220px;overflow-y:auto;z-index:999;margin-top:4px"></div>
+        </div>
       </div>
 
       <!-- TEMA -->
@@ -2759,10 +2762,14 @@ function mapasVisiveis() {
 }
 
 function popularSelects() {
-  const optsAtivas = `<option value="">Selecione a matéria</option>` + materiasAtivas().map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}</option>`).join('')
-  const optsTodas = `<option value="">Selecione a matéria</option>` + materias.map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}${m.ativa === false ? ' (bloqueada)' : ''}</option>`).join('')
+  const materiasOrdenadas = materiasAtivas().slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
+  const optsAtivas = `<option value="">Selecione a matéria</option>` + materiasOrdenadas.map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}</option>`).join('')
+  const optsTodas = `<option value="">Selecione a matéria</option>` + materias.slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' })).map(m => `<option value="${escHtml(m.nome)}">${escHtml(m.nome)}${m.ativa === false ? ' (bloqueada)' : ''}</option>`).join('')
 
-  const idsCadastro = ['materia-questao','mapa-materia','edital-materia-form']
+  // "materia-questao" agora é um campo de busca (input), não um <select> — a
+  // lista de matérias pra ele é montada na hora (ao digitar/focar), então não
+  // entra nesse loop de preencher <option>.
+  const idsCadastro = ['mapa-materia','edital-materia-form']
   idsCadastro.forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = optsAtivas })
 
   const idsEdicao = ['edit-materia','editar-mapa-materia']
@@ -5080,6 +5087,63 @@ function fecharDropdown(dropdownId) {
     const el = document.getElementById(dropdownId)
     if (el) el.style.display = 'none'
     _dropdownAberto = false
+  }, 200)
+}
+
+// ===== BUSCADOR DE MATÉRIA (mesmo padrão do buscador de tema, em ordem
+// alfabética — mas só permite escolher uma matéria que já existe; pra criar
+// uma nova é preciso ir em Config, igual já era com o <select> antigo) =====
+function listaMateriasOrdenada() {
+  return materiasAtivas().slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
+}
+
+function mostrarMateriasDropdown(inputId, dropdownId) {
+  filtrarMateriasDropdown(document.getElementById(inputId)?.value || '', inputId, dropdownId)
+}
+
+function filtrarMateriasDropdown(valor, inputId, dropdownId) {
+  const dropdown = document.getElementById(dropdownId)
+  if (!dropdown) return
+  const lista = listaMateriasOrdenada()
+  const filtrados = valor ? lista.filter(m => m.nome.toLowerCase().includes(valor.toLowerCase())) : lista
+
+  if (!filtrados.length) {
+    dropdown.innerHTML = `<div style="padding:10px 14px;font-size:0.82rem;color:var(--text2)">Nenhuma matéria encontrada</div>`
+    dropdown.style.display = 'block'
+    return
+  }
+
+  dropdown.innerHTML = filtrados.map(m => `
+    <div class="tema-dropdown-item" onclick="selecionarMateriaDropdown('${escAttr(m.nome)}','${inputId}','${dropdownId}');event.stopPropagation()">
+      <i class="fas fa-book" style="font-size:0.7rem;margin-right:6px;color:var(--accent)"></i>${escHtml(m.nome)}
+    </div>`).join('')
+  dropdown.style.display = 'block'
+}
+
+function selecionarMateriaDropdown(nome, inputId, dropdownId) {
+  const input = document.getElementById(inputId)
+  if (input) input.value = nome
+  const dropdown = document.getElementById(dropdownId)
+  if (dropdown) dropdown.style.display = 'none'
+}
+
+// Ao sair do campo, confere se o que ficou digitado bate com uma matéria de
+// verdade (podia ter sido digitado à mão sem escolher da lista). Se não bater
+// com nenhuma, limpa o campo — evita salvar a questão com uma matéria
+// "fantasma" que não existe no seu cadastro.
+function validarMateriaDigitada(inputId, dropdownId) {
+  setTimeout(() => {
+    const dropdown = document.getElementById(dropdownId)
+    if (dropdown) dropdown.style.display = 'none'
+    const input = document.getElementById(inputId)
+    if (!input || !input.value.trim()) return
+    const encontrada = listaMateriasOrdenada().find(m => m.nome.toLowerCase() === input.value.trim().toLowerCase())
+    if (encontrada) {
+      input.value = encontrada.nome
+    } else {
+      notif('Essa matéria não existe — escolha uma da lista (ou cadastre em Config)', 'error')
+      input.value = ''
+    }
   }, 200)
 }
 
