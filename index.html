@@ -1096,6 +1096,8 @@ for each row execute function restringir_cadastro_email();</pre>
             <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('texto-apoio-questao','justifyLeft')" title="Alinhar à esquerda" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-left"></i></button>
             <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('texto-apoio-questao','justifyCenter')" title="Centralizar (útil pra poemas)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
             <button type="button" onmousedown="event.preventDefault()" onclick="recuarParagrafo('texto-apoio-questao')" title="Recuar/tirar recuo do parágrafo (clique de novo pra desfazer)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-indent"></i></button>
+            <span style="width:1px;background:var(--border);margin:2px 2px"></span>
+            <button type="button" onmousedown="event.preventDefault()" onclick="colarTextoApoioSalvo('texto-apoio-questao')" title="Colar o último texto de apoio copiado de outra questão, com a formatação original" style="height:28px;padding:0 10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-size:0.75rem"><i class="fas fa-paste"></i> Colar texto salvo</button>
           </div>
           <div style="font-size:0.7rem;color:var(--text2);margin-bottom:6px">Selecione um trecho pra negrito/sublinhado. Clique numa linha e use os botões de alinhamento pra centralizar (poemas etc) ou recuar o parágrafo — ou aperte <strong>Tab</strong> bem no começo da linha pra recuar na hora, sem precisar rolar a tela. Enter cria um novo parágrafo.</div>
           <div id="texto-apoio-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o texto/trecho que a questão pede para interpretar..." style="min-height:140px" onpaste="tratarColagem(event)" onkeydown="handleTabRecuo(event, this.id)"></div>
@@ -1837,6 +1839,8 @@ for each row execute function restringir_cadastro_email();</pre>
           <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-texto-apoio','justifyLeft')" title="Alinhar à esquerda" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-left"></i></button>
           <button type="button" onmousedown="event.preventDefault()" onclick="alinharParagrafo('edit-texto-apoio','justifyCenter')" title="Centralizar (útil pra poemas)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-align-center"></i></button>
           <button type="button" onmousedown="event.preventDefault()" onclick="recuarParagrafo('edit-texto-apoio')" title="Recuar/tirar recuo do parágrafo (clique de novo pra desfazer)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-indent"></i></button>
+          <span style="width:1px;background:var(--border);margin:2px 2px"></span>
+          <button type="button" onmousedown="event.preventDefault()" onclick="colarTextoApoioSalvo('edit-texto-apoio')" title="Colar o último texto de apoio copiado de outra questão, com a formatação original" style="height:28px;padding:0 10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-size:0.75rem"><i class="fas fa-paste"></i> Colar texto salvo</button>
         </div>
         <div id="edit-texto-apoio" class="rich-editable" contenteditable="true" data-placeholder="Texto/trecho que a questão pede para interpretar..." style="min-height:130px" onpaste="tratarColagem(event)" onkeydown="handleTabRecuo(event, this.id)"></div>
       </div>
@@ -3976,6 +3980,7 @@ function renderQuestoes() {
         <div class="questao-actions" style="margin-top:12px">
           ${q.video ? `<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-play"></i> Vídeo</a>` : ''}
           <button class="btn btn-ghost btn-sm" onclick="abrirEditar('${q.id}')"><i class="fas fa-edit"></i> Editar</button>
+          ${q.texto_apoio ? `<button class="btn btn-ghost btn-sm" onclick="copiarTextoApoio('${q.id}')" title="Copiar este texto de apoio pra reaproveitar em outra questão"><i class="fas fa-copy"></i> Copiar texto de apoio</button>` : ''}
           ${q.dominada
             ? `<button class="btn btn-ghost btn-sm" onclick="toggleDominada('${q.id}')"><i class="fas fa-undo"></i> Reativar</button>`
             : `<button class="btn btn-success btn-sm" onclick="toggleDominada('${q.id}')"><i class="fas fa-check"></i> Dominei!</button>`}
@@ -4238,6 +4243,25 @@ function limparTextoColado(texto) {
   return paragrafos
 }
 
+// ===== REAPROVEITAR TEXTO DE APOIO ENTRE QUESTÕES =====
+// Guarda o texto de apoio no formato "cru" que já é salvo no banco (com **negrito**,
+// __sublinhado__, [[center]] e [[indent]]). Como esse mesmo formato é o que
+// formatarEnunciado() sabe transformar de volta em HTML, colar depois recupera a
+// formatação inteira (parágrafos, recuo, centralização, negrito, sublinhado) — não é
+// uma cópia "visual" de texto puro, é o dado formatado completo.
+function copiarTextoApoio(id) {
+  const q = questoes.find(q => String(q.id) === String(id))
+  if (!q || !q.texto_apoio) { notif('Essa questão não tem texto de apoio', 'error'); return }
+  localStorage.setItem('texto_apoio_reutilizavel', q.texto_apoio)
+  notif('📋 Texto de apoio copiado! Abra outra questão e clique em "Colar texto salvo".')
+}
+function colarTextoApoioSalvo(targetId) {
+  const salvo = localStorage.getItem('texto_apoio_reutilizavel')
+  if (!salvo) { notif('Nenhum texto de apoio copiado ainda', 'error'); return }
+  document.getElementById(targetId).innerHTML = formatarEnunciado(salvo)
+  notif('✅ Texto de apoio colado com a formatação original')
+}
+
 function tratarColagem(e) {
   e.preventDefault()
   const texto = (e.clipboardData || window.clipboardData).getData('text/plain')
@@ -4397,16 +4421,26 @@ function htmlParaMarkdown(el) {
 // recuar parágrafos)
 function formatarEnunciado(texto) {
   if (!texto) return ''
-  return texto.split('\n').map(linha => {
-    const mCenter = linha.match(/^\[\[center\]\](.*)\[\[\/center\]\]$/)
-    const mIndent = linha.match(/^\[\[indent\]\](.*)\[\[\/indent\]\]$/)
-    const centralizado = !!mCenter
-    const recuado = !!mIndent
-    const conteudoBruto = mCenter ? mCenter[1] : (mIndent ? mIndent[1] : linha)
+  // Primeiro isola os blocos [[indent]]...[[/indent]] e [[center]]...[[/center]] no
+  // TEXTO INTEIRO (casando até com quebra de linha dentro, via [\s\S]), em vez de
+  // linha a linha como antes. Isso conserta tanto textos novos quanto textos antigos
+  // que ficaram com uma quebra de linha "presa" entre a tag de abertura e a de
+  // fechamento — que é exatamente o que fazia [[indent]] aparecer cru na tela.
+  const blocos = []
+  const textoTratado = texto.replace(/\[\[(center|indent)\]\]([\s\S]*?)\[\[\/\1\]\]/g, (m, tipo, conteudo) => {
+    blocos.push({ tipo, conteudo })
+    return `\u0000B${blocos.length - 1}\u0000`
+  })
+  return textoTratado.split('\n').map(linha => {
+    const mBloco = linha.match(/^\u0000B(\d+)\u0000$/)
+    const { tipo, conteudoBruto } = mBloco
+      ? { tipo: blocos[Number(mBloco[1])].tipo, conteudoBruto: blocos[Number(mBloco[1])].conteudo }
+      : { tipo: null, conteudoBruto: linha }
     let t = escHtml(conteudoBruto)
     t = t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
     t = t.replace(/__(.+?)__/g, '<u>$1</u>')
-    const atributo = centralizado ? ' style="text-align:center"' : (recuado ? ' class="paragrafo-recuado"' : '')
+    t = t.replace(/\n/g, '<br>') // quebra que ficou presa dentro do bloco vira <br>, sem perder o texto
+    const atributo = tipo === 'center' ? ' style="text-align:center"' : (tipo === 'indent' ? ' class="paragrafo-recuado"' : '')
     return `<div${atributo}>${t || '<br>'}</div>`
   }).join('')
 }
@@ -6583,16 +6617,23 @@ function exportarQuestoesPDF() {
   // deixar as marcações aparecerem como texto literal. "prefixo" (ex: "1.") só
   // aparece no primeiro parágrafo.
   function escreverCampoComParagrafos(texto, x, largura, prefixo, alturaLinha) {
-    const paragrafos = String(texto || '').split('\n').filter(p => p.trim() !== '')
+    // Mesmo ajuste da tela: isola [[indent]]/[[center]] no texto INTEIRO antes de
+    // dividir por parágrafo, pra não deixar a tag aparecer crua no PDF caso o bloco
+    // tenha ficado com quebra de linha presa no meio.
+    const blocos = []
+    const textoTratado = String(texto || '').replace(/\[\[(center|indent)\]\]([\s\S]*?)\[\[\/\1\]\]/g, (m, tipo, conteudo) => {
+      blocos.push({ tipo, conteudo: conteudo.replace(/\n/g, ' ') })
+      return `\u0000B${blocos.length - 1}\u0000`
+    })
+    const paragrafos = textoTratado.split('\n').filter(p => p.trim() !== '')
     if (!paragrafos.length) {
       if (prefixo) escreverTextoRico('', x, largura, prefixo, alturaLinha, 0)
       return
     }
     paragrafos.forEach((paragrafoBruto, idx) => {
-      const mCenter = paragrafoBruto.match(/^\[\[center\]\](.*)\[\[\/center\]\]$/)
-      const mIndent = paragrafoBruto.match(/^\[\[indent\]\](.*)\[\[\/indent\]\]$/)
-      const paragrafoLimpo = mCenter ? mCenter[1] : (mIndent ? mIndent[1] : paragrafoBruto)
-      const recuo = mIndent ? 20 : 0
+      const mBloco = paragrafoBruto.match(/^\u0000B(\d+)\u0000$/)
+      const paragrafoLimpo = mBloco ? blocos[Number(mBloco[1])].conteudo : paragrafoBruto
+      const recuo = mBloco && blocos[Number(mBloco[1])].tipo === 'indent' ? 20 : 0
       escreverTextoRico(paragrafoLimpo, x, largura, idx === 0 ? prefixo : null, alturaLinha, recuo)
       if (idx < paragrafos.length - 1) y += 4
     })
