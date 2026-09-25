@@ -129,6 +129,9 @@
   .card-title { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 16px; }
 
   .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .dash-grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .dash-grid-2col .card { margin-bottom: 16px; }
+  @media (max-width: 640px) { .dash-grid-2col { grid-template-columns: 1fr; } }
   .stat-box { background: var(--surface2); border-radius: var(--radius); padding: 16px; text-align: center; border: 1px solid var(--border); }
   .stat-num { font-size: 2rem; font-weight: 700; line-height: 1; }
   .stat-label { font-size: 0.75rem; color: var(--text2); margin-top: 4px; }
@@ -955,55 +958,68 @@ for each row execute function restringir_cadastro_email();</pre>
       <div class="stat-box pct" style="border-color:var(--accent)"><div class="stat-icon"><i class="fas fa-bullseye"></i></div><div class="stat-num" id="stat-pct" style="color:var(--accent)">0%</div><div class="stat-label">Aproveit.</div></div>
     </div>
 
-    <!-- VISÃO GERAL — GRÁFICO DONUT -->
-    <div class="card">
-      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <span><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-chart-pie"></i></span>Visão Geral</span>
-        <select id="donut-filtro-materia" onchange="filtrarDonutMateria(this.value)" style="width:auto;padding:4px 10px;font-size:0.72rem;text-transform:none;letter-spacing:normal;font-weight:400;color:var(--text)"></select>
-      </div>
-      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-        <div style="position:relative;width:160px;height:160px;flex-shrink:0">
-          <canvas id="chart-donut" role="img" aria-label="Gráfico de rosca mostrando proporção de questões dominadas e pendentes"></canvas>
-          <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
-            <div style="font-size:1.6rem;font-weight:700;color:var(--accent)" id="donut-pct">0%</div>
-            <div style="font-size:0.65rem;color:var(--text2)">domínio</div>
+    <!-- GRADE PRINCIPAL — 2 colunas em telas largas, 1 coluna no celular. Tudo
+         continua visível sem precisar clicar em nada, só reaproveitando o
+         espaço horizontal pra reduzir a rolagem vertical. -->
+    <div class="dash-grid-2col">
+
+      <!-- COLUNA ESQUERDA: visão rápida -->
+      <div>
+        <!-- VISÃO GERAL — GRÁFICO DONUT -->
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <span><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-chart-pie"></i></span>Visão Geral</span>
+            <select id="donut-filtro-materia" onchange="filtrarDonutMateria(this.value)" style="width:auto;padding:4px 10px;font-size:0.72rem;text-transform:none;letter-spacing:normal;font-weight:400;color:var(--text)"></select>
+          </div>
+          <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+            <div style="position:relative;width:160px;height:160px;flex-shrink:0">
+              <canvas id="chart-donut" role="img" aria-label="Gráfico de rosca mostrando proporção de questões dominadas e pendentes"></canvas>
+              <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none">
+                <div style="font-size:1.6rem;font-weight:700;color:var(--accent)" id="donut-pct">0%</div>
+                <div style="font-size:0.65rem;color:var(--text2)">domínio</div>
+              </div>
+            </div>
+            <div style="flex:1;min-width:170px;display:flex;flex-direction:column;gap:8px">
+              <div class="legend-row">
+                <span style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0"></span>
+                <span style="font-size:0.85rem">Dominadas: <strong id="legenda-dom">0</strong></span>
+              </div>
+              <div class="legend-row">
+                <span style="width:10px;height:10px;border-radius:50%;background:var(--yellow);flex-shrink:0"></span>
+                <span style="font-size:0.85rem">Pendentes: <strong id="legenda-pend">0</strong></span>
+              </div>
+              <div class="legend-row">
+                <span style="width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0"></span>
+                <span style="font-size:0.85rem">Total cadastrado: <strong id="legenda-total">0</strong></span>
+              </div>
+            </div>
           </div>
         </div>
-        <div style="flex:1;min-width:170px;display:flex;flex-direction:column;gap:8px">
-          <div class="legend-row">
-            <span style="width:10px;height:10px;border-radius:50%;background:var(--green);flex-shrink:0"></span>
-            <span style="font-size:0.85rem">Dominadas: <strong id="legenda-dom">0</strong></span>
-          </div>
-          <div class="legend-row">
-            <span style="width:10px;height:10px;border-radius:50%;background:var(--yellow);flex-shrink:0"></span>
-            <span style="font-size:0.85rem">Pendentes: <strong id="legenda-pend">0</strong></span>
-          </div>
-          <div class="legend-row">
-            <span style="width:10px;height:10px;border-radius:50%;background:var(--accent);flex-shrink:0"></span>
-            <span style="font-size:0.85rem">Total cadastrado: <strong id="legenda-total">0</strong></span>
-          </div>
+
+        <!-- SITUAÇÃO GERAL -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon" style="background:rgba(245,158,11,0.15);color:var(--yellow)"><i class="fas fa-bullseye"></i></span>Situação Geral</div>
+          <div id="dash-situacao"></div>
         </div>
       </div>
-    </div>
 
-    <!-- GRÁFICO DE BARRAS POR MATÉRIA -->
-    <div class="card">
-      <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-chart-column"></i></span>Aproveitamento por Matéria</div>
-      <div style="position:relative;width:100%;height:260px" id="chart-barras-wrapper">
-        <canvas id="chart-barras" role="img" aria-label="Gráfico de barras comparando percentual de aproveitamento entre matérias"></canvas>
+      <!-- COLUNA DIREITA: detalhamento por matéria -->
+      <div>
+        <!-- GRÁFICO DE BARRAS POR MATÉRIA -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-chart-column"></i></span>Aproveitamento por Matéria</div>
+          <div style="position:relative;width:100%;height:260px" id="chart-barras-wrapper">
+            <canvas id="chart-barras" role="img" aria-label="Gráfico de barras comparando percentual de aproveitamento entre matérias"></canvas>
+          </div>
+        </div>
+
+        <!-- DESEMPENHO POR MATÉRIA -->
+        <div class="card">
+          <div class="card-title"><span class="card-title-icon" style="background:rgba(34,197,94,0.15);color:var(--green)"><i class="fas fa-list-check"></i></span>Desempenho por Matéria</div>
+          <div id="desempenho-materias"></div>
+        </div>
       </div>
-    </div>
 
-    <!-- DESEMPENHO POR MATÉRIA -->
-    <div class="card">
-      <div class="card-title"><span class="card-title-icon" style="background:rgba(34,197,94,0.15);color:var(--green)"><i class="fas fa-list-check"></i></span>Desempenho por Matéria</div>
-      <div id="desempenho-materias"></div>
-    </div>
-
-    <!-- SITUAÇÃO GERAL -->
-    <div class="card">
-      <div class="card-title"><span class="card-title-icon" style="background:rgba(245,158,11,0.15);color:var(--yellow)"><i class="fas fa-bullseye"></i></span>Situação Geral</div>
-      <div id="dash-situacao"></div>
     </div>
 
     <!-- HISTÓRICO DE CADASTRO -->
@@ -2924,6 +2940,30 @@ function toggleTemasDashboard(idx) {
   if (chevron) chevron.style.transform = aberto ? 'rotate(0deg)' : 'rotate(90deg)'
 }
 
+// "Ver mais / ver menos" — evita que os cards de Desempenho por Matéria e a
+// lista de Situação Geral fiquem enormes quando há muitas matérias cadastradas
+function toggleVerMaisMaterias() {
+  const extra = document.getElementById('desempenho-materias-extra')
+  const icone = document.getElementById('icone-ver-mais-materias')
+  const txt = document.getElementById('txt-ver-mais-materias')
+  if (!extra) return
+  const abrindo = extra.style.display === 'none'
+  extra.style.display = abrindo ? 'block' : 'none'
+  icone.style.transform = abrindo ? 'rotate(180deg)' : ''
+  txt.textContent = abrindo ? 'Ver menos' : txt.dataset.fechado
+}
+
+function toggleVerMaisSituacao() {
+  const extra = document.getElementById('situacao-materias-extra')
+  const icone = document.getElementById('icone-ver-mais-situacao')
+  const txt = document.getElementById('txt-ver-mais-situacao')
+  if (!extra) return
+  const abrindo = extra.style.display === 'none'
+  extra.style.display = abrindo ? 'block' : 'none'
+  icone.style.transform = abrindo ? 'rotate(180deg)' : ''
+  txt.textContent = abrindo ? 'Ver menos' : txt.dataset.fechado
+}
+
 // ===== SOM DE NOTIFICAÇÃO (sintetizado via Web Audio, sem depender de arquivo externo) =====
 function tocarSomNotificacao(urgente = false) {
   try {
@@ -3165,6 +3205,10 @@ function renderTendenciaHistorico() {
   }).join('')
 }
 
+// ===== SUB-ABAS DO INÍCIO — REMOVIDO =====
+// A aba Início agora usa uma grade de 2 colunas (tudo visível sem clicar em
+// nada), em vez de dividir o conteúdo em blocos separados por pílulas.
+
 function renderDashboard() {
   // Banner de contagem regressiva do concurso (só aparece quando faz sentido avisar)
   const bannerEl = document.getElementById('dash-concurso-banner')
@@ -3293,7 +3337,7 @@ function renderDashboard() {
 
   renderBarrasChart(sorted)
 
-  elMat.innerHTML = sorted.map(([m, dados], idx) => {
+  const cardsMateriaHtml = sorted.map(([m, dados], idx) => {
     const p = Math.round((dados.dominadas / dados.total) * 100)
     const pend = dados.total - dados.dominadas
     const cor = p >= 70 ? 'var(--green)' : p >= 40 ? 'var(--yellow)' : 'var(--red)'
@@ -3352,7 +3396,18 @@ function renderDashboard() {
         </div>
         ${temTemas ? `<div id="temas-dash-${idx}" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">${temasHtml}</div>` : ''}
       </div>`
-  }).join('')
+  })
+
+  const LIMITE_MATERIAS_VISIVEIS = 4
+  const restoMaterias = cardsMateriaHtml.length - LIMITE_MATERIAS_VISIVEIS
+  elMat.innerHTML = `
+    <div id="desempenho-materias-principais">${cardsMateriaHtml.slice(0, LIMITE_MATERIAS_VISIVEIS).join('')}</div>
+    ${restoMaterias > 0 ? `
+      <div id="desempenho-materias-extra" style="display:none">${cardsMateriaHtml.slice(LIMITE_MATERIAS_VISIVEIS).join('')}</div>
+      <button type="button" id="btn-ver-mais-materias" onclick="toggleVerMaisMaterias()" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--accent);padding:10px;font-size:0.82rem;font-weight:600;cursor:pointer;margin-top:2px">
+        <span id="txt-ver-mais-materias" data-fechado="Ver mais ${restoMaterias} ${restoMaterias===1?'matéria':'matérias'}">Ver mais ${restoMaterias} ${restoMaterias===1?'matéria':'matérias'}</span>
+        <i class="fas fa-chevron-down" id="icone-ver-mais-materias" style="transition:transform 0.2s"></i>
+      </button>` : ''}`
 
   const pior = sorted[0]
   let destaque = ''
@@ -3372,7 +3427,7 @@ function renderDashboard() {
     }
   }
 
-  const linhas = sorted.map(([m, dados]) => {
+  const linhasArr = sorted.map(([m, dados]) => {
     const p = Math.round((dados.dominadas / dados.total) * 100)
     const pend = dados.total - dados.dominadas
     const cor = p >= 70 ? 'var(--green)' : p >= 40 ? 'var(--yellow)' : 'var(--red)'
@@ -3388,7 +3443,18 @@ function renderDashboard() {
           <span style="font-size:0.8rem;font-weight:700;color:${cor};min-width:36px;text-align:right">${p}%</span>
         </div>
       </div>`
-  }).join('')
+  })
+
+  const LIMITE_SITUACAO_VISIVEL = 5
+  const restoSituacao = linhasArr.length - LIMITE_SITUACAO_VISIVEL
+  const linhas = `
+    <div id="situacao-materias-principais">${linhasArr.slice(0, LIMITE_SITUACAO_VISIVEL).join('')}</div>
+    ${restoSituacao > 0 ? `
+      <div id="situacao-materias-extra" style="display:none">${linhasArr.slice(LIMITE_SITUACAO_VISIVEL).join('')}</div>
+      <button type="button" id="btn-ver-mais-situacao" onclick="toggleVerMaisSituacao()" style="display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--accent);padding:9px;font-size:0.8rem;font-weight:600;cursor:pointer;margin-top:2px">
+        <span id="txt-ver-mais-situacao" data-fechado="Ver mais ${restoSituacao} ${restoSituacao===1?'matéria':'matérias'}">Ver mais ${restoSituacao} ${restoSituacao===1?'matéria':'matérias'}</span>
+        <i class="fas fa-chevron-down" id="icone-ver-mais-situacao" style="transition:transform 0.2s"></i>
+      </button>` : ''}`
 
   document.getElementById('dash-situacao').innerHTML = destaque + linhas
 }
