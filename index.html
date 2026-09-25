@@ -1006,6 +1006,27 @@ for each row execute function restringir_cadastro_email();</pre>
       <div id="dash-situacao"></div>
     </div>
 
+    <!-- HISTÓRICO DE CADASTRO -->
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(168,85,247,0.15);color:#a855f7"><i class="fas fa-calendar-week"></i></span>Histórico de Cadastro</div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px">
+        <button class="btn btn-ghost btn-sm" style="padding:6px 10px" onclick="navegarSemanaHistorico(-1)"><i class="fas fa-chevron-left"></i></button>
+        <div style="text-align:center">
+          <div style="font-weight:700;font-size:0.9rem" id="historico-semana-label"></div>
+          <div style="font-size:0.72rem;color:var(--text2)" id="historico-semana-sub"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="padding:6px 10px" id="btn-historico-proxima" onclick="navegarSemanaHistorico(1)"><i class="fas fa-chevron-right"></i></button>
+      </div>
+
+      <div id="historico-semana-conteudo"></div>
+
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-size:0.72rem;color:var(--text2);margin-bottom:8px">Últimas 8 semanas <span style="opacity:0.7">(clique numa barra pra ver o detalhe)</span></div>
+        <div id="historico-tendencia" style="display:flex;align-items:flex-end;gap:6px;height:70px"></div>
+      </div>
+    </div>
+
     <!-- AÇÕES RÁPIDAS -->
     <div class="card">
       <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-bolt"></i></span>Ações Rápidas</div>
@@ -2887,6 +2908,7 @@ function previewLinhaUnica(texto, tamanho = 130) {
 
 // ===== DASHBOARD =====
 let filtroDonutMateria = 'todas'
+let dashSemanaOffset = 0 // 0 = semana atual, -1 = semana passada, etc. Nunca vai pro futuro.
 
 function filtrarDonutMateria(v) {
   filtroDonutMateria = v
@@ -2988,6 +3010,119 @@ function atualizarSinoConcurso() {
   } catch(e) {
     console.warn('Não foi possível atualizar o sino do concurso:', e)
   }
+}
+
+// ===== HISTÓRICO DE CADASTRO (quantas questões por semana, de quais matérias) =====
+// Não depende de nenhuma tabela/coluna nova — usa o "created_at" que as
+// Questões já têm desde que a coluna foi criada.
+
+// Segunda-feira da semana de uma data, sem alterar a data original
+function inicioDaSemana(data) {
+  const d = new Date(data)
+  d.setHours(0, 0, 0, 0)
+  const dia = d.getDay() // 0 = domingo
+  const diff = dia === 0 ? -6 : 1 - dia
+  d.setDate(d.getDate() + diff)
+  return d
+}
+
+function navegarSemanaHistorico(delta) {
+  const novoOffset = dashSemanaOffset + delta
+  if (novoOffset > 0) return // não deixa navegar pro futuro
+  dashSemanaOffset = novoOffset
+  renderHistoricoCadastro()
+}
+
+function renderHistoricoCadastro() {
+  const labelEl = document.getElementById('historico-semana-label')
+  const subEl = document.getElementById('historico-semana-sub')
+  const conteudoEl = document.getElementById('historico-semana-conteudo')
+  const btnProxima = document.getElementById('btn-historico-proxima')
+  if (!labelEl || !conteudoEl) return
+
+  if (btnProxima) btnProxima.disabled = dashSemanaOffset >= 0
+
+  const hoje = new Date()
+  const inicioSemanaAtual = inicioDaSemana(hoje)
+  const inicio = new Date(inicioSemanaAtual)
+  inicio.setDate(inicio.getDate() + dashSemanaOffset * 7)
+  const fim = new Date(inicio)
+  fim.setDate(fim.getDate() + 6)
+  fim.setHours(23, 59, 59, 999)
+
+  const fmt = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+  labelEl.textContent = dashSemanaOffset === 0 ? 'Esta semana' : dashSemanaOffset === -1 ? 'Semana passada' : `Semana de ${fmt(inicio)}`
+  subEl.textContent = `${fmt(inicio)} a ${fmt(fim)}`
+
+  const questoesSemana = questoesVisiveis().filter(q => {
+    if (!q.created_at) return false
+    const d = new Date(q.created_at)
+    return d >= inicio && d <= fim
+  })
+
+  if (!questoesSemana.length) {
+    conteudoEl.innerHTML = `<div style="text-align:center;color:var(--text2);font-size:0.85rem;padding:14px 0">Nenhuma questão cadastrada nessa semana.</div>`
+  } else {
+    const porMateria = {}
+    questoesSemana.forEach(q => {
+      const m = q.materia || 'Sem matéria'
+      porMateria[m] = (porMateria[m] || 0) + 1
+    })
+    const ordenado = Object.entries(porMateria).sort((a, b) => b[1] - a[1])
+    const max = ordenado[0][1]
+
+    conteudoEl.innerHTML = `
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:14px">
+        <span style="font-size:1.7rem;font-weight:700;color:var(--accent)">${questoesSemana.length}</span>
+        <span style="font-size:0.78rem;color:var(--text2)">${questoesSemana.length === 1 ? 'questão cadastrada' : 'questões cadastradas'} · ${ordenado.length} ${ordenado.length === 1 ? 'matéria' : 'matérias'} diferentes</span>
+      </div>
+      ${ordenado.map(([m, qtd]) => `
+        <div style="margin-bottom:9px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;gap:8px">
+            <span style="font-size:0.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(m)}</span>
+            <span style="font-size:0.75rem;color:var(--text2);font-weight:700;white-space:nowrap">${qtd}</span>
+          </div>
+          <div style="background:var(--bg);border-radius:5px;height:6px;overflow:hidden">
+            <div style="background:#a855f7;height:6px;border-radius:5px;width:${Math.round((qtd / max) * 100)}%"></div>
+          </div>
+        </div>`).join('')}`
+  }
+
+  renderTendenciaHistorico(inicioSemanaAtual)
+}
+
+function renderTendenciaHistorico(inicioSemanaAtual) {
+  const el = document.getElementById('historico-tendencia')
+  if (!el) return
+  const questoesTodas = questoesVisiveis()
+
+  const semanas = []
+  for (let i = 7; i >= 0; i--) {
+    const offset = -i
+    const inicio = new Date(inicioSemanaAtual)
+    inicio.setDate(inicio.getDate() + offset * 7)
+    const fim = new Date(inicio)
+    fim.setDate(fim.getDate() + 6)
+    fim.setHours(23, 59, 59, 999)
+    const qtd = questoesTodas.filter(q => {
+      if (!q.created_at) return false
+      const d = new Date(q.created_at)
+      return d >= inicio && d <= fim
+    }).length
+    semanas.push({ offset, qtd, inicio })
+  }
+
+  const max = Math.max(1, ...semanas.map(s => s.qtd))
+
+  el.innerHTML = semanas.map(s => {
+    const alturaPx = s.qtd ? Math.max(4, Math.round((s.qtd / max) * 46)) : 2
+    const selecionada = s.offset === dashSemanaOffset
+    return `
+      <div onclick="dashSemanaOffset=${s.offset};renderHistoricoCadastro()" title="${s.qtd} questão(ões) na semana de ${s.inicio.toLocaleDateString('pt-BR')}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+        <div style="width:100%;max-width:22px;height:${alturaPx}px;border-radius:4px 4px 0 0;background:${selecionada ? '#a855f7' : 'var(--surface2)'};border:1px solid ${selecionada ? '#a855f7' : 'var(--border)'};transition:all 0.2s"></div>
+        <span style="font-size:0.6rem;color:${selecionada ? '#a855f7' : 'var(--text2)'}">${s.inicio.getDate()}/${s.inicio.getMonth() + 1}</span>
+      </div>`
+  }).join('')
 }
 
 function renderDashboard() {
@@ -3094,6 +3229,8 @@ function renderDashboard() {
   document.getElementById('dash-subtitulo').textContent = total
     ? `Você tem ${pend} ${pend !== 1 ? 'questões pendentes' : 'questão pendente'} para revisar.`
     : 'Comece cadastrando suas primeiras questões!'
+
+  renderHistoricoCadastro()
 
   const elMat = document.getElementById('desempenho-materias')
   if (!total) {
