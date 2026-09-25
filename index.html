@@ -129,9 +129,10 @@
   .card-title { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 16px; }
 
   .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-  .dash-grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
-  .dash-grid-2col .card { margin-bottom: 16px; }
-  @media (max-width: 640px) { .dash-grid-2col { grid-template-columns: 1fr; } }
+  .dash-grid-2col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .dash-grid-2col .card { margin-bottom: 16px; min-width: 0; }
+  .dash-grid-2col canvas { max-width: 100%; }
+  @media (max-width: 640px) { .dash-grid-2col { grid-template-columns: minmax(0, 1fr); } }
   .stat-box { background: var(--surface2); border-radius: var(--radius); padding: 16px; text-align: center; border: 1px solid var(--border); }
   .stat-num { font-size: 2rem; font-weight: 700; line-height: 1; }
   .stat-label { font-size: 0.75rem; color: var(--text2); margin-top: 4px; }
