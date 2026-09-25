@@ -1022,7 +1022,7 @@ for each row execute function restringir_cadastro_email();</pre>
       <div id="historico-semana-conteudo"></div>
 
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-        <div style="font-size:0.72rem;color:var(--text2);margin-bottom:8px">Últimas 8 semanas <span style="opacity:0.7">(clique numa barra pra ver o detalhe)</span></div>
+        <div style="font-size:0.72rem;color:var(--text2);margin-bottom:8px">Últimos períodos de 7 dias <span style="opacity:0.7">(clique numa barra pra ver o detalhe)</span></div>
         <div id="historico-tendencia" style="display:flex;align-items:flex-end;gap:6px;height:70px"></div>
       </div>
     </div>
@@ -2908,7 +2908,7 @@ function previewLinhaUnica(texto, tamanho = 130) {
 
 // ===== DASHBOARD =====
 let filtroDonutMateria = 'todas'
-let dashSemanaOffset = 0 // 0 = semana atual, -1 = semana passada, etc. Nunca vai pro futuro.
+let dashSemanaOffset = 0 // 0 = últimos 7 dias (contando hoje), -1 = os 7 dias anteriores a esse bloco, etc. Nunca vai pro futuro.
 
 function filtrarDonutMateria(v) {
   filtroDonutMateria = v
@@ -3012,18 +3012,22 @@ function atualizarSinoConcurso() {
   }
 }
 
-// ===== HISTÓRICO DE CADASTRO (quantas questões por semana, de quais matérias) =====
+// ===== HISTÓRICO DE CADASTRO (quantas questões nos últimos 7 dias, de quais
+// matérias, e dia a dia) =====
 // Não depende de nenhuma tabela/coluna nova — usa o "created_at" que as
 // Questões já têm desde que a coluna foi criada.
 
-// Segunda-feira da semana de uma data, sem alterar a data original
-function inicioDaSemana(data) {
-  const d = new Date(data)
-  d.setHours(0, 0, 0, 0)
-  const dia = d.getDay() // 0 = domingo
-  const diff = dia === 0 ? -6 : 1 - dia
-  d.setDate(d.getDate() + diff)
-  return d
+// Janela de 7 dias corridos terminando "hoje" (contando o dia de hoje), com
+// navegação por blocos de 7 dias pra trás. offset 0 = hoje-6 até hoje;
+// offset -1 = os 7 dias imediatamente anteriores a esse bloco; etc.
+function janelaHistorico(offset) {
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+  const fim = new Date(hoje)
+  fim.setDate(fim.getDate() + offset * 7)
+  const inicio = new Date(fim)
+  inicio.setDate(inicio.getDate() - 6)
+  return { inicio, fim }
 }
 
 function navegarSemanaHistorico(delta) {
@@ -3042,39 +3046,37 @@ function renderHistoricoCadastro() {
 
   if (btnProxima) btnProxima.disabled = dashSemanaOffset >= 0
 
-  const hoje = new Date()
-  const inicioSemanaAtual = inicioDaSemana(hoje)
-  const inicio = new Date(inicioSemanaAtual)
-  inicio.setDate(inicio.getDate() + dashSemanaOffset * 7)
-  const fim = new Date(inicio)
-  fim.setDate(fim.getDate() + 6)
-  fim.setHours(23, 59, 59, 999)
+  const { inicio, fim } = janelaHistorico(dashSemanaOffset)
+  const fimCompleto = new Date(fim)
+  fimCompleto.setHours(23, 59, 59, 999)
 
   const fmt = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-  labelEl.textContent = dashSemanaOffset === 0 ? 'Esta semana' : dashSemanaOffset === -1 ? 'Semana passada' : `Semana de ${fmt(inicio)}`
+  labelEl.textContent = dashSemanaOffset === 0 ? 'Últimos 7 dias' : dashSemanaOffset === -1 ? '7 dias anteriores' : `${fmt(inicio)} a ${fmt(fim)}`
   subEl.textContent = `${fmt(inicio)} a ${fmt(fim)}`
 
-  const questoesSemana = questoesVisiveis().filter(q => {
+  const questoesJanela = questoesVisiveis().filter(q => {
     if (!q.created_at) return false
     const d = new Date(q.created_at)
-    return d >= inicio && d <= fim
+    return d >= inicio && d <= fimCompleto
   })
 
-  if (!questoesSemana.length) {
-    conteudoEl.innerHTML = `<div style="text-align:center;color:var(--text2);font-size:0.85rem;padding:14px 0">Nenhuma questão cadastrada nessa semana.</div>`
+  // Resumo do período inteiro, por matéria
+  let resumoHtml
+  if (!questoesJanela.length) {
+    resumoHtml = `<div style="text-align:center;color:var(--text2);font-size:0.85rem;padding:14px 0">Nenhuma questão cadastrada nesse período.</div>`
   } else {
     const porMateria = {}
-    questoesSemana.forEach(q => {
+    questoesJanela.forEach(q => {
       const m = q.materia || 'Sem matéria'
       porMateria[m] = (porMateria[m] || 0) + 1
     })
     const ordenado = Object.entries(porMateria).sort((a, b) => b[1] - a[1])
     const max = ordenado[0][1]
 
-    conteudoEl.innerHTML = `
+    resumoHtml = `
       <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:14px">
-        <span style="font-size:1.7rem;font-weight:700;color:var(--accent)">${questoesSemana.length}</span>
-        <span style="font-size:0.78rem;color:var(--text2)">${questoesSemana.length === 1 ? 'questão cadastrada' : 'questões cadastradas'} · ${ordenado.length} ${ordenado.length === 1 ? 'matéria' : 'matérias'} diferentes</span>
+        <span style="font-size:1.7rem;font-weight:700;color:var(--accent)">${questoesJanela.length}</span>
+        <span style="font-size:0.78rem;color:var(--text2)">${questoesJanela.length === 1 ? 'questão cadastrada' : 'questões cadastradas'} · ${ordenado.length} ${ordenado.length === 1 ? 'matéria' : 'matérias'} diferentes</span>
       </div>
       ${ordenado.map(([m, qtd]) => `
         <div style="margin-bottom:9px">
@@ -3088,39 +3090,77 @@ function renderHistoricoCadastro() {
         </div>`).join('')}`
   }
 
-  renderTendenciaHistorico(inicioSemanaAtual)
+  // Dia a dia — pra enxergar em quais dias você cadastrou mais, menos, ou nada
+  const diasSemanaNomes = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+  const hojeZero = new Date(); hojeZero.setHours(0, 0, 0, 0)
+  const dias = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(inicio)
+    d.setDate(d.getDate() + i)
+    const dFim = new Date(d); dFim.setHours(23, 59, 59, 999)
+    const questoesDia = questoesJanela.filter(q => {
+      const qd = new Date(q.created_at)
+      return qd >= d && qd <= dFim
+    })
+    const porMateriaDia = {}
+    questoesDia.forEach(q => {
+      const m = q.materia || 'Sem matéria'
+      porMateriaDia[m] = (porMateriaDia[m] || 0) + 1
+    })
+    const materiasResumo = Object.entries(porMateriaDia).sort((a, b) => b[1] - a[1]).map(([m, q]) => `${escHtml(m)} (${q})`).join(' · ')
+    dias.push({ data: d, ehHoje: d.getTime() === hojeZero.getTime(), total: questoesDia.length, materiasResumo })
+  }
+  const maxDia = Math.max(1, ...dias.map(d => d.total))
+
+  const diaADiaHtml = `
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="font-size:0.72rem;color:var(--text2);margin-bottom:8px">Dia a dia</div>
+      ${dias.map(d => {
+        const label = `${diasSemanaNomes[d.data.getDay()]}, ${fmt(d.data)}`
+        const semQuestao = d.total === 0
+        return `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
+          <div style="min-width:0">
+            <div style="font-size:0.82rem;font-weight:600;${d.ehHoje ? 'color:var(--accent)' : ''}">${label}${d.ehHoje ? ' · hoje' : ''}</div>
+            <div style="font-size:0.72rem;color:${semQuestao ? 'var(--text2)' : 'var(--text)'};margin-top:2px;${semQuestao ? 'font-style:italic' : ''}">${semQuestao ? 'Nenhuma questão cadastrada' : d.materiasResumo}</div>
+          </div>
+          <span style="flex-shrink:0;font-size:0.88rem;font-weight:700;color:${semQuestao ? 'var(--text2)' : d.total === maxDia ? 'var(--green)' : 'var(--text)'}">${d.total}</span>
+        </div>`
+      }).join('')}
+    </div>`
+
+  conteudoEl.innerHTML = resumoHtml + diaADiaHtml
+
+  renderTendenciaHistorico()
 }
 
-function renderTendenciaHistorico(inicioSemanaAtual) {
+function renderTendenciaHistorico() {
   const el = document.getElementById('historico-tendencia')
   if (!el) return
   const questoesTodas = questoesVisiveis()
 
-  const semanas = []
+  const blocos = []
   for (let i = 7; i >= 0; i--) {
     const offset = -i
-    const inicio = new Date(inicioSemanaAtual)
-    inicio.setDate(inicio.getDate() + offset * 7)
-    const fim = new Date(inicio)
-    fim.setDate(fim.getDate() + 6)
-    fim.setHours(23, 59, 59, 999)
+    const { inicio, fim } = janelaHistorico(offset)
+    const fimCompleto = new Date(fim); fimCompleto.setHours(23, 59, 59, 999)
     const qtd = questoesTodas.filter(q => {
       if (!q.created_at) return false
       const d = new Date(q.created_at)
-      return d >= inicio && d <= fim
+      return d >= inicio && d <= fimCompleto
     }).length
-    semanas.push({ offset, qtd, inicio })
+    blocos.push({ offset, qtd, inicio })
   }
 
-  const max = Math.max(1, ...semanas.map(s => s.qtd))
+  const max = Math.max(1, ...blocos.map(b => b.qtd))
 
-  el.innerHTML = semanas.map(s => {
-    const alturaPx = s.qtd ? Math.max(4, Math.round((s.qtd / max) * 46)) : 2
-    const selecionada = s.offset === dashSemanaOffset
+  el.innerHTML = blocos.map(b => {
+    const alturaPx = b.qtd ? Math.max(4, Math.round((b.qtd / max) * 46)) : 2
+    const selecionada = b.offset === dashSemanaOffset
     return `
-      <div onclick="dashSemanaOffset=${s.offset};renderHistoricoCadastro()" title="${s.qtd} questão(ões) na semana de ${s.inicio.toLocaleDateString('pt-BR')}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
+      <div onclick="dashSemanaOffset=${b.offset};renderHistoricoCadastro()" title="${b.qtd} questão(ões) no período de ${b.inicio.toLocaleDateString('pt-BR')}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer">
         <div style="width:100%;max-width:22px;height:${alturaPx}px;border-radius:4px 4px 0 0;background:${selecionada ? '#a855f7' : 'var(--surface2)'};border:1px solid ${selecionada ? '#a855f7' : 'var(--border)'};transition:all 0.2s"></div>
-        <span style="font-size:0.6rem;color:${selecionada ? '#a855f7' : 'var(--text2)'}">${s.inicio.getDate()}/${s.inicio.getMonth() + 1}</span>
+        <span style="font-size:0.6rem;color:${selecionada ? '#a855f7' : 'var(--text2)'}">${b.inicio.getDate()}/${b.inicio.getMonth() + 1}</span>
       </div>`
   }).join('')
 }
