@@ -359,6 +359,9 @@
   .filtros { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
   .filtro-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 5px 14px; font-size: 0.8rem; color: var(--text2); cursor: pointer; transition: all 0.2s; }
   .filtro-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-fixar { display: flex; align-items: center; gap: 5px; background: var(--surface2); border: 1px solid var(--border); color: var(--text2); border-radius: 20px; padding: 4px 10px; font-size: 0.72rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+  .btn-fixar:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-fixar.active { background: rgba(79,142,247,0.18); border-color: var(--accent); color: var(--accent); }
 
   .empty { text-align: center; padding: 48px 20px; color: var(--text2); }
   .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
@@ -1053,7 +1056,12 @@ for each row execute function restringir_cadastro_email();</pre>
 
       <!-- MATÉRIA -->
       <div class="form-group">
-        <label><i class="fas fa-book" style="margin-right:5px"></i>Matéria</label>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+          <label style="margin-bottom:0"><i class="fas fa-book" style="margin-right:5px"></i>Matéria</label>
+          <button type="button" class="btn-fixar" id="btn-fixar-materia" onclick="toggleFixarMateria()" title="Manter essa matéria sempre pré-selecionada ao cadastrar, até você desfixar">
+            <i class="fas fa-thumbtack" id="icone-fixar-materia"></i> <span id="label-fixar-materia">Fixar matéria</span>
+          </button>
+        </div>
         <div style="position:relative">
           <input type="text" id="materia-questao" placeholder="Digite pra buscar a matéria..." oninput="filtrarMateriasDropdown(this.value,'materia-questao','materia-questao-dropdown')" onfocus="mostrarMateriasDropdown('materia-questao','materia-questao-dropdown')" onblur="validarMateriaDigitada('materia-questao','materia-questao-dropdown')" autocomplete="off">
           <div id="materia-questao-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-radius:8px;max-height:220px;overflow-y:auto;z-index:999;margin-top:4px"></div>
@@ -1184,7 +1192,12 @@ for each row execute function restringir_cadastro_email();</pre>
 
       <!-- LINK YOUTUBE -->
       <div class="form-group">
-        <label><i class="fab fa-youtube" style="margin-right:5px;color:#ff4444"></i>Link do Vídeo (YouTube)</label>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+          <label style="margin-bottom:0"><i class="fab fa-youtube" style="margin-right:5px;color:#ff4444"></i>Link do Vídeo (YouTube)</label>
+          <button type="button" class="btn-fixar" id="btn-fixar-video" onclick="toggleFixarVideo()" title="Manter esse link sempre preenchido ao cadastrar, até você desfixar">
+            <i class="fas fa-thumbtack" id="icone-fixar-video"></i> <span id="label-fixar-video">Fixar vídeo</span>
+          </button>
+        </div>
         <input type="url" id="video-questao" placeholder="https://youtube.com/...">
       </div>
 
@@ -1357,15 +1370,23 @@ for each row execute function restringir_cadastro_email();</pre>
         <div style="font-size:0.8rem;color:var(--text2);margin-bottom:16px">Revisão rápida: aparece a questão, você responde, já vê o gabarito e o comentário, e passa pra próxima. Ideal pra revisar uma matéria/tema específico em pouco tempo.</div>
 
         <div class="form-group">
-          <label>Matéria</label>
-          <select id="flash-materia" onchange="atualizarFlashTemas()"></select>
+          <label>Selecione as Matérias</label>
+          <div style="font-size:0.78rem;color:var(--text2);margin-bottom:8px">Nenhuma selecionada = todas.</div>
+          <div id="flash-materias-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px"></div>
         </div>
 
         <div class="form-group">
-          <label>Tema (opcional)</label>
-          <select id="flash-tema">
-            <option value="">Todos os temas</option>
-          </select>
+          <label>Filtrar por Tema (opcional)</label>
+          <button type="button" onclick="toggleFlashTemas()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text2);padding:6px 14px;font-size:0.8rem;cursor:pointer;display:flex;align-items:center;gap:6px;width:100%;margin-bottom:8px">
+            <i class="fas fa-tag"></i>
+            <span id="flash-temas-label">Ver temas disponíveis</span>
+            <i class="fas fa-chevron-down" id="flash-temas-chevron" style="margin-left:auto;transition:transform 0.2s"></i>
+          </button>
+          <div id="flash-temas-wrap" style="display:none">
+            <div id="flash-temas-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px">
+              <span style="font-size:0.8rem;color:var(--text2)">Selecione uma matéria primeiro</span>
+            </div>
+          </div>
         </div>
 
         <div class="form-group">
@@ -2789,16 +2810,16 @@ function popularSelects() {
   }
   renderSimuladoTemas()
 
-  // Select de matéria dos Flashcards (só matérias que têm alguma questão visível)
-  const flashMateriaEl = document.getElementById('flash-materia')
-  if (flashMateriaEl) {
-    const materiasComQuestao = [...new Set(questoesVisiveis().map(q => q.materia).filter(Boolean))].sort()
-    const valorAtual = flashMateriaEl.value
-    flashMateriaEl.innerHTML = '<option value="">Todas as matérias</option>' +
-      materiasComQuestao.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('')
-    if (materiasComQuestao.includes(valorAtual)) flashMateriaEl.value = valorAtual
-    atualizarFlashTemas()
+  // Checkboxes de matéria dos Flashcards — mesmo padrão do Simulado: dá pra
+  // selecionar várias matérias (e vários temas) ao mesmo tempo
+  const flashCheckboxEl = document.getElementById('flash-materias-checkboxes')
+  if (flashCheckboxEl) {
+    flashCheckboxEl.innerHTML = materiasAtivas().map(m => `
+      <button type="button" class="filtro-btn flash-mat-btn ${flashMatSelecionadas.includes(m.nome) ? 'active' : ''}" onclick="toggleFlashMateria(this, '${escAttr(m.nome)}')">
+        ${m.nome}
+      </button>`).join('')
   }
+  renderFlashTemas()
 }
 
 // ===== ESCAPE SEGURO PARA onclick ("..." + JS string '...') =====
@@ -2838,6 +2859,31 @@ function notif(msg, tipo = 'ok') {
 
 // ===== TAG =====
 function tagMateria(m) { return `<span class="tag">${m || ''}</span>` }
+
+// Corta um texto pra caber numa única linha, sem chegar a quebrar (usado nas
+// listagens em miniatura, pra manter os cards com a mesma altura)
+function truncarLinha(texto, tamanho) {
+  if (!texto) return ''
+  const t = String(texto).trim()
+  return t.length > tamanho ? t.slice(0, tamanho).trim() + '…' : t
+}
+
+// Versão "achatada" do enunciado pra usar como prévia de uma linha só nos
+// cards da lista de Questões. formatarEnunciado() gera um <div> por linha
+// (proposital para exibir a questão inteira), mas isso faz o preview de
+// algumas questões "vazar" pra 2-3 linhas e deixar os cards com alturas
+// bem diferentes entre si. Aqui a gente ignora as quebras de linha e a
+// formatação (negrito/sublinhado/centralizado), fica só o texto corrido.
+function previewLinhaUnica(texto, tamanho = 130) {
+  if (!texto) return ''
+  let t = String(texto)
+    .replace(/\[\[(center|indent)\]\]/g, '').replace(/\[\[\/(center|indent)\]\]/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/\s*\n\s*/g, ' ')
+    .trim()
+  return escHtml(truncarLinha(t, tamanho))
+}
 
 // ===== DASHBOARD =====
 let filtroDonutMateria = 'todas'
@@ -3800,6 +3846,56 @@ async function analisarRelevanciaEdital() {
   }
 }
 
+// ===== FIXAR MATÉRIA / VÍDEO NO CADASTRO =====
+// Permite manter a matéria (ou o link do vídeo) sempre pré-preenchida ao
+// cadastrar várias questões seguidas sobre o mesmo assunto/vídeo, sem
+// precisar selecionar de novo a cada questão. Fica salvo no localStorage,
+// então sobrevive a um F5 ou fechar o navegador. Pra voltar ao normal
+// (campo limpando após cada salvamento), é só clicar de novo pra desfixar.
+function toggleFixarMateria() {
+  const fixando = localStorage.getItem('cadastro_materia_fixada') !== '1'
+  localStorage.setItem('cadastro_materia_fixada', fixando ? '1' : '0')
+  if (fixando) localStorage.setItem('cadastro_materia_valor', document.getElementById('materia-questao').value)
+  atualizarBotaoFixarMateria()
+  notif(fixando ? '📌 Matéria fixada — vai continuar selecionada após salvar' : 'Matéria desfixada')
+}
+function atualizarBotaoFixarMateria() {
+  const fixada = localStorage.getItem('cadastro_materia_fixada') === '1'
+  const btn = document.getElementById('btn-fixar-materia')
+  const label = document.getElementById('label-fixar-materia')
+  if (!btn || !label) return
+  btn.classList.toggle('active', fixada)
+  label.textContent = fixada ? 'Matéria fixada' : 'Fixar matéria'
+}
+function toggleFixarVideo() {
+  const fixando = localStorage.getItem('cadastro_video_fixado') !== '1'
+  localStorage.setItem('cadastro_video_fixado', fixando ? '1' : '0')
+  if (fixando) localStorage.setItem('cadastro_video_valor', document.getElementById('video-questao').value)
+  atualizarBotaoFixarVideo()
+  notif(fixando ? '📌 Vídeo fixado — vai continuar preenchido após salvar' : 'Vídeo desfixado')
+}
+function atualizarBotaoFixarVideo() {
+  const fixado = localStorage.getItem('cadastro_video_fixado') === '1'
+  const btn = document.getElementById('btn-fixar-video')
+  const label = document.getElementById('label-fixar-video')
+  if (!btn || !label) return
+  btn.classList.toggle('active', fixado)
+  label.textContent = fixado ? 'Vídeo fixado' : 'Fixar vídeo'
+}
+// Restaura, ao abrir o app, a matéria/vídeo que estavam fixados numa sessão anterior
+function restaurarFixacoesCadastro() {
+  const materiaInput = document.getElementById('materia-questao')
+  if (materiaInput && localStorage.getItem('cadastro_materia_fixada') === '1') {
+    materiaInput.value = localStorage.getItem('cadastro_materia_valor') || ''
+  }
+  atualizarBotaoFixarMateria()
+  const videoInput = document.getElementById('video-questao')
+  if (videoInput && localStorage.getItem('cadastro_video_fixado') === '1') {
+    videoInput.value = localStorage.getItem('cadastro_video_valor') || ''
+  }
+  atualizarBotaoFixarVideo()
+}
+
 async function salvarQuestao() {
   const materia = document.getElementById('materia-questao').value
   const tema = document.getElementById('tema-questao').value.trim()
@@ -3835,7 +3931,11 @@ async function salvarQuestao() {
   ultimaAnaliseEdital = null
   document.getElementById('edital-analise-resultado').style.display = 'none'
 
-  document.getElementById('materia-questao').value = ''
+  if (localStorage.getItem('cadastro_materia_fixada') === '1') {
+    localStorage.setItem('cadastro_materia_valor', document.getElementById('materia-questao').value)
+  } else {
+    document.getElementById('materia-questao').value = ''
+  }
   document.getElementById('tema-questao').value = ''
   document.getElementById('enunciado-questao').innerHTML = ''
   document.getElementById('texto-apoio-questao').innerHTML = ''
@@ -3849,7 +3949,11 @@ async function salvarQuestao() {
   document.getElementById('alt-e').innerHTML = ''
   document.getElementById('gabarito-questao').value = ''
   document.getElementById('anotacao-questao').value = ''
-  document.getElementById('video-questao').value = ''
+  if (localStorage.getItem('cadastro_video_fixado') === '1') {
+    localStorage.setItem('cadastro_video_valor', document.getElementById('video-questao').value)
+  } else {
+    document.getElementById('video-questao').value = ''
+  }
   document.getElementById('gabarito-selecionado').style.display = 'none'
   document.querySelectorAll('.gabarito-opt').forEach(b => b.classList.remove('selected'))
 
@@ -3949,12 +4053,12 @@ function renderQuestoes() {
           ${modoSelecaoQuestoes ? `<input type="checkbox" onclick="event.stopPropagation();toggleSelecaoQuestao('${q.id}')" ${selecionada ? 'checked' : ''} style="width:18px;height:18px;flex-shrink:0;cursor:pointer;accent-color:var(--accent)">` : ''}
           <span style="font-size:1rem;flex-shrink:0">${statusIcon}</span>
           <div style="min-width:0">
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              ${tagMateria(q.materia)}
-              ${q.tema ? `<span style="font-size:0.72rem;color:var(--accent)"><i class="fas fa-tag" style="margin-right:3px"></i>${q.tema}</span>` : ''}
-              ${q.favorita ? `<span style="font-size:0.75rem">⭐</span>` : ''}
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow:hidden">
+              ${tagMateria(truncarLinha(q.materia, 26))}
+              ${q.tema ? `<span style="font-size:0.72rem;color:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0"><i class="fas fa-tag" style="margin-right:3px"></i>${escHtml(truncarLinha(q.tema, 30))}</span>` : ''}
+              ${q.favorita ? `<span style="font-size:0.75rem;flex-shrink:0">⭐</span>` : ''}
             </div>
-            ${q.enunciado ? `<div style="font-size:0.8rem;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px">${formatarEnunciado(q.enunciado)}</div>` : ''}
+            ${q.enunciado ? `<div style="font-size:0.8rem;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:280px">${previewLinhaUnica(q.enunciado)}</div>` : ''}
             ${tentativas > 0 ? `<div style="margin-top:4px"><span class="tentativas-badge"><i class="fas fa-redo" style="font-size:0.6rem"></i>${tentativas} tentativa${tentativas!==1?'s':''} · <span style="color:${corTaxa}">${taxaAcerto}% acerto</span></span></div>` : ''}
           </div>
         </div>
@@ -4477,6 +4581,8 @@ let simuladoMatSelecionadas = []
 let simuladoTemasSelecionados = []
 let simuladoTimerSegundos = 0
 let flashLista = [], flashIdx = 0, flashAcertos = 0, flashErros = 0, flashRespondida = false
+let flashMatSelecionadas = []
+let flashTemasSelecionados = []
 let simuladoTimerInterval = null
 
 function toggleSimuladoMateria(btn, nome) {
@@ -4781,29 +4887,63 @@ function cancelarSimulado() {
 }
 
 // ===== FLASHCARDS (revisão rápida por matéria/tema) =====
-// Popula o select de Tema dos Flashcards de acordo com a matéria escolhida
-// (ou com todas as matérias visíveis, se "Todas as matérias" estiver selecionado).
-function atualizarFlashTemas() {
-  const temaEl = document.getElementById('flash-tema')
-  if (!temaEl) return
-  const materiaEscolhida = document.getElementById('flash-materia').value
-  let base = questoesVisiveis()
-  if (materiaEscolhida) base = base.filter(q => q.materia === materiaEscolhida)
-  const temas = [...new Set(base.map(q => q.tema).filter(t => t && t.trim()))].sort()
-  const valorAtual = temaEl.value
-  temaEl.innerHTML = '<option value="">Todos os temas</option>' +
-    temas.map(t => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('')
-  if (temas.includes(valorAtual)) temaEl.value = valorAtual
+// Matéria/tema dos Flashcards — multi-seleção, igual ao Simulado
+function toggleFlashMateria(btn, nome) {
+  btn.classList.toggle('active')
+  if (flashMatSelecionadas.includes(nome)) {
+    flashMatSelecionadas = flashMatSelecionadas.filter(m => m !== nome)
+  } else {
+    flashMatSelecionadas.push(nome)
+  }
+  renderFlashTemas()
+}
+
+function renderFlashTemas() {
+  const el = document.getElementById('flash-temas-checkboxes')
+  if (!el) return
+  let questoesFiltradas = questoesVisiveis()
+  if (flashMatSelecionadas.length > 0) {
+    questoesFiltradas = questoesFiltradas.filter(q => flashMatSelecionadas.includes(q.materia))
+  }
+  const temas = [...new Set(questoesFiltradas.map(q => q.tema).filter(t => t && t.trim()))]
+  if (!temas.length) {
+    el.innerHTML = '<span style="font-size:0.8rem;color:var(--text2)">Nenhum tema disponível para as matérias selecionadas</span>'
+    flashTemasSelecionados = []
+    return
+  }
+  el.innerHTML = temas.map(t => `
+    <button type="button" class="filtro-btn flash-tema-btn ${flashTemasSelecionados.includes(t) ? 'active' : ''}"
+      onclick="toggleFlashTema(this, '${escAttr(t)}')">
+      ${t}
+    </button>`).join('')
+}
+
+function toggleFlashTema(btn, nome) {
+  btn.classList.toggle('active')
+  if (flashTemasSelecionados.includes(nome)) {
+    flashTemasSelecionados = flashTemasSelecionados.filter(t => t !== nome)
+  } else {
+    flashTemasSelecionados.push(nome)
+  }
+}
+
+function toggleFlashTemas() {
+  const wrap = document.getElementById('flash-temas-wrap')
+  const chevron = document.getElementById('flash-temas-chevron')
+  const label = document.getElementById('flash-temas-label')
+  const aberto = wrap.style.display !== 'none'
+  wrap.style.display = aberto ? 'none' : 'block'
+  chevron.style.transform = aberto ? 'rotate(0deg)' : 'rotate(180deg)'
+  label.textContent = aberto ? 'Ver temas disponíveis' : 'Ocultar temas'
+  if (!aberto) renderFlashTemas()
 }
 
 function iniciarFlashcards() {
-  const materiaEscolhida = document.getElementById('flash-materia').value
-  const temaEscolhido = document.getElementById('flash-tema').value
   const inclDom = document.getElementById('flash-incluir-dom').value === 'sim'
 
   let lista = questoesVisiveis()
-  if (materiaEscolhida) lista = lista.filter(q => q.materia === materiaEscolhida)
-  if (temaEscolhido) lista = lista.filter(q => q.tema === temaEscolhido)
+  if (flashMatSelecionadas.length > 0) lista = lista.filter(q => flashMatSelecionadas.includes(q.materia))
+  if (flashTemasSelecionados.length > 0) lista = lista.filter(q => flashTemasSelecionados.includes(q.tema))
   if (!inclDom) lista = lista.filter(q => !q.dominada)
   if (!lista.length) { notif('Nenhuma questão encontrada com esse filtro!', 'error'); return }
 
@@ -4967,6 +5107,9 @@ function proximoFlashcard() {
 }
 
 function resetFlashcards() {
+  flashMatSelecionadas = []
+  flashTemasSelecionados = []
+  document.querySelectorAll('.flash-mat-btn, .flash-tema-btn').forEach(b => b.classList.remove('active'))
   document.getElementById('flash-config').style.display = 'block'
   document.getElementById('flash-ativo').style.display = 'none'
   document.getElementById('flash-fim').style.display = 'none'
@@ -7329,6 +7472,7 @@ async function init() {
   mostrarTelaLogin()
 }
 
+restaurarFixacoesCadastro()
 init()
 </script>
 </body>
