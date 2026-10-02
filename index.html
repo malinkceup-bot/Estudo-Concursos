@@ -4073,6 +4073,25 @@ function restaurarFixacoesCadastro() {
   atualizarBotaoFixarVideo()
 }
 
+// Destaca em vermelho um campo obrigatório que ficou em branco, até o
+// usuário interagir com ele (digitar, clicar ou focar) — aí o destaque some.
+function destacarCampoObrigatorio(id) {
+  const el = document.getElementById(id)
+  if (!el) return
+  el.style.outline = '2px solid var(--red)'
+  el.style.outlineOffset = '2px'
+  const limpar = () => {
+    el.style.outline = ''
+    el.style.outlineOffset = ''
+    el.removeEventListener('input', limpar)
+    el.removeEventListener('click', limpar)
+    el.removeEventListener('focus', limpar)
+  }
+  el.addEventListener('input', limpar)
+  el.addEventListener('click', limpar)
+  el.addEventListener('focus', limpar)
+}
+
 async function salvarQuestao() {
   const materia = document.getElementById('materia-questao').value
   const tema = document.getElementById('tema-questao').value.trim()
@@ -4087,7 +4106,20 @@ async function salvarQuestao() {
   const anotacao = document.getElementById('anotacao-questao').value.trim()
   const video = document.getElementById('video-questao').value.trim()
 
-  if (!materia || !gabarito) { notif('Selecione a matéria e o gabarito!', 'error'); return }
+  const camposFaltando = []
+  if (!materia) camposFaltando.push({ label: 'Matéria', id: 'materia-questao' })
+  if (!tema) camposFaltando.push({ label: 'Tema', id: 'tema-questao' })
+  if (!enunciado) camposFaltando.push({ label: 'Enunciado', id: 'enunciado-questao' })
+  if (!gabarito) camposFaltando.push({ label: 'Gabarito', id: 'gabarito-btns' })
+  if (!anotacao) camposFaltando.push({ label: 'Comentário', id: 'anotacao-questao' })
+
+  if (camposFaltando.length) {
+    const nomes = camposFaltando.map(c => c.label)
+    notif(nomes.length === 1 ? `Falta preencher: ${nomes[0]}.` : `Faltam preencher: ${nomes.join(', ')}.`, 'error')
+    camposFaltando.forEach(c => destacarCampoObrigatorio(c.id))
+    document.getElementById(camposFaltando[0].id).scrollIntoView({ behavior: 'smooth', block: 'center' })
+    return
+  }
 
   mostrarLoading('Salvando questão...')
   const resultado = await supa.insert(TABELA_QUESTOES, {
