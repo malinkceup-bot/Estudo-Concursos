@@ -1162,6 +1162,7 @@ for each row execute function restringir_cadastro_email();</pre>
           <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecaoAtiva('bold')" title="Negrito" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-weight:800">B</button>
           <button type="button" onmousedown="event.preventDefault()" onclick="formatarSelecaoAtiva('underline')" title="Sublinhado" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;text-decoration:underline">S</button>
           <span style="font-size:0.7rem;color:var(--text2)">Selecione um trecho de qualquer alternativa abaixo pra deixar em negrito/sublinhado</span>
+          <button type="button" onmousedown="event.preventDefault()" onclick="copiarAlternativasCadastro()" title="Copiar as alternativas preenchidas (A) ..., B) ...)" style="margin-left:auto;height:28px;padding:0 10px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer;font-size:0.75rem"><i class="fas fa-copy"></i> Copiar alternativas</button>
         </div>
         <div style="display:flex;flex-direction:column;gap:8px">
           <div style="display:flex;align-items:center;gap:8px">
@@ -4073,6 +4074,20 @@ function restaurarFixacoesCadastro() {
   atualizarBotaoFixarVideo()
 }
 
+// Copia as alternativas preenchidas no cadastro, uma por linha: "A) texto"
+function copiarAlternativasCadastro() {
+  const linhas = ['A', 'B', 'C', 'D', 'E']
+    .map(l => ({ l, t: (document.getElementById('alt-' + l.toLowerCase()).innerText || '').replace(/\s+/g, ' ').trim() }))
+    .filter(x => x.t)
+    .map(x => `${x.l}) ${x.t}`)
+  if (!linhas.length) { notif('Preencha ao menos uma alternativa pra copiar!', 'error'); return }
+  navigator.clipboard.writeText(linhas.join('\n')).then(() => {
+    notif('✅ Alternativas copiadas!')
+  }).catch(() => {
+    notif('Não consegui copiar — tente de novo.', 'error')
+  })
+}
+
 // Destaca em vermelho um campo obrigatório que ficou em branco, até o
 // usuário interagir com ele (digitar, clicar ou focar) — aí o destaque some.
 function destacarCampoObrigatorio(id) {
@@ -4280,16 +4295,16 @@ function renderQuestoes() {
 
       <!-- DETALHES EXPANDIDOS -->
       <div id="qdetail-${q.id}" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)" onclick="event.stopPropagation()">
-        ${q.texto_apoio ? `<div style="font-size:0.82rem;color:var(--text2);margin-bottom:10px;line-height:1.6;padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--text2);white-space:pre-wrap"><div style="font-size:0.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px"><i class="fas fa-file-lines"></i> Texto de apoio</div>${formatarEnunciado(q.texto_apoio)}</div>` : ''}
-        ${q.enunciado ? `<div style="font-size:0.85rem;color:var(--text);margin-bottom:10px;line-height:1.6;padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);white-space:pre-wrap">${formatarEnunciado(q.enunciado)}</div>` : ''}
-        ${temAlts ? `<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px">
+        ${q.texto_apoio ? secaoQuestaoColapsavel(q.id, 'apoio', 'fa-file-lines', 'Texto de apoio', `<div style="font-size:0.82rem;color:var(--text2);line-height:1.6;padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--text2);white-space:pre-wrap">${formatarEnunciado(q.texto_apoio)}</div>`, 'var(--text2)') : ''}
+        ${q.enunciado ? secaoQuestaoColapsavel(q.id, 'enunciado', 'fa-align-left', 'Enunciado', `<div style="font-size:0.85rem;color:var(--text);line-height:1.6;padding:10px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);white-space:pre-wrap">${formatarEnunciado(q.enunciado)}</div>`, 'var(--accent)') : ''}
+        ${temAlts ? secaoQuestaoColapsavel(q.id, 'alternativas', 'fa-list-ol', 'Alternativas', `<div style="display:flex;flex-direction:column;gap:4px">
           ${['A','B','C','D','E'].filter(l=>alts[l]).map(l=>`
             <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 10px;border-radius:6px;${q.gabarito===l?'background:rgba(34,197,94,0.15);border:1px solid var(--green)':'background:var(--surface2)'}">
               <span style="font-weight:700;color:${q.gabarito===l?'var(--green)':'var(--accent)'};min-width:18px">${l})</span>
               <span style="font-size:0.85rem;color:var(--text)">${formatarTextoInline(alts[l])}</span>
             </div>`).join('')}
-        </div>` : ''}
-        ${q.anotacao ? `<div class="questao-anotacao"><i class="fas fa-comment-dots" style="color:var(--yellow);margin-right:5px"></i>${q.anotacao}</div>` : ''}
+        </div>`, 'var(--accent)') : ''}
+        ${q.anotacao ? secaoQuestaoColapsavel(q.id, 'comentario', 'fa-comment-dots', 'Comentário', `<div class="questao-anotacao">${q.anotacao}</div>`, 'var(--yellow)') : ''}
         <div class="questao-actions" style="margin-top:12px">
           ${q.video ? `<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-play"></i> Vídeo</a>` : ''}
           <button class="btn btn-ghost btn-sm" onclick="abrirEditar('${q.id}')"><i class="fas fa-edit"></i> Editar</button>
@@ -4305,6 +4320,30 @@ function renderQuestoes() {
   }).join('')
 
   renderPaginacaoQuestoes(listaOrdenada.length, totalPaginas)
+}
+
+// Seções recolhíveis dentro do card expandido da aba Questões. Ficam todas
+// fechadas por padrão, assim os botões (Editar, Dominei!, etc.) aparecem
+// logo ao abrir a questão, sem precisar rolar por textos longos.
+function secaoQuestaoColapsavel(qid, chave, icone, rotulo, corpoHtml, corIcone) {
+  const id = `qsec-${qid}-${chave}`
+  return `
+    <div style="margin-bottom:8px">
+      <div onclick="toggleSecaoQuestao('${id}')" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;cursor:pointer;user-select:none">
+        <span style="font-size:0.78rem;font-weight:600;color:var(--text)"><i class="fas ${icone}" style="margin-right:6px;color:${corIcone}"></i>${rotulo}</span>
+        <i class="fas fa-chevron-down" id="${id}-chev" style="font-size:0.7rem;color:var(--text2);transition:transform 0.2s"></i>
+      </div>
+      <div id="${id}" style="display:none;margin-top:6px">${corpoHtml}</div>
+    </div>`
+}
+
+function toggleSecaoQuestao(id) {
+  const corpo = document.getElementById(id)
+  const chev = document.getElementById(id + '-chev')
+  if (!corpo) return
+  const abrir = corpo.style.display === 'none'
+  corpo.style.display = abrir ? 'block' : 'none'
+  if (chev) chev.style.transform = abrir ? 'rotate(180deg)' : 'rotate(0deg)'
 }
 
 function renderPaginacaoQuestoes(totalItens, totalPaginas) {
