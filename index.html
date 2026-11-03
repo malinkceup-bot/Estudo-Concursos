@@ -341,6 +341,21 @@
   .gabarito-opt:hover { border-color: var(--accent); color: var(--accent); }
   .gabarito-opt.selected { background: var(--green); border-color: var(--green); color: #fff; }
 
+  /* DIFICULDADE (fácil / média / difícil) */
+  .dif-opt {
+    background: var(--surface2); border: 2px solid var(--border);
+    border-radius: 8px; color: var(--text2); padding: 6px 14px;
+    font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
+  }
+  .dif-opt:hover { border-color: var(--accent); color: var(--text); }
+  .dif-opt.dif-facil.selected { background: var(--green); border-color: var(--green); color: #fff; }
+  .dif-opt.dif-media.selected { background: var(--yellow); border-color: var(--yellow); color: #1a1a1a; }
+  .dif-opt.dif-dificil.selected { background: var(--red); border-color: var(--red); color: #fff; }
+  .dif-opt.dif-mini { padding: 3px 10px; font-size: 0.72rem; border-width: 1px; }
+  .dif-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .dif-label { display: none; }
+  @media (min-width: 520px) { .dif-label { display: inline; } }
+
   .btn-add-mapa {
     border: 2px dashed var(--border); border-radius: var(--radius);
     background: none; color: var(--text2); padding: 16px;
@@ -579,6 +594,7 @@ alter table "Questões" add column if not exists relevancia_edital int;
 alter table "Questões" add column if not exists edital_topico text;
 alter table "Questões" add column if not exists edital_motivo text;
 alter table "Questões" add column if not exists edital_analisado boolean default false;
+alter table "Questões" add column if not exists dificuldade text;
 alter table "Mapas" add column if not exists titulo text;
 alter table "Mapas" add column if not exists tema text;
 alter table "Mapas" add column if not exists materia text;
@@ -994,18 +1010,6 @@ for each row execute function restringir_cadastro_email();</pre>
       </div>
     </div>
 
-    <!-- DESEMPENHO POR MATÉRIA -->
-    <div class="card">
-      <div class="card-title"><span class="card-title-icon" style="background:rgba(34,197,94,0.15);color:var(--green)"><i class="fas fa-list-check"></i></span>Desempenho por Matéria</div>
-      <div id="desempenho-materias"></div>
-    </div>
-
-    <!-- SITUAÇÃO GERAL -->
-    <div class="card">
-      <div class="card-title"><span class="card-title-icon" style="background:rgba(245,158,11,0.15);color:var(--yellow)"><i class="fas fa-bullseye"></i></span>Situação Geral</div>
-      <div id="dash-situacao"></div>
-    </div>
-
     <!-- HISTÓRICO DE CADASTRO -->
     <div class="card">
       <div class="card-title"><span class="card-title-icon" style="background:rgba(168,85,247,0.15);color:#a855f7"><i class="fas fa-calendar-week"></i></span>Histórico de Cadastro</div>
@@ -1027,6 +1031,12 @@ for each row execute function restringir_cadastro_email();</pre>
       </div>
     </div>
 
+    <!-- SITUAÇÃO GERAL -->
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(245,158,11,0.15);color:var(--yellow)"><i class="fas fa-bullseye"></i></span>Situação Geral</div>
+      <div id="dash-situacao"></div>
+    </div>
+
     <!-- AÇÕES RÁPIDAS -->
     <div class="card">
       <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-bolt"></i></span>Ações Rápidas</div>
@@ -1044,6 +1054,12 @@ for each row execute function restringir_cadastro_email();</pre>
           <div class="qa-tile-label">Backup e Exportação</div>
         </div>
       </div>
+    </div>
+
+    <!-- DESEMPENHO POR MATÉRIA -->
+    <div class="card">
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(34,197,94,0.15);color:var(--green)"><i class="fas fa-list-check"></i></span>Desempenho por Matéria</div>
+      <div id="desempenho-materias"></div>
     </div>
 
   </div>
@@ -1206,6 +1222,17 @@ for each row execute function restringir_cadastro_email();</pre>
         </div>
       </div>
 
+      <!-- DIFICULDADE (opcional) -->
+      <div class="form-group">
+        <label><i class="fas fa-gauge-high" style="margin-right:5px;color:var(--accent)"></i>Dificuldade <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional — clique de novo pra desmarcar)</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap" id="dificuldade-btns">
+          <button type="button" class="dif-opt dif-facil" data-valor="facil" onclick="escolherDificuldadeForm('', 'facil')">Fácil</button>
+          <button type="button" class="dif-opt dif-media" data-valor="media" onclick="escolherDificuldadeForm('', 'media')">Média</button>
+          <button type="button" class="dif-opt dif-dificil" data-valor="dificil" onclick="escolherDificuldadeForm('', 'dificil')">Difícil</button>
+        </div>
+        <input type="hidden" id="dificuldade-questao">
+      </div>
+
       <!-- COMENTÁRIO -->
       <div class="form-group">
         <label><i class="fas fa-comment-dots" style="margin-right:5px;color:var(--yellow)"></i>Comentário — Por que o gabarito é correto?</label>
@@ -1255,13 +1282,23 @@ for each row execute function restringir_cadastro_email();</pre>
     </div>
 
     <!-- FILTROS DE STATUS -->
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
       <button class="filtro-btn active" id="filtro-todas" onclick="filtrarStatus('todas')">Todas</button>
       <button class="filtro-btn" id="filtro-pendentes" onclick="filtrarStatus('pendentes')">Pendentes</button>
       <button class="filtro-btn" id="filtro-dominadas" onclick="filtrarStatus('dominadas')">Dominadas</button>
       <button class="filtro-btn" id="filtro-favoritas" onclick="filtrarStatus('favoritas')">⭐ Favoritas</button>
       <button class="filtro-btn" id="btn-modo-selecao" onclick="toggleModoSelecao()" style="margin-left:auto"><i class="fas fa-arrows-alt"></i> Migrar matéria</button>
       <span id="busca-resultado" style="font-size:0.8rem;color:var(--text2);align-self:center;margin-left:4px"></span>
+    </div>
+
+    <!-- FILTROS DE DIFICULDADE -->
+    <div id="filtros-dificuldade" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:0.78rem;color:var(--text2)"><i class="fas fa-gauge-high"></i> Dificuldade:</span>
+      <button class="filtro-btn active" data-valor="todas" onclick="filtrarDificuldade('todas')">Todas</button>
+      <button class="filtro-btn" data-valor="facil" onclick="filtrarDificuldade('facil')">🟢 Fácil</button>
+      <button class="filtro-btn" data-valor="media" onclick="filtrarDificuldade('media')">🟡 Média</button>
+      <button class="filtro-btn" data-valor="dificil" onclick="filtrarDificuldade('dificil')">🔴 Difícil</button>
+      <button class="filtro-btn" data-valor="sem" onclick="filtrarDificuldade('sem')">Sem classificação</button>
     </div>
 
     <div id="lista-questoes"></div>
@@ -1299,6 +1336,17 @@ for each row execute function restringir_cadastro_email();</pre>
             <div id="simulado-temas-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px">
               <span style="font-size:0.8rem;color:var(--text2)">Selecione uma matéria primeiro</span>
             </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Dificuldade (opcional)</label>
+          <div style="font-size:0.78rem;color:var(--text2);margin-bottom:8px">Nenhuma selecionada = todas (inclui as sem classificação).</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <button type="button" class="filtro-btn simulado-dif-btn" onclick="toggleSimuladoDif(this,'facil')">🟢 Fácil</button>
+            <button type="button" class="filtro-btn simulado-dif-btn" onclick="toggleSimuladoDif(this,'media')">🟡 Média</button>
+            <button type="button" class="filtro-btn simulado-dif-btn" onclick="toggleSimuladoDif(this,'dificil')">🔴 Difícil</button>
+            <button type="button" class="filtro-btn simulado-dif-btn" onclick="toggleSimuladoDif(this,'sem')">Sem classificação</button>
           </div>
         </div>
 
@@ -1408,6 +1456,17 @@ for each row execute function restringir_cadastro_email();</pre>
             <div id="flash-temas-checkboxes" style="display:flex;flex-wrap:wrap;gap:8px">
               <span style="font-size:0.8rem;color:var(--text2)">Selecione uma matéria primeiro</span>
             </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Dificuldade (opcional)</label>
+          <div style="font-size:0.78rem;color:var(--text2);margin-bottom:8px">Nenhuma selecionada = todas (inclui as sem classificação).</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <button type="button" class="filtro-btn flash-dif-btn" onclick="toggleFlashDif(this,'facil')">🟢 Fácil</button>
+            <button type="button" class="filtro-btn flash-dif-btn" onclick="toggleFlashDif(this,'media')">🟡 Média</button>
+            <button type="button" class="filtro-btn flash-dif-btn" onclick="toggleFlashDif(this,'dificil')">🔴 Difícil</button>
+            <button type="button" class="filtro-btn flash-dif-btn" onclick="toggleFlashDif(this,'sem')">Sem classificação</button>
           </div>
         </div>
 
@@ -1963,6 +2022,17 @@ for each row execute function restringir_cadastro_email();</pre>
       <div id="edit-gabarito-selecionado" style="margin-top:8px;font-size:0.85rem;color:var(--green);display:none">
         ✅ Gabarito selecionado: <strong id="edit-gabarito-label"></strong>
       </div>
+    </div>
+
+    <!-- DIFICULDADE (opcional) -->
+    <div class="form-group">
+      <label><i class="fas fa-gauge-high" style="margin-right:5px;color:var(--accent)"></i>Dificuldade <span style="color:var(--text2);font-weight:400;text-transform:none;font-size:0.75rem">(opcional — clique de novo pra desmarcar)</span></label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap" id="edit-dificuldade-btns">
+        <button type="button" class="dif-opt dif-facil" data-valor="facil" onclick="escolherDificuldadeForm('edit-', 'facil')">Fácil</button>
+        <button type="button" class="dif-opt dif-media" data-valor="media" onclick="escolherDificuldadeForm('edit-', 'media')">Média</button>
+        <button type="button" class="dif-opt dif-dificil" data-valor="dificil" onclick="escolherDificuldadeForm('edit-', 'dificil')">Difícil</button>
+      </div>
+      <input type="hidden" id="edit-dificuldade-questao">
     </div>
 
     <div class="form-group"><label>Anotação</label><textarea id="edit-anotacao"></textarea></div>
@@ -4074,6 +4144,74 @@ function restaurarFixacoesCadastro() {
   atualizarBotaoFixarVideo()
 }
 
+// ===== DIFICULDADE DAS QUESTÕES (fácil / média / difícil) =====
+// Coluna "dificuldade" (text) na tabela Questões. Valores: 'facil' | 'media' | 'dificil' | null
+const DIFICULDADES = [
+  { valor: 'facil',   rotulo: 'Fácil',   cor: 'var(--green)' },
+  { valor: 'media',   rotulo: 'Média',   cor: 'var(--yellow)' },
+  { valor: 'dificil', rotulo: 'Difícil', cor: 'var(--red)' },
+]
+function infoDificuldade(valor) { return DIFICULDADES.find(d => d.valor === valor) || null }
+
+// Bolinha colorida (e o nome, em telas mais largas) que aparece na linha da questão
+function dotDificuldadeHtml(valor) {
+  const d = infoDificuldade(valor)
+  if (!d) return ''
+  return `<span title="Dificuldade: ${d.rotulo}" style="display:inline-flex;align-items:center;gap:4px;font-size:0.68rem;font-weight:700;color:${d.cor}"><span class="dif-dot" style="background:${d.cor}"></span><span class="dif-label">${d.rotulo}</span></span>`
+}
+
+// Três botões pequenos pra classificar a questão na hora (lista de Questões, Simulado e Flashcards)
+function chipsDificuldadeHtml(q) {
+  return `<div data-dif-chips="${q.id}" style="display:flex;gap:6px;flex-wrap:wrap">` +
+    DIFICULDADES.map(d => `<button type="button" class="dif-opt dif-mini dif-${d.valor} ${q.dificuldade === d.valor ? 'selected' : ''}" data-valor="${d.valor}" onclick="definirDificuldadeQuestao('${q.id}','${d.valor}')">${d.rotulo}</button>`).join('') +
+    `</div>`
+}
+
+// Atualiza na tela (sem recarregar a lista) os botões e a bolinha de uma questão
+function atualizarVisualDificuldade(id, valor) {
+  document.querySelectorAll(`[data-dif-chips="${id}"] .dif-opt`).forEach(b => b.classList.toggle('selected', b.dataset.valor === valor))
+  const dot = document.getElementById(`dif-dot-${id}`)
+  if (dot) dot.innerHTML = dotDificuldadeHtml(valor)
+}
+
+// Clique num dos botões: grava direto no banco. Clicar no que já está marcado, desmarca.
+async function definirDificuldadeQuestao(id, valor) {
+  const q = questoes.find(x => String(x.id) === String(id))
+  if (!q) return
+  const novo = q.dificuldade === valor ? null : valor
+  const r = await supa.update(TABELA_QUESTOES, id, { dificuldade: novo })
+  if (!r) {
+    notif('Não consegui salvar a dificuldade. Se o problema continuar, seu Supabase talvez ainda não tenha a coluna "dificuldade".', 'error')
+    return
+  }
+  q.dificuldade = novo
+  ;[simuladoLista, flashLista].forEach(lista => lista.forEach(o => { if (String(o.id) === String(id)) o.dificuldade = novo }))
+  atualizarVisualDificuldade(id, novo)
+  notif(novo ? `Dificuldade: ${infoDificuldade(novo).rotulo}` : 'Dificuldade removida')
+}
+
+// Botões de dificuldade dos formulários (Cadastrar e Editar): clicar de novo desmarca
+function escolherDificuldadeForm(prefixo, valor) {
+  const input = document.getElementById(`${prefixo}dificuldade-questao`)
+  const desmarcar = input.value === valor
+  input.value = desmarcar ? '' : valor
+  document.querySelectorAll(`#${prefixo}dificuldade-btns .dif-opt`).forEach(b => b.classList.toggle('selected', !desmarcar && b.dataset.valor === valor))
+}
+
+// Filtro de dificuldade do Simulado/Flashcards (selecionadas vazio = todas)
+function filtrarPorDificuldade(lista, selecionadas) {
+  if (!selecionadas.length) return lista
+  return lista.filter(q => selecionadas.includes(q.dificuldade || 'sem'))
+}
+function toggleSimuladoDif(btn, valor) {
+  btn.classList.toggle('active')
+  simuladoDifSelecionadas = simuladoDifSelecionadas.includes(valor) ? simuladoDifSelecionadas.filter(v => v !== valor) : [...simuladoDifSelecionadas, valor]
+}
+function toggleFlashDif(btn, valor) {
+  btn.classList.toggle('active')
+  flashDifSelecionadas = flashDifSelecionadas.includes(valor) ? flashDifSelecionadas.filter(v => v !== valor) : [...flashDifSelecionadas, valor]
+}
+
 // Copia as alternativas preenchidas no cadastro, uma por linha: "A) texto"
 function copiarAlternativasCadastro() {
   const linhas = ['A', 'B', 'C', 'D', 'E']
@@ -4120,6 +4258,7 @@ async function salvarQuestao() {
   const gabarito = document.getElementById('gabarito-questao').value
   const anotacao = document.getElementById('anotacao-questao').value.trim()
   const video = document.getElementById('video-questao').value.trim()
+  const dificuldade = document.getElementById('dificuldade-questao').value
 
   const camposFaltando = []
   if (!materia) camposFaltando.push({ label: 'Matéria', id: 'materia-questao' })
@@ -4141,6 +4280,7 @@ async function salvarQuestao() {
     materia, tema, enunciado, texto_apoio: textoApoio,
     alternativas: JSON.stringify({ A: altA, B: altB, C: altC, D: altD, E: altE }),
     gabarito, anotacao, video, dominada: false,
+    ...(dificuldade ? { dificuldade } : {}),
     data: new Date().toLocaleDateString('pt-BR'),
     relevancia_edital: ultimaAnaliseEdital ? ultimaAnaliseEdital.confianca : null,
     edital_topico: ultimaAnaliseEdital ? ultimaAnaliseEdital.topico_correspondente : null,
@@ -4149,7 +4289,10 @@ async function salvarQuestao() {
   })
   esconderLoading()
 
-  if (!resultado) { notif('Erro ao salvar! Verifique sua conexão.', 'error'); return }
+  if (!resultado) {
+    notif(dificuldade ? 'Erro ao salvar! Verifique sua conexão — ou se o seu Supabase já tem a coluna "dificuldade".' : 'Erro ao salvar! Verifique sua conexão.', 'error')
+    return
+  }
 
   questoes.push(resultado[0])
   ultimaAnaliseEdital = null
@@ -4180,6 +4323,8 @@ async function salvarQuestao() {
   }
   document.getElementById('gabarito-selecionado').style.display = 'none'
   document.querySelectorAll('.gabarito-opt').forEach(b => b.classList.remove('selected'))
+  document.getElementById('dificuldade-questao').value = ''
+  document.querySelectorAll('#dificuldade-btns .dif-opt').forEach(b => b.classList.remove('selected'))
 
   // Resetar OCR
   document.getElementById('ocr-preview').style.display = 'none'
@@ -4198,6 +4343,7 @@ async function salvarQuestao() {
 // ===== QUESTÕES =====
 let filtroMateria = 'todas-materias'
 let filtroStatus = 'todas'
+let filtroDificuldade = 'todas'
 let modoSelecaoQuestoes = false
 let paginaAtualQuestoes = 1
 let questoesPorPagina = 20
@@ -4217,6 +4363,8 @@ function renderQuestoes() {
   if (filtroStatus === 'pendentes') lista = lista.filter(q => !q.dominada)
   if (filtroStatus === 'dominadas') lista = lista.filter(q => q.dominada)
   if (filtroStatus === 'favoritas') lista = lista.filter(q => q.favorita)
+  if (filtroDificuldade === 'sem') lista = lista.filter(q => !q.dificuldade)
+  else if (filtroDificuldade !== 'todas') lista = lista.filter(q => q.dificuldade === filtroDificuldade)
 
   // BUSCA GLOBAL
   const buscaInput = document.getElementById('busca-questoes')
@@ -4287,6 +4435,7 @@ function renderQuestoes() {
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span id="dif-dot-${q.id}" style="display:inline-flex;align-items:center">${dotDificuldadeHtml(q.dificuldade)}</span>
           <button class="btn-favorita" onclick="event.stopPropagation();toggleFavorita('${q.id}')" title="${q.favorita ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}">${q.favorita ? '⭐' : '☆'}</button>
           <span style="font-size:0.8rem;font-weight:700;color:${statusCor}">${q.gabarito}</span>
           <i class="fas fa-chevron-down" id="chevron-${q.id}" style="color:var(--text2);font-size:0.75rem;transition:transform 0.2s"></i>
@@ -4305,6 +4454,10 @@ function renderQuestoes() {
             </div>`).join('')}
         </div>`, 'var(--accent)') : ''}
         ${q.anotacao ? secaoQuestaoColapsavel(q.id, 'comentario', 'fa-comment-dots', 'Comentário', `<div class="questao-anotacao">${q.anotacao}</div>`, 'var(--yellow)') : ''}
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <span style="font-size:0.72rem;color:var(--text2)"><i class="fas fa-gauge-high"></i> Dificuldade:</span>
+          ${chipsDificuldadeHtml(q)}
+        </div>
         <div class="questao-actions" style="margin-top:12px">
           ${q.video ? `<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm"><i class="fas fa-play"></i> Vídeo</a>` : ''}
           <button class="btn btn-ghost btn-sm" onclick="abrirEditar('${q.id}')"><i class="fas fa-edit"></i> Editar</button>
@@ -4494,6 +4647,12 @@ function filtrarMateriaPorIndice(i) {
 }
 
 function filtrarMateria(m) { filtroMateria = m; paginaAtualQuestoes = 1; renderQuestoes() }
+function filtrarDificuldade(v) {
+  filtroDificuldade = v
+  paginaAtualQuestoes = 1
+  document.querySelectorAll('#filtros-dificuldade .filtro-btn').forEach(b => b.classList.toggle('active', b.dataset.valor === v))
+  renderQuestoes()
+}
 function filtrarStatus(s) {
   filtroStatus = s
   paginaAtualQuestoes = 1
@@ -4557,10 +4716,15 @@ function abrirEditar(id) {
   document.getElementById('edit-gabarito-selecionado').style.display = q.gabarito ? 'block' : 'none'
   document.getElementById('edit-anotacao').value = q.anotacao || ''
   document.getElementById('edit-video').value = q.video || ''
+  document.getElementById('edit-dificuldade-questao').value = q.dificuldade || ''
+  document.querySelectorAll('#edit-dificuldade-btns .dif-opt').forEach(b => b.classList.toggle('selected', b.dataset.valor === q.dificuldade))
   document.getElementById('modal-editar').classList.add('open')
   setTimeout(() => renderTemasTags('edit-tema', 'edit-temas-tags'), 100)
 }
-function fecharEditar() { document.getElementById('modal-editar').classList.remove('open') }
+function fecharEditar() {
+  document.getElementById('modal-editar').classList.remove('open')
+  retomarTimerSimuladoAposEdicao()
+}
 function toggleExpandirEnunciado() {
   const ta = document.getElementById('edit-enunciado')
   const btn = document.getElementById('btn-expandir-enunciado')
@@ -4814,13 +4978,67 @@ async function salvarEdicao() {
     anotacao: document.getElementById('edit-anotacao').value.trim(),
     video: document.getElementById('edit-video').value.trim(),
   }
+  // A dificuldade só vai no envio se tiver valor (ou se a questão já tinha uma, pra poder limpar) —
+  // assim quem ainda não criou a coluna no Supabase continua conseguindo editar normalmente.
+  const difEdit = document.getElementById('edit-dificuldade-questao').value
+  const qOriginal = questoes.find(q => String(q.id) === String(id))
+  if (difEdit || (qOriginal && qOriginal.dificuldade)) dados.dificuldade = difEdit || null
+
   mostrarLoading('Salvando edição...')
-  await supa.update(TABELA_QUESTOES, id, dados)
+  const resultadoEdicao = await supa.update(TABELA_QUESTOES, id, dados)
   esconderLoading()
+  if (!resultadoEdicao) {
+    notif(dados.dificuldade ? 'Não consegui salvar. Verifique a conexão — ou se o seu Supabase já tem a coluna "dificuldade".' : 'Não consegui salvar a edição. Verifique sua conexão.', 'error')
+    return
+  }
   questoes = questoes.map(q => String(q.id) === String(id) ? { ...q, ...dados } : q)
   fecharEditar()
   notif('✅ Questão editada!')
   renderQuestoes()
+  aposEditarQuestao(id, dados)
+}
+
+// ===== EDITAR DURANTE O SIMULADO / FLASHCARDS =====
+// Depois de salvar uma edição, atualiza a questão que está na tela do Simulado/Flashcards
+// (sem reiniciar a sessão, sem zerar o placar e sem refazer a pergunta).
+function aposEditarQuestao(id, dados) {
+  ;[simuladoLista, flashLista].forEach(lista => lista.forEach(o => { if (String(o.id) === String(id)) Object.assign(o, dados) }))
+
+  const qs = simuladoLista[simuladoIdx]
+  if (qs && String(qs.id) === String(id) && document.getElementById('simulado-ativo').style.display === 'block') {
+    document.getElementById('simulado-questao-atual').innerHTML = montarCardSimulado(qs)
+    if (simuladoRespondida) reaplicarMarcasSimulado(qs)
+  }
+  const qf = flashLista[flashIdx]
+  if (qf && String(qf.id) === String(id) && document.getElementById('flash-ativo').style.display === 'block') {
+    document.getElementById('flash-card-atual').innerHTML = montarCardFlash(qf)
+    if (flashRespondida) reaplicarMarcasFlash(qf)
+  }
+}
+
+function editarQuestaoDoSimulado() {
+  const q = simuladoLista[simuladoIdx]
+  if (!q) return
+  pausarTimerSimuladoParaEdicao()
+  abrirEditar(q.id)
+}
+function editarQuestaoDoFlash() {
+  const q = flashLista[flashIdx]
+  if (!q) return
+  abrirEditar(q.id)
+}
+
+// O temporizador do simulado fica parado enquanto a janela de edição está aberta
+function pausarTimerSimuladoParaEdicao() {
+  if (simuladoTimerInterval && !simuladoRespondida) {
+    pararTimer()
+    simuladoTimerPausado = true
+  }
+}
+function retomarTimerSimuladoAposEdicao() {
+  if (!simuladoTimerPausado) return
+  simuladoTimerPausado = false
+  if (!simuladoRespondida && simuladoRestante > 0) iniciarTimer(simuladoRestante)
 }
 
 // ===== SIMULADO =====
@@ -4831,6 +5049,12 @@ let simuladoTimerSegundos = 0
 let flashLista = [], flashIdx = 0, flashAcertos = 0, flashErros = 0, flashRespondida = false
 let flashMatSelecionadas = []
 let flashTemasSelecionados = []
+let simuladoDifSelecionadas = []
+let flashDifSelecionadas = []
+let simuladoEscolha = null
+let simuladoRestante = 0
+let simuladoTimerPausado = false
+let flashEscolha = null
 let simuladoTimerInterval = null
 
 function toggleSimuladoMateria(btn, nome) {
@@ -4886,6 +5110,7 @@ function iniciarSimulado() {
   if (simuladoTemasSelecionados.length > 0) {
     lista = lista.filter(q => simuladoTemasSelecionados.includes(q.tema))
   }
+  lista = filtrarPorDificuldade(lista, simuladoDifSelecionadas)
   if (!inclDom) lista = lista.filter(q => !q.dominada)
   if (!lista.length) { notif('Nenhuma questão encontrada!', 'error'); return }
 
@@ -4898,11 +5123,11 @@ function iniciarSimulado() {
   renderSimuladoQuestao()
 }
 
-function iniciarTimer() {
+function iniciarTimer(restanteInicial) {
   pararTimer()
   if (!simuladoTimerSegundos) return
 
-  let restante = simuladoTimerSegundos
+  let restante = restanteInicial > 0 ? restanteInicial : simuladoTimerSegundos
   const display = document.getElementById('simulado-timer-display')
   const barra = document.getElementById('simulado-timer-barra')
   const barraWrap = document.getElementById('simulado-timer-barra-wrap')
@@ -4910,6 +5135,7 @@ function iniciarTimer() {
   if (barraWrap) barraWrap.style.display = 'block'
 
   function atualizar() {
+    simuladoRestante = restante
     const min = Math.floor(restante / 60)
     const seg = restante % 60
     const texto = `⏱️ ${min > 0 ? min + 'm ' : ''}${String(seg).padStart(2,'0')}s`
@@ -4958,14 +5184,39 @@ function atualizarBarraProgresso() {
   if (btnPular) btnPular.disabled = simuladoIdx >= simuladoLista.length - 1
 }
 
-function renderSimuladoQuestao() {
-  simuladoRespondida = false
-  document.getElementById('simulado-acoes').style.display = 'none'
-  document.getElementById('simulado-feedback').innerHTML = ''
-  atualizarBarraProgresso()
-  iniciarTimer()
+// Feedback (acerto/erro + comentário + vídeo) — usado no Simulado e nos Flashcards
+function htmlFeedbackResposta(q, acertou) {
+  return `
+    <div class="simulado-feedback-box ${acertou ? 'acerto' : 'erro'}">
+      ${acertou ? '✅ Resposta correta!' : `❌ Resposta errada! O gabarito é: <strong>${q.gabarito}</strong>`}
+    </div>
+    ${q.anotacao ? `<div class="gabarito-info"><i class="fas fa-comment-dots" style="color:var(--yellow);margin-right:6px"></i>${q.anotacao}</div>` : ''}
+    ${q.video ? `<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm" style="margin-top:8px"><i class="fas fa-play"></i> Ver Vídeo</a>` : ''}`
+}
 
-  const q = simuladoLista[simuladoIdx]
+function htmlGabaritoSemAlternativa(q, fundo, cor) {
+  return `<div style="background:${fundo};border:1px solid ${cor};border-radius:8px;padding:12px;margin-top:8px">
+    <strong style="color:${cor}">Gabarito: ${q.gabarito}</strong>
+    ${q.anotacao ? `<div style="font-size:0.85rem;color:var(--text2);margin-top:6px;line-height:1.6;white-space:pre-wrap">${q.anotacao}</div>` : ''}
+  </div>`
+}
+
+// Cabeçalho do card (matéria, data, botão Editar) + tema + dificuldade — igual no Simulado e nos Flashcards
+function cabecalhoCardQuestao(q, onclickEditar) {
+  return `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        ${tagMateria(q.materia)}
+        <span style="font-size:0.75rem;color:var(--text2)">${q.data || ''}</span>
+        <button type="button" class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="${onclickEditar}" title="Corrigir erros no enunciado, nas alternativas ou no texto desta questão"><i class="fas fa-pen-to-square"></i> Editar</button>
+      </div>
+      ${q.tema ? `<div style="font-size:0.78rem;color:var(--accent);margin-bottom:10px"><i class="fas fa-tag" style="margin-right:4px"></i>${q.tema}</div>` : ''}
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <span style="font-size:0.72rem;color:var(--text2)"><i class="fas fa-gauge-high"></i> Dificuldade:</span>
+        ${chipsDificuldadeHtml(q)}
+      </div>`
+}
+
+function montarCardSimulado(q) {
   const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
   const temAlts = Object.values(alts).some(v => v)
   const ehCertoErrado = q.gabarito === 'Certo' || q.gabarito === 'Errado'
@@ -4990,22 +5241,50 @@ function renderSimuladoQuestao() {
     </button>`
   }
 
-  document.getElementById('simulado-questao-atual').innerHTML = `
+  return `
     <div class="simulado-card">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        ${tagMateria(q.materia)}
-        <span style="font-size:0.75rem;color:var(--text2)">${q.data || ''}</span>
-      </div>
-      ${q.tema ? `<div style="font-size:0.78rem;color:var(--accent);margin-bottom:10px"><i class="fas fa-tag" style="margin-right:4px"></i>${q.tema}</div>` : ''}
+      ${cabecalhoCardQuestao(q, 'editarQuestaoDoSimulado()')}
       ${q.texto_apoio ? `<div style="font-size:0.88rem;color:var(--text2);line-height:1.6;margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--text2);white-space:pre-wrap"><div style="font-size:0.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px"><i class="fas fa-file-lines"></i> Texto de apoio</div>${formatarEnunciado(q.texto_apoio)}</div>` : ''}
       ${q.enunciado ? `<div style="font-size:0.95rem;color:var(--text);line-height:1.6;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent);white-space:pre-wrap">${formatarEnunciado(q.enunciado)}</div>` : '<div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px;font-style:italic">Selecione sua resposta:</div>'}
       ${alternativasHTML}
     </div>`
 }
 
+function renderSimuladoQuestao() {
+  simuladoRespondida = false
+  simuladoEscolha = null
+  document.getElementById('simulado-acoes').style.display = 'none'
+  document.getElementById('simulado-feedback').innerHTML = ''
+  atualizarBarraProgresso()
+  iniciarTimer()
+
+  const q = simuladoLista[simuladoIdx]
+  document.getElementById('simulado-questao-atual').innerHTML = montarCardSimulado(q)
+}
+
+// Depois de editar uma questão JÁ respondida, devolve ao card as marcas de certo/errado
+function reaplicarMarcasSimulado(q) {
+  const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
+  const temAlts = Object.values(alts).some(v => v)
+  const ehCertoErrado = q.gabarito === 'Certo' || q.gabarito === 'Errado'
+  if (simuladoEscolha) {
+    document.querySelectorAll('#simulado-questao-atual .alt-btn, #simulado-questao-atual .cert-btn').forEach(b => b.disabled = true)
+    const acertou = simuladoEscolha === q.gabarito
+    const btnEscolhido = document.getElementById(`alt-btn-${simuladoEscolha}`)
+    const btnCorreto = document.getElementById(`alt-btn-${q.gabarito}`)
+    if (acertou) { btnEscolhido?.classList.add('correta') }
+    else { btnEscolhido?.classList.add('errada'); btnCorreto?.classList.add('correta') }
+    document.getElementById('simulado-feedback').innerHTML = htmlFeedbackResposta(q, acertou)
+  } else if (!temAlts && !ehCertoErrado) {
+    const card = document.querySelector('#simulado-questao-atual .simulado-card')
+    if (card) card.innerHTML += htmlGabaritoSemAlternativa(q, 'rgba(79,142,247,0.1)', 'var(--accent)')
+  }
+}
+
 async function responderAlternativa(escolha) {
   if (simuladoRespondida) return
   simuladoRespondida = true
+  simuladoEscolha = escolha
 
   const q = simuladoLista[simuladoIdx]
   const acertou = escolha === q.gabarito
@@ -5018,13 +5297,7 @@ async function responderAlternativa(escolha) {
   if (acertou) { btnEscolhido?.classList.add('correta') }
   else { btnEscolhido?.classList.add('errada'); btnCorreto?.classList.add('correta') }
 
-  const feedbackEl = document.getElementById('simulado-feedback')
-  feedbackEl.innerHTML = `
-    <div class="simulado-feedback-box ${acertou ? 'acerto' : 'erro'}">
-      ${acertou ? '✅ Resposta correta!' : `❌ Resposta errada! O gabarito é: <strong>${q.gabarito}</strong>`}
-    </div>
-    ${q.anotacao ? `<div class="gabarito-info"><i class="fas fa-comment-dots" style="color:var(--yellow);margin-right:6px"></i>${q.anotacao}</div>` : ''}
-    ${q.video ? `<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm" style="margin-top:8px"><i class="fas fa-play"></i> Ver Vídeo</a>` : ''}`
+  document.getElementById('simulado-feedback').innerHTML = htmlFeedbackResposta(q, acertou)
 
   document.getElementById('simulado-acoes').style.display = 'block'
   pararTimer()
@@ -5052,10 +5325,7 @@ function responderSemAlternativa() {
   simuladoRespondida = true
   const q = simuladoLista[simuladoIdx]
   const card = document.getElementById('simulado-questao-atual').querySelector('.simulado-card')
-  card.innerHTML += `<div style="background:rgba(79,142,247,0.1);border:1px solid var(--accent);border-radius:8px;padding:12px;margin-top:8px">
-    <strong style="color:var(--accent)">Gabarito: ${q.gabarito}</strong>
-    ${q.anotacao ? `<div style="font-size:0.85rem;color:var(--text2);margin-top:6px;line-height:1.6;white-space:pre-wrap">${q.anotacao}</div>` : ''}
-  </div>`
+  card.innerHTML += htmlGabaritoSemAlternativa(q, 'rgba(79,142,247,0.1)', 'var(--accent)')
   document.getElementById('simulado-feedback').innerHTML = `
     <div style="font-size:0.9rem;font-weight:600;margin-bottom:8px;color:var(--text2)">Você acertou?</div>
     <div style="display:flex;gap:10px">
@@ -5123,7 +5393,8 @@ function resetSimulado() {
   pararTimer()
   simuladoMatSelecionadas = []
   simuladoTemasSelecionados = []
-  document.querySelectorAll('.simulado-mat-btn, .simulado-tema-btn').forEach(b => b.classList.remove('active'))
+  simuladoDifSelecionadas = []
+  document.querySelectorAll('.simulado-mat-btn, .simulado-tema-btn, .simulado-dif-btn').forEach(b => b.classList.remove('active'))
   document.getElementById('simulado-config').style.display = 'block'
   document.getElementById('simulado-ativo').style.display = 'none'
   document.getElementById('simulado-fim').style.display = 'none'
@@ -5192,6 +5463,7 @@ function iniciarFlashcards() {
   let lista = questoesVisiveis()
   if (flashMatSelecionadas.length > 0) lista = lista.filter(q => flashMatSelecionadas.includes(q.materia))
   if (flashTemasSelecionados.length > 0) lista = lista.filter(q => flashTemasSelecionados.includes(q.tema))
+  lista = filtrarPorDificuldade(lista, flashDifSelecionadas)
   if (!inclDom) lista = lista.filter(q => !q.dominada)
   if (!lista.length) { notif('Nenhuma questão encontrada com esse filtro!', 'error'); return }
 
@@ -5213,13 +5485,7 @@ function atualizarBarraFlash() {
   if (btnPular) btnPular.disabled = flashIdx >= flashLista.length - 1
 }
 
-function renderFlashcard() {
-  flashRespondida = false
-  document.getElementById('flash-acoes').style.display = 'none'
-  document.getElementById('flash-feedback').innerHTML = ''
-  atualizarBarraFlash()
-
-  const q = flashLista[flashIdx]
+function montarCardFlash(q) {
   const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
   const temAlts = Object.values(alts).some(v => v)
   const ehCertoErrado = q.gabarito === 'Certo' || q.gabarito === 'Errado'
@@ -5244,22 +5510,49 @@ function renderFlashcard() {
     </button>`
   }
 
-  document.getElementById('flash-card-atual').innerHTML = `
+  return `
     <div class="simulado-card">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        ${tagMateria(q.materia)}
-        <span style="font-size:0.75rem;color:var(--text2)">${q.data || ''}</span>
-      </div>
-      ${q.tema ? `<div style="font-size:0.78rem;color:var(--accent);margin-bottom:10px"><i class="fas fa-tag" style="margin-right:4px"></i>${q.tema}</div>` : ''}
+      ${cabecalhoCardQuestao(q, 'editarQuestaoDoFlash()')}
       ${q.texto_apoio ? `<div style="font-size:0.88rem;color:var(--text2);line-height:1.6;margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--text2);white-space:pre-wrap"><div style="font-size:0.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px"><i class="fas fa-file-lines"></i> Texto de apoio</div>${formatarEnunciado(q.texto_apoio)}</div>` : ''}
       ${q.enunciado ? `<div style="font-size:0.95rem;color:var(--text);line-height:1.6;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--yellow);white-space:pre-wrap">${formatarEnunciado(q.enunciado)}</div>` : '<div style="font-size:0.85rem;color:var(--text2);margin-bottom:12px;font-style:italic">Selecione sua resposta:</div>'}
       ${alternativasHTML}
     </div>`
 }
 
+function renderFlashcard() {
+  flashRespondida = false
+  flashEscolha = null
+  document.getElementById('flash-acoes').style.display = 'none'
+  document.getElementById('flash-feedback').innerHTML = ''
+  atualizarBarraFlash()
+
+  const q = flashLista[flashIdx]
+  document.getElementById('flash-card-atual').innerHTML = montarCardFlash(q)
+}
+
+// Depois de editar uma questão JÁ respondida, devolve ao card as marcas de certo/errado
+function reaplicarMarcasFlash(q) {
+  const alts = typeof q.alternativas === 'string' ? JSON.parse(q.alternativas || '{}') : (q.alternativas || {})
+  const temAlts = Object.values(alts).some(v => v)
+  const ehCertoErrado = q.gabarito === 'Certo' || q.gabarito === 'Errado'
+  if (flashEscolha) {
+    document.querySelectorAll('#flash-alts-container .alt-btn, #flash-alts-container .cert-btn').forEach(b => b.disabled = true)
+    const acertou = flashEscolha === q.gabarito
+    const btnEscolhido = document.getElementById(`flash-alt-btn-${flashEscolha}`)
+    const btnCorreto = document.getElementById(`flash-alt-btn-${q.gabarito}`)
+    if (acertou) { btnEscolhido?.classList.add('correta') }
+    else { btnEscolhido?.classList.add('errada'); btnCorreto?.classList.add('correta') }
+    document.getElementById('flash-feedback').innerHTML = htmlFeedbackResposta(q, acertou)
+  } else if (!temAlts && !ehCertoErrado) {
+    const card = document.querySelector('#flash-card-atual .simulado-card')
+    if (card) card.innerHTML += htmlGabaritoSemAlternativa(q, 'rgba(234,179,8,0.1)', 'var(--yellow)')
+  }
+}
+
 async function responderFlashAlternativa(escolha) {
   if (flashRespondida) return
   flashRespondida = true
+  flashEscolha = escolha
 
   const q = flashLista[flashIdx]
   const acertou = escolha === q.gabarito
@@ -5272,13 +5565,7 @@ async function responderFlashAlternativa(escolha) {
   if (acertou) { btnEscolhido?.classList.add('correta') }
   else { btnEscolhido?.classList.add('errada'); btnCorreto?.classList.add('correta') }
 
-  const feedbackEl = document.getElementById('flash-feedback')
-  feedbackEl.innerHTML = `
-    <div class="simulado-feedback-box ${acertou ? 'acerto' : 'erro'}">
-      ${acertou ? '✅ Resposta correta!' : `❌ Resposta errada! O gabarito é: <strong>${q.gabarito}</strong>`}
-    </div>
-    ${q.anotacao ? `<div class="gabarito-info"><i class="fas fa-comment-dots" style="color:var(--yellow);margin-right:6px"></i>${q.anotacao}</div>` : ''}
-    ${q.video ? `<a href="${q.video}" target="_blank" class="btn btn-ghost btn-sm" style="margin-top:8px"><i class="fas fa-play"></i> Ver Vídeo</a>` : ''}`
+  document.getElementById('flash-feedback').innerHTML = htmlFeedbackResposta(q, acertou)
 
   document.getElementById('flash-acoes').style.display = 'block'
 
@@ -5303,10 +5590,7 @@ function responderFlashSemAlternativa() {
   flashRespondida = true
   const q = flashLista[flashIdx]
   const card = document.getElementById('flash-card-atual').querySelector('.simulado-card')
-  card.innerHTML += `<div style="background:rgba(234,179,8,0.1);border:1px solid var(--yellow);border-radius:8px;padding:12px;margin-top:8px">
-    <strong style="color:var(--yellow)">Gabarito: ${q.gabarito}</strong>
-    ${q.anotacao ? `<div style="font-size:0.85rem;color:var(--text2);margin-top:6px;line-height:1.6;white-space:pre-wrap">${q.anotacao}</div>` : ''}
-  </div>`
+  card.innerHTML += htmlGabaritoSemAlternativa(q, 'rgba(234,179,8,0.1)', 'var(--yellow)')
   document.getElementById('flash-feedback').innerHTML = `
     <div style="font-size:0.9rem;font-weight:600;margin-bottom:8px;color:var(--text2)">Você acertou?</div>
     <div style="display:flex;gap:10px">
@@ -5357,7 +5641,8 @@ function proximoFlashcard() {
 function resetFlashcards() {
   flashMatSelecionadas = []
   flashTemasSelecionados = []
-  document.querySelectorAll('.flash-mat-btn, .flash-tema-btn').forEach(b => b.classList.remove('active'))
+  flashDifSelecionadas = []
+  document.querySelectorAll('.flash-mat-btn, .flash-tema-btn, .flash-dif-btn').forEach(b => b.classList.remove('active'))
   document.getElementById('flash-config').style.display = 'block'
   document.getElementById('flash-ativo').style.display = 'none'
   document.getElementById('flash-fim').style.display = 'none'
