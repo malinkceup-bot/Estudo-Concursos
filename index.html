@@ -232,6 +232,19 @@
   .alt-btn.correta .alt-letra { color: var(--green); }
   .alt-btn.errada .alt-letra { color: var(--red); }
 
+  /* RISCAR ALTERNATIVA (igual ao QConcursos): a alternativa continua na tela, só fica "apagada" e riscada */
+  .alt-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 8px; }
+  .alt-row .alt-btn { flex: 1; width: auto; min-width: 0; margin-bottom: 0; }
+  .alt-riscar {
+    flex-shrink: 0; width: 42px; background: var(--surface2); border: 2px solid var(--border);
+    border-radius: 8px; color: var(--text2); cursor: pointer; transition: all 0.2s; font-size: 0.85rem;
+  }
+  .alt-riscar:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+  .alt-riscar.ativo { border-color: var(--yellow); color: var(--yellow); background: rgba(245,158,11,0.12); }
+  .alt-riscar:disabled { cursor: default; opacity: 0.45; }
+  .alt-btn.riscada:not(.correta):not(.errada) { opacity: 0.5; }
+  .alt-btn.riscada:not(.correta):not(.errada) .alt-texto { text-decoration: line-through; }
+
   .simulado-feedback-box {
     padding: 14px 16px; border-radius: 10px; font-size: 0.9rem;
     font-weight: 600; display: flex; align-items: center; gap: 10px;
@@ -1161,6 +1174,14 @@ for each row execute function restringir_cadastro_email();</pre>
           <button type="button" onmousedown="event.preventDefault()" onclick="recuarParagrafo('enunciado-questao')" title="Recuar/tirar recuo do parágrafo (clique de novo pra desfazer)" style="width:32px;height:28px;border:1px solid var(--border);background:var(--surface2);color:var(--text);border-radius:6px;cursor:pointer"><i class="fas fa-indent"></i></button>
         </div>
         <div id="enunciado-questao" class="rich-editable" contenteditable="true" data-placeholder="Cole aqui o enunciado da questão ou um resumo do que ela pede..." style="min-height:120px" onpaste="tratarColagem(event)" onkeydown="handleTabRecuo(event, this.id)"></div>
+      </div>
+
+      <!-- SEPARAR ALTERNATIVAS COLADAS JUNTO COM O ENUNCIADO -->
+      <div class="form-group">
+        <div id="aviso-separar-alts" style="display:none;margin-bottom:8px;padding:10px 14px;border-radius:8px;font-size:0.85rem;line-height:1.5"></div>
+        <button type="button" class="btn" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:100%" onclick="separarAlternativasDoEnunciado(true)" title="Reconhece a), b), c)... dentro do enunciado e joga cada uma na sua caixa">
+          <i class="fas fa-scissors"></i> Separar alternativas do enunciado
+        </button>
       </div>
 
       <!-- VERIFICADOR DE DUPLICATA -->
@@ -4325,6 +4346,8 @@ async function salvarQuestao() {
   document.querySelectorAll('.gabarito-opt').forEach(b => b.classList.remove('selected'))
   document.getElementById('dificuldade-questao').value = ''
   document.querySelectorAll('#dificuldade-btns .dif-opt').forEach(b => b.classList.remove('selected'))
+  ultimaSeparacaoAlternativas = null
+  document.getElementById('aviso-separar-alts').style.display = 'none'
 
   // Resetar OCR
   document.getElementById('ocr-preview').style.display = 'none'
@@ -4778,13 +4801,126 @@ function colarTextoApoioSalvo(targetId) {
   notif('✅ Texto de apoio colado com a formatação original')
 }
 
+// ===== SEPARAR ALTERNATIVAS COLADAS JUNTO COM O ENUNCIADO =====
+// Cola a questão inteira (enunciado + a) b) c) d) e)) no campo Enunciado e as alternativas
+// são reconhecidas e movidas, uma a uma, pras caixas A–E. Funciona com as alternativas
+// em linhas separadas ou emendadas no mesmo parágrafo (que é como o PDF costuma copiar),
+// e com os formatos  a)  A)  (a)  A.  A-  A –
+
+// Tira marcadores de formatação que ficariam "pela metade" depois de cortar o texto
+function limparMarcadoresDesbalanceados(seg) {
+  seg = seg.replace(/\[\[\/?(center|indent)\]\]/g, '')
+  if ((seg.match(/\*\*/g) || []).length % 2) seg = seg.replace(/\*\*/g, '')
+  if ((seg.match(/__/g) || []).length % 2) seg = seg.replace(/__/g, '')
+  return seg.trim()
+}
+function balancearMarcadoresEnunciado(head) {
+  ;['center', 'indent'].forEach(tipo => {
+    const abre = (head.match(new RegExp(`\\[\\[${tipo}\\]\\]`, 'g')) || []).length
+    const fecha = (head.match(new RegExp(`\\[\\[/${tipo}\\]\\]`, 'g')) || []).length
+    if (abre > fecha) head += `[[/${tipo}]]`.repeat(abre - fecha)
+    else if (fecha > abre) head = head.replace(new RegExp(`\\[\\[/${tipo}\\]\\]`, 'g'), '')
+  })
+  if ((head.match(/\*\*/g) || []).length % 2) head = head.replace(/\*\*/g, '')
+  if ((head.match(/__/g) || []).length % 2) head = head.replace(/__/g, '')
+  return head.trim()
+}
+
+// Recebe o texto do enunciado (no formato salvo: **negrito**, __sublinhado__) e devolve
+// { enunciado, alternativas: {A..E}, qtd } — ou null se não achar uma sequência a) b) c)...
+function detectarAlternativasNoTexto(texto) {
+  const t = String(texto || '').replace(/\r\n?/g, '\n')
+  const re = /(^|\s)\(?([A-Ea-e])(\)|\.(?=\s)|\s?[\-–—](?=\s))/g
+  const cands = []
+  let m
+  while ((m = re.exec(t)) !== null) {
+    cands.push({ letra: m[2].toUpperCase(), ini: m.index + m[1].length, fim: m.index + m[0].length })
+  }
+  const ordem = ['A', 'B', 'C', 'D', 'E']
+  // Procura de trás pra frente: o bloco de alternativas fica no FIM da questão
+  for (let k = cands.length - 1; k >= 0; k--) {
+    if (cands[k].letra !== 'A') continue
+    const cadeia = [cands[k]]
+    for (let n = 1; n < 5; n++) {
+      const ultimo = cadeia[cadeia.length - 1]
+      const prox = cands.find(c => c.letra === ordem[n] && c.ini >= ultimo.fim)
+      if (!prox) break
+      cadeia.push(prox)
+    }
+    if (cadeia.length < 3) continue
+
+    const alternativas = { A: '', B: '', C: '', D: '', E: '' }
+    let valido = true
+    cadeia.forEach((c, idx) => {
+      const fimTrecho = idx + 1 < cadeia.length ? cadeia[idx + 1].ini : t.length
+      const seg = limparMarcadoresDesbalanceados(
+        t.slice(c.fim, fimTrecho).replace(/\s*\n+\s*/g, ' ').replace(/\s{2,}/g, ' ')
+      )
+      // cada alternativa precisa ter conteúdo de verdade (evita confundir "alíneas a), b) e c)" do texto)
+      const temConteudo = /[A-Za-zÀ-ÿ0-9]/.test(seg) && (seg.length >= (cadeia.length === 3 ? 3 : 2) || /\d/.test(seg))
+      if (!temConteudo) valido = false
+      alternativas[ordem[idx]] = seg
+    })
+    if (!valido) continue
+
+    return { enunciado: balancearMarcadoresEnunciado(t.slice(0, cadeia[0].ini)), alternativas, qtd: cadeia.length }
+  }
+  return null
+}
+
+let ultimaSeparacaoAlternativas = null
+
+function mostrarAvisoSeparacao(html, tipo) {
+  const el = document.getElementById('aviso-separar-alts')
+  if (!el) return
+  const ok = tipo === 'ok'
+  el.style.display = 'block'
+  el.style.background = ok ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)'
+  el.style.border = `1px solid ${ok ? 'var(--green)' : 'var(--yellow)'}`
+  el.style.color = 'var(--text)'
+  el.innerHTML = html
+}
+
+// manual = true quando é o botão (substitui o que já estiver nas alternativas);
+// manual = false quando é a colagem automática (só age se as alternativas estiverem vazias)
+function separarAlternativasDoEnunciado(manual) {
+  const enun = document.getElementById('enunciado-questao')
+  const res = detectarAlternativasNoTexto(htmlParaMarkdown(enun))
+  if (!res) {
+    if (manual) mostrarAvisoSeparacao('⚠️ Não encontrei alternativas (a), b), c)...) dentro do enunciado.', 'aviso')
+    return
+  }
+  const letras = ['A', 'B', 'C', 'D', 'E']
+  const campo = L => document.getElementById('alt-' + L.toLowerCase())
+  const jaPreenchidas = letras.some(L => campo(L).textContent.trim())
+  if (jaPreenchidas && !manual) {
+    mostrarAvisoSeparacao(`Encontrei ${res.qtd} alternativas dentro do enunciado, mas as caixas de alternativas já têm texto. Clique em <strong>“Separar alternativas do enunciado”</strong> se quiser substituí-las.`, 'aviso')
+    return
+  }
+  ultimaSeparacaoAlternativas = { enunciado: enun.innerHTML, alts: letras.map(L => campo(L).innerHTML) }
+  enun.innerHTML = res.enunciado ? formatarEnunciado(res.enunciado) : ''
+  letras.forEach(L => { campo(L).innerHTML = formatarTextoInline(res.alternativas[L] || '') })
+  mostrarAvisoSeparacao(`✅ ${res.qtd} alternativas separadas do enunciado — confira os campos. <button type="button" onclick="desfazerSeparacaoAlternativas()" style="margin-left:6px;background:none;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:2px 10px;cursor:pointer;font-size:0.8rem"><i class="fas fa-rotate-left"></i> Desfazer</button>`, 'ok')
+}
+
+function desfazerSeparacaoAlternativas() {
+  if (!ultimaSeparacaoAlternativas) return
+  document.getElementById('enunciado-questao').innerHTML = ultimaSeparacaoAlternativas.enunciado
+  ;['a', 'b', 'c', 'd', 'e'].forEach((l, i) => { document.getElementById('alt-' + l).innerHTML = ultimaSeparacaoAlternativas.alts[i] })
+  ultimaSeparacaoAlternativas = null
+  document.getElementById('aviso-separar-alts').style.display = 'none'
+}
+
 function tratarColagem(e) {
+  const alvo = e.currentTarget
   e.preventDefault()
   const texto = (e.clipboardData || window.clipboardData).getData('text/plain')
   if (!texto) return
   const paragrafos = limparTextoColado(texto)
   const html = paragrafos.map(p => `<div>${escHtml(p)}</div>`).join('')
   document.execCommand('insertHTML', false, html)
+  // Colou a questão inteira no Enunciado? Já separa as alternativas automaticamente.
+  if (alvo && alvo.id === 'enunciado-questao') setTimeout(() => separarAlternativasDoEnunciado(false), 0)
 }
 
 function formatarSelecao(id, comando) {
@@ -5052,6 +5188,8 @@ let flashTemasSelecionados = []
 let simuladoDifSelecionadas = []
 let flashDifSelecionadas = []
 let simuladoEscolha = null
+let simuladoRiscadas = new Set()
+let flashRiscadas = new Set()
 let simuladoRestante = 0
 let simuladoTimerPausado = false
 let flashEscolha = null
@@ -5184,6 +5322,41 @@ function atualizarBarraProgresso() {
   if (btnPular) btnPular.disabled = simuladoIdx >= simuladoLista.length - 1
 }
 
+// Alternativas com o botão de RISCAR ao lado (Simulado e Flashcards).
+// Riscar = "esta eu descartei": a alternativa continua na tela, só fica apagada e riscada, e
+// não dá pra marcá-la por engano. Clicando de novo no botão, o risco sai.
+function htmlAlternativasLetra(alts, ctx) {
+  const flash = ctx === 'flash'
+  const pref = flash ? 'flash-' : ''
+  const fn = flash ? 'responderFlashAlternativa' : 'responderAlternativa'
+  const riscadas = flash ? flashRiscadas : simuladoRiscadas
+  return `<div id="${flash ? 'flash-alts-container' : 'alts-container'}" style="display:flex;flex-direction:column;margin-bottom:8px">
+    ${['A','B','C','D','E'].filter(l => alts[l]).map(l => {
+      const r = riscadas.has(l)
+      return `
+      <div class="alt-row" id="${pref}alt-row-${l}">
+        <button class="alt-btn ${r ? 'riscada' : ''}" id="${pref}alt-btn-${l}" onclick="${fn}('${l}')">
+          <span class="alt-letra">${l})</span>
+          <span class="alt-texto">${formatarTextoInline(alts[l])}</span>
+        </button>
+        <button type="button" class="alt-riscar ${r ? 'ativo' : ''}" id="${pref}alt-riscar-${l}" onclick="alternarRisco('${ctx}','${l}')" title="${r ? 'Tirar o risco' : 'Riscar esta alternativa'}" aria-label="${r ? 'Tirar o risco da' : 'Riscar a'} alternativa ${l}"><i class="fas fa-strikethrough"></i></button>
+      </div>`
+    }).join('')}
+  </div>`
+}
+
+function alternarRisco(ctx, letra) {
+  const flash = ctx === 'flash'
+  if (flash ? flashRespondida : simuladoRespondida) return
+  const riscadas = flash ? flashRiscadas : simuladoRiscadas
+  const pref = flash ? 'flash-' : ''
+  if (riscadas.has(letra)) riscadas.delete(letra); else riscadas.add(letra)
+  const r = riscadas.has(letra)
+  document.getElementById(`${pref}alt-btn-${letra}`)?.classList.toggle('riscada', r)
+  const btn = document.getElementById(`${pref}alt-riscar-${letra}`)
+  if (btn) { btn.classList.toggle('ativo', r); btn.title = r ? 'Tirar o risco' : 'Riscar esta alternativa' }
+}
+
 // Feedback (acerto/erro + comentário + vídeo) — usado no Simulado e nos Flashcards
 function htmlFeedbackResposta(q, acertou) {
   return `
@@ -5223,13 +5396,7 @@ function montarCardSimulado(q) {
 
   let alternativasHTML = ''
   if (temAlts) {
-    alternativasHTML = `<div id="alts-container" style="display:flex;flex-direction:column;margin-bottom:8px">
-      ${['A','B','C','D','E'].filter(l => alts[l]).map(l => `
-        <button class="alt-btn" id="alt-btn-${l}" onclick="responderAlternativa('${l}')">
-          <span class="alt-letra">${l})</span>
-          <span>${formatarTextoInline(alts[l])}</span>
-        </button>`).join('')}
-    </div>`
+    alternativasHTML = htmlAlternativasLetra(alts, 'simulado')
   } else if (ehCertoErrado) {
     alternativasHTML = `<div class="cert-errad-btns" id="alts-container">
       <button class="cert-btn" id="alt-btn-Certo" onclick="responderAlternativa('Certo')">✅ Certo</button>
@@ -5253,6 +5420,7 @@ function montarCardSimulado(q) {
 function renderSimuladoQuestao() {
   simuladoRespondida = false
   simuladoEscolha = null
+  simuladoRiscadas = new Set()
   document.getElementById('simulado-acoes').style.display = 'none'
   document.getElementById('simulado-feedback').innerHTML = ''
   atualizarBarraProgresso()
@@ -5268,7 +5436,7 @@ function reaplicarMarcasSimulado(q) {
   const temAlts = Object.values(alts).some(v => v)
   const ehCertoErrado = q.gabarito === 'Certo' || q.gabarito === 'Errado'
   if (simuladoEscolha) {
-    document.querySelectorAll('#simulado-questao-atual .alt-btn, #simulado-questao-atual .cert-btn').forEach(b => b.disabled = true)
+    document.querySelectorAll('#simulado-questao-atual .alt-btn, #simulado-questao-atual .cert-btn, #simulado-questao-atual .alt-riscar').forEach(b => b.disabled = true)
     const acertou = simuladoEscolha === q.gabarito
     const btnEscolhido = document.getElementById(`alt-btn-${simuladoEscolha}`)
     const btnCorreto = document.getElementById(`alt-btn-${q.gabarito}`)
@@ -5283,13 +5451,14 @@ function reaplicarMarcasSimulado(q) {
 
 async function responderAlternativa(escolha) {
   if (simuladoRespondida) return
+  if (simuladoRiscadas.has(escolha)) { notif('Essa alternativa está riscada — tire o risco (botão ao lado) se quiser marcá-la.', 'error'); return }
   simuladoRespondida = true
   simuladoEscolha = escolha
 
   const q = simuladoLista[simuladoIdx]
   const acertou = escolha === q.gabarito
 
-  document.querySelectorAll('.alt-btn, .cert-btn').forEach(b => b.disabled = true)
+  document.querySelectorAll('#simulado-questao-atual .alt-btn, #simulado-questao-atual .cert-btn, #simulado-questao-atual .alt-riscar').forEach(b => b.disabled = true)
 
   const btnEscolhido = document.getElementById(`alt-btn-${escolha}`)
   const btnCorreto = document.getElementById(`alt-btn-${q.gabarito}`)
@@ -5492,13 +5661,7 @@ function montarCardFlash(q) {
 
   let alternativasHTML = ''
   if (temAlts) {
-    alternativasHTML = `<div id="flash-alts-container" style="display:flex;flex-direction:column;margin-bottom:8px">
-      ${['A','B','C','D','E'].filter(l => alts[l]).map(l => `
-        <button class="alt-btn" id="flash-alt-btn-${l}" onclick="responderFlashAlternativa('${l}')">
-          <span class="alt-letra">${l})</span>
-          <span>${formatarTextoInline(alts[l])}</span>
-        </button>`).join('')}
-    </div>`
+    alternativasHTML = htmlAlternativasLetra(alts, 'flash')
   } else if (ehCertoErrado) {
     alternativasHTML = `<div class="cert-errad-btns" id="flash-alts-container">
       <button class="cert-btn" id="flash-alt-btn-Certo" onclick="responderFlashAlternativa('Certo')">✅ Certo</button>
@@ -5522,6 +5685,7 @@ function montarCardFlash(q) {
 function renderFlashcard() {
   flashRespondida = false
   flashEscolha = null
+  flashRiscadas = new Set()
   document.getElementById('flash-acoes').style.display = 'none'
   document.getElementById('flash-feedback').innerHTML = ''
   atualizarBarraFlash()
@@ -5536,7 +5700,7 @@ function reaplicarMarcasFlash(q) {
   const temAlts = Object.values(alts).some(v => v)
   const ehCertoErrado = q.gabarito === 'Certo' || q.gabarito === 'Errado'
   if (flashEscolha) {
-    document.querySelectorAll('#flash-alts-container .alt-btn, #flash-alts-container .cert-btn').forEach(b => b.disabled = true)
+    document.querySelectorAll('#flash-alts-container .alt-btn, #flash-alts-container .cert-btn, #flash-alts-container .alt-riscar').forEach(b => b.disabled = true)
     const acertou = flashEscolha === q.gabarito
     const btnEscolhido = document.getElementById(`flash-alt-btn-${flashEscolha}`)
     const btnCorreto = document.getElementById(`flash-alt-btn-${q.gabarito}`)
@@ -5551,13 +5715,14 @@ function reaplicarMarcasFlash(q) {
 
 async function responderFlashAlternativa(escolha) {
   if (flashRespondida) return
+  if (flashRiscadas.has(escolha)) { notif('Essa alternativa está riscada — tire o risco (botão ao lado) se quiser marcá-la.', 'error'); return }
   flashRespondida = true
   flashEscolha = escolha
 
   const q = flashLista[flashIdx]
   const acertou = escolha === q.gabarito
 
-  document.querySelectorAll('#flash-alts-container .alt-btn, #flash-alts-container .cert-btn').forEach(b => b.disabled = true)
+  document.querySelectorAll('#flash-alts-container .alt-btn, #flash-alts-container .cert-btn, #flash-alts-container .alt-riscar').forEach(b => b.disabled = true)
 
   const btnEscolhido = document.getElementById(`flash-alt-btn-${escolha}`)
   const btnCorreto = document.getElementById(`flash-alt-btn-${q.gabarito}`)
