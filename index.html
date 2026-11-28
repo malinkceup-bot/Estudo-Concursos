@@ -1627,6 +1627,13 @@ for each row execute function restringir_cadastro_email();</pre>
 
   <!-- CONFIG -->
   <div class="page" id="page-config">
+    <!-- BLOQUEIOS — tudo o que está oculto, com os números exatos -->
+    <div class="card" id="card-bloqueios">
+      <div class="card-title"><span class="card-title-icon" style="background:rgba(245,158,11,0.15);color:var(--yellow)"><i class="fas fa-lock"></i></span>Bloqueios — o que está oculto</div>
+      <p style="font-size:0.85rem;color:var(--text2);margin-bottom:14px">Matérias e temas bloqueados somem das Questões, dos Mapas, do Início, do Simulado e dos Flashcards. Nada é apagado: é só desbloquear aqui que tudo volta.</p>
+      <div id="lista-bloqueios-config"></div>
+    </div>
+
     <div class="card">
       <div class="card-title"><span class="card-title-icon" style="background:rgba(79,142,247,0.15);color:var(--accent)"><i class="fas fa-layer-group"></i></span>Gerenciar Matérias</div>
       <p style="font-size:0.85rem;color:var(--text2);margin-bottom:16px">Renomear ou remover matérias atualiza automaticamente todas as questões e mapas.</p>
@@ -3410,10 +3417,16 @@ function renderDashboard() {
   // fica menor que o do Supabase, então avisa quantas são pra não parecer que sumiram.
   const elOcultas = document.getElementById('dash-ocultas')
   const ocultas = questoes.length - total
+  const ocultasPorMateria = questoes.filter(q => materiasBloqueadasSet().has(q.materia)).length
+  const ocultasPorTema = ocultas - ocultasPorMateria
+  const origemOcultas = [
+    ocultasPorMateria > 0 ? `${ocultasPorMateria.toLocaleString('pt-BR')} em ${ocultasPorMateria !== 1 ? 'matérias bloqueadas' : 'matéria bloqueada'}` : '',
+    ocultasPorTema > 0 ? `${ocultasPorTema.toLocaleString('pt-BR')} em ${ocultasPorTema !== 1 ? 'temas bloqueados' : 'tema bloqueado'}` : '',
+  ].filter(Boolean).join(' · ')
   if (elOcultas) {
     if (ocultas > 0) {
       elOcultas.style.display = 'block'
-      elOcultas.innerHTML = `<button type="button" onclick="goPage('config')" title="Questões de matérias ou temas bloqueados em Config não aparecem no Início, nas Questões, no Simulado nem nos Flashcards. Clique pra ir ao Config." style="display:inline-flex;align-items:center;gap:6px;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:var(--text);border-radius:20px;padding:3px 10px;font-size:0.74rem;cursor:pointer"><i class="fas fa-lock" style="color:var(--yellow)"></i> ${total.toLocaleString('pt-BR')} ${total !== 1 ? 'ativas' : 'ativa'} · ${ocultas.toLocaleString('pt-BR')} ${ocultas !== 1 ? 'ocultas' : 'oculta'} por bloqueio <i class="fas fa-chevron-right" style="font-size:0.6rem;color:var(--text2)"></i></button>`
+      elOcultas.innerHTML = `<button type="button" onclick="irParaBloqueios()" title="Questões de matérias ou temas bloqueados não aparecem no Início, nas Questões, no Simulado nem nos Flashcards. Clique pra ver exatamente quais são." style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;text-align:left;background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);color:var(--text);border-radius:14px;padding:4px 10px;font-size:0.74rem;cursor:pointer"><i class="fas fa-lock" style="color:var(--yellow)"></i> ${total.toLocaleString('pt-BR')} ${total !== 1 ? 'ativas' : 'ativa'} · ${ocultas.toLocaleString('pt-BR')} ${ocultas !== 1 ? 'ocultas' : 'oculta'} (${origemOcultas}) <i class="fas fa-chevron-right" style="font-size:0.6rem;color:var(--text2)"></i></button>`
     } else {
       elOcultas.style.display = 'none'
       elOcultas.innerHTML = ''
@@ -5196,6 +5209,7 @@ async function salvarEdicao() {
 // Depois de salvar uma edição, atualiza a questão que está na tela do Simulado/Flashcards
 // (sem reiniciar a sessão, sem zerar o placar e sem refazer a pergunta).
 function aposEditarQuestao(id, dados) {
+  renderBloqueiosConfig()
   ;[simuladoLista, flashLista].forEach(lista => lista.forEach(o => { if (String(o.id) === String(id)) Object.assign(o, dados) }))
 
   const qs = simuladoLista[simuladoIdx]
@@ -6829,7 +6843,139 @@ function resetarConfig() {
   mostrarTelaSetup()
 }
 
+// ===== PAINEL "BLOQUEIOS" (aba Config) =====
+// Mostra exatamente o que está oculto: matérias bloqueadas, temas bloqueados e as questões/mapas
+// que cada bloqueio esconde — com botão pra desbloquear e a lista completa pra conferir.
+let bloqueiosListaQAberta = false
+let bloqueiosListaMAberta = false
+function alternarListaBloqueios(qual) {
+  if (qual === 'q') bloqueiosListaQAberta = !bloqueiosListaQAberta
+  else bloqueiosListaMAberta = !bloqueiosListaMAberta
+  renderBloqueiosConfig()
+}
+
+// Atalho do aviso "N ocultas" no Início: abre o Config já rolando até este painel
+function irParaBloqueios() {
+  goPage('config')
+  setTimeout(() => document.getElementById('card-bloqueios')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+}
+
+function renderBloqueiosConfig() {
+  const el = document.getElementById('lista-bloqueios-config')
+  if (!el) return
+  const coll = (a, b) => String(a || '').localeCompare(String(b || ''), 'pt-BR', { sensitivity: 'base' })
+  const matsBloq = materias.filter(m => m.ativa === false).sort((a, b) => coll(a.nome, b.nome))
+  const setMat = new Set(matsBloq.map(m => m.nome))
+  const temasBloq = temasBloqueados.slice().sort(coll)
+  const setTema = new Set(temasBloq)
+
+  if (!matsBloq.length && !temasBloq.length) {
+    el.innerHTML = '<div style="color:var(--text2);font-size:0.85rem"><i class="fas fa-circle-check" style="color:var(--green);margin-right:6px"></i>Nenhum bloqueio ativo: tudo está visível.</div>'
+    return
+  }
+
+  const qOcultas = questoes.filter(q => setMat.has(q.materia) || setTema.has(q.tema))
+  const mOcultos = mapas.filter(m => setMat.has(m.materia) || setTema.has(m.tema))
+  const qPorMateria = qOcultas.filter(q => setMat.has(q.materia)).length
+  const qPorTema = qOcultas.length - qPorMateria
+  const plural = (n, um, varios) => `${n.toLocaleString('pt-BR')} ${n !== 1 ? varios : um}`
+
+  const titulo = txt => `<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text2);margin:14px 0 8px">${txt}</div>`
+  const linha = (nome, sub, contagem, acao) => `
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;background:var(--surface2);border-radius:8px;margin-bottom:6px">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:0.84rem;font-weight:600;word-break:break-word">${nome}</div>
+        ${sub ? `<div style="font-size:0.72rem;color:var(--text2);margin-top:2px;word-break:break-word">${sub}</div>` : ''}
+        <div style="font-size:0.74rem;color:var(--text2);margin-top:3px">${contagem}</div>
+      </div>
+      ${acao}
+    </div>`
+  const selo = (txt) => `<span style="background:rgba(245,158,11,0.15);color:var(--yellow);border-radius:10px;padding:1px 8px;font-size:0.66rem;font-weight:600;white-space:nowrap">${txt}</span>`
+
+  // Resumo
+  let html = `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+      <span style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);border-radius:20px;padding:4px 12px;font-size:0.8rem"><strong>${qOcultas.length.toLocaleString('pt-BR')}</strong> ${qOcultas.length !== 1 ? 'questões ocultas' : 'questão oculta'}${qOcultas.length ? ` <span style="color:var(--text2)">(${qPorMateria.toLocaleString('pt-BR')} por matéria · ${qPorTema.toLocaleString('pt-BR')} por tema)</span>` : ''}</span>
+      <span style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);border-radius:20px;padding:4px 12px;font-size:0.8rem"><strong>${mOcultos.length.toLocaleString('pt-BR')}</strong> ${mOcultos.length !== 1 ? 'mapas ocultos' : 'mapa oculto'}</span>
+    </div>`
+
+  // Matérias bloqueadas
+  if (matsBloq.length) {
+    html += titulo(`<i class="fas fa-layer-group"></i> Matérias bloqueadas (${matsBloq.length})`)
+    html += matsBloq.map(m => {
+      const nq = questoes.filter(q => q.materia === m.nome).length
+      const nm = mapas.filter(x => x.materia === m.nome).length
+      return linha(escHtml(m.nome), '', `${plural(nq, 'questão', 'questões')} · ${plural(nm, 'mapa', 'mapas')}`,
+        `<button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="toggleMateria('${m.id}')" title="Desbloquear (voltar a mostrar)"><i class="fas fa-lock-open"></i> Desbloquear</button>`)
+    }).join('')
+  }
+
+  // Temas bloqueados
+  if (temasBloq.length) {
+    html += titulo(`<i class="fas fa-tag"></i> Temas bloqueados (${temasBloq.length})`)
+    html += temasBloq.map(t => {
+      const doTemaQ = questoes.filter(q => q.tema === t)
+      const doTemaM = mapas.filter(x => x.tema === t)
+      const mats = [...new Set([...doTemaQ, ...doTemaM].map(x => x.materia).filter(Boolean))].sort(coll)
+      const subMat = mats.length ? `Matéria${mats.length !== 1 ? 's' : ''}: ${mats.map(escHtml).join(', ')}` : 'Nenhuma questão ou mapa usa este tema'
+      return linha(escHtml(t), subMat, `${plural(doTemaQ.length, 'questão', 'questões')} · ${plural(doTemaM.length, 'mapa', 'mapas')}`,
+        `<button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="toggleTema('${escAttr(t)}')" title="Desbloquear (voltar a mostrar)"><i class="fas fa-lock-open"></i> Desbloquear</button>`)
+    }).join('')
+  }
+
+  const botaoLista = (qual, aberta, texto) => `
+    <button type="button" onclick="alternarListaBloqueios('${qual}')" style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;margin-top:14px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:none;color:var(--text);cursor:pointer;font-size:0.82rem;font-weight:600">
+      <span>${texto}</span><i class="fas fa-chevron-${aberta ? 'up' : 'down'}" style="font-size:0.7rem;color:var(--text2)"></i>
+    </button>`
+  const LIMITE = 100
+
+  // Lista exata das questões ocultas
+  if (qOcultas.length) {
+    html += botaoLista('q', bloqueiosListaQAberta, `<i class="fas fa-list" style="margin-right:6px"></i>Ver as ${qOcultas.length.toLocaleString('pt-BR')} ${qOcultas.length !== 1 ? 'questões ocultas' : 'questão oculta'}`)
+    if (bloqueiosListaQAberta) {
+      const ordenadas = qOcultas.slice().sort((a, b) => coll(a.materia, b.materia) || coll(a.tema, b.tema) || (a.id - b.id))
+      html += `<div style="margin-top:6px;border:1px solid var(--border);border-radius:8px;overflow:hidden">` +
+        ordenadas.slice(0, LIMITE).map(q => `
+          <div style="padding:8px 10px;border-bottom:1px solid var(--border)">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:3px">
+              <span style="font-size:0.7rem;color:var(--text2)">#${q.id}</span>
+              <span class="tag">${escHtml(truncarLinha(q.materia, 32))}</span>
+              ${q.tema ? `<span style="font-size:0.72rem;color:var(--accent)"><i class="fas fa-tag" style="margin-right:3px"></i>${escHtml(truncarLinha(q.tema, 45))}</span>` : ''}
+              ${setMat.has(q.materia) ? selo('matéria bloqueada') : ''}${setTema.has(q.tema) ? selo('tema bloqueado') : ''}
+              <button class="btn btn-ghost btn-sm" style="margin-left:auto;padding:2px 8px" onclick="abrirEditar('${q.id}')" title="Abrir a questão pra editar"><i class="fas fa-pen-to-square"></i></button>
+            </div>
+            <div style="font-size:0.78rem;color:var(--text2)">${previewLinhaUnica(q.enunciado, 120)}</div>
+          </div>`).join('') +
+        `</div>` +
+        (ordenadas.length > LIMITE ? `<div style="font-size:0.74rem;color:var(--text2);margin-top:6px">Mostrando ${LIMITE} de ${ordenadas.length.toLocaleString('pt-BR')}. Desbloqueie por tema ou matéria pra ver o restante.</div>` : '')
+    }
+  }
+
+  // Lista exata dos mapas ocultos
+  if (mOcultos.length) {
+    html += botaoLista('m', bloqueiosListaMAberta, `<i class="fas fa-image" style="margin-right:6px"></i>Ver os ${mOcultos.length.toLocaleString('pt-BR')} ${mOcultos.length !== 1 ? 'mapas ocultos' : 'mapa oculto'}`)
+    if (bloqueiosListaMAberta) {
+      const ordenados = mOcultos.slice().sort((a, b) => coll(a.materia, b.materia) || coll(a.titulo, b.titulo))
+      html += `<div style="margin-top:6px;border:1px solid var(--border);border-radius:8px;overflow:hidden">` +
+        ordenados.slice(0, LIMITE).map(m => `
+          <div style="padding:8px 10px;border-bottom:1px solid var(--border)">
+            <div style="font-size:0.82rem;font-weight:600;margin-bottom:3px;word-break:break-word">${escHtml(m.titulo || '(sem título)')}</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span class="tag">${escHtml(truncarLinha(m.materia, 32))}</span>
+              ${m.tema ? `<span style="font-size:0.72rem;color:var(--accent)"><i class="fas fa-tag" style="margin-right:3px"></i>${escHtml(truncarLinha(m.tema, 45))}</span>` : ''}
+              ${setMat.has(m.materia) ? selo('matéria bloqueada') : ''}${setTema.has(m.tema) ? selo('tema bloqueado') : ''}
+            </div>
+          </div>`).join('') +
+        `</div>` +
+        (ordenados.length > LIMITE ? `<div style="font-size:0.74rem;color:var(--text2);margin-top:6px">Mostrando ${LIMITE} de ${ordenados.length.toLocaleString('pt-BR')}.</div>` : '')
+    }
+  }
+
+  el.innerHTML = html
+}
+
 function renderConfig() {
+  renderBloqueiosConfig()
   // Matérias — mesmo padrão visual dos Temas, em ordem alfabética
   const el = document.getElementById('lista-materias-config')
   const buscaMat = (document.getElementById('busca-materias-config')?.value || '').trim().toLowerCase()
